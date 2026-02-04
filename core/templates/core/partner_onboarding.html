@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "基本情報登録" %} | EDI-MP{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="max-width: 900px; margin: 0 auto; padding: 2.5rem;">
+    <h1 style="margin-top: 0; font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 0.75rem;">
+        <span
+            style="background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+            {% trans "基本情報登録" %}
+        </span>
+    </h1>
+    <p style="color: var(--text-dim); margin-bottom: 2.5rem; font-size: 1.1rem;">
+        {% trans "EDIシステムのご利用にあたり、お客様の会社情報および振込先情報を登録してください。" %}
+    </p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2.5rem;">
+            <!-- 会社基本情報 -->
+            <section>
+                <h3 style="border-left: 4px solid var(--primary-color); padding-left: 1rem; margin-bottom: 1.5rem;">{% trans "会社基本情報" %}</h3>
+                <div class="form-group">
+                    <label>{{ form.name.label }}</label>
+                    {{ form.name }}
+                    {{ form.name.errors }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.name_kana.label }}</label>
+                    {{ form.name_kana }}
+                    {{ form.name_kana.errors }}
+                </div>
+                <div class="form-row" style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>{{ form.postal_code.label }}</label>
+                        {{ form.postal_code }}
+                        {{ form.postal_code.errors }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>{{ form.address.label }}</label>
+                    {{ form.address }}
+                    {{ form.address.errors }}
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>{{ form.tel.label }}</label>
+                        {{ form.tel }}
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>{{ form.fax.label }}</label>
+                        {{ form.fax }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>{{ form.email.label }}</label>
+                    {{ form.email }}
+                </div>
+
+                <div class="form-group"
+                    style="background: rgba(var(--primary-rgb), 0.05); padding: 1.5rem; border-radius: 8px; border: 1px dashed var(--primary-color); margin-top: 2rem;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="font-weight: bold; color: var(--primary-color);">{{ form.registration_no.label }}</label>
+                        {{ form.registration_no }}
+                        <small style="display: block; margin-top: 0.5rem; color: var(--text-dim);">
+                            {% trans "インボイス制度対応のため、Tから始まる13桁の番号を入力してください。" %}
+                        </small>
+                        {{ form.registration_no.errors }}
+                    </div>
+
+                    <div>
+                        <label style="font-weight: bold; color: var(--primary-color);">{{ form.attachment_file.label }}</label>
+                        {{ form.attachment_file }}
+                        <small style="display: block; margin-top: 0.5rem; color: var(--text-dim);">
+                            {% trans "決算報告書などの必要書類をPDF形式でアップロードしてください。" %}
+                        </small>
+                        {{ form.attachment_file.errors }}
+                        {% if form.instance.attachment_file %}
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem;">
+                            <i class="fas fa-file-pdf"></i>
+                            <a href="{{ form.instance.attachment_file.url }}" target="_blank">{% trans "現在のファイルを確認する"
+                                %}</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- 代表者・担当者情報 -->
+            <section>
+                <h3 style="border-left: 4px solid var(--secondary-color); padding-left: 1rem; margin-bottom: 1.5rem;">{% trans "代表者・担当者情報" %}</h3>
+                <div class="form-group">
+                    <label>{{ form.representative_name.label }}</label>
+                    {{ form.representative_name }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.representative_name_kana.label }}</label>
+                    {{ form.representative_name_kana }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.representative_position.label }}</label>
+                    {{ form.representative_position }}
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
+                <div class="form-group">
+                    <label>{{ form.responsible_person.label }}</label>
+                    {{ form.responsible_person }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.contact_person.label }}</label>
+                    {{ form.contact_person }}
+                </div>
+            </section>
+        </div>
+
+        <div
+            style="margin-top: 3rem; background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow-sm);">
+            <h3 style="margin-top: 0; border-left: 4px solid #10b981; padding-left: 1rem; margin-bottom: 1.5rem;">{% trans "振込先情報" %}</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                <div class="form-group">
+                    <label>{{ form.bank_name.label }}</label>
+                    {{ form.bank_name }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.bank_branch.label }}</label>
+                    {{ form.bank_branch }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.account_type.label }}</label>
+                    {{ form.account_type }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.account_number.label }}</label>
+                    {{ form.account_number }}
+                </div>
+                <div class="form-group" style="grid-column: span 1;">
+                    <label>{{ form.account_name.label }}</label>
+                    {{ form.account_name }}
+                </div>
+            </div>
+            <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-dim);">
+                <i class="fas fa-info-circle"></i> {% trans "正確な振込データの作成のため、正式名称での入力をお願いいたします。" %}
+            </p>
+        </div>
+
+        <div style="margin-top: 3rem; display: flex; justify-content: flex-end; gap: 1rem;">
+            <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">{% trans "後で登録する" %}</a>
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 3rem;">
+                {% trans "登録を完了する" %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-app);
+        color: var(--text-main);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+    }
+
+    .form-group .errors {
+        color: #ef4444;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}

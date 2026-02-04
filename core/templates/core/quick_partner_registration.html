@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "新規取引先登録" %} | EDI-MP{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="max-width: 700px; margin: 0 auto; padding: 2.5rem;">
+    <h1 style="margin-top: 0; font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 0.75rem;">
+        <i class="fas fa-user-plus" style="color: var(--primary-color);"></i>
+        <span
+            style="background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">
+            {% trans "新規取引先登録" %}
+        </span>
+    </h1>
+    <p style="color: var(--text-dim); margin-bottom: 2.5rem; line-height: 1.6;">
+        {% trans "新しい取引先企業と、その担当者のログインアカウントを一括で作成します。" %}<br>
+        {% trans "登録後、担当者へログイン情報を案内するガイドが表示されます。" %}
+    </p>
+
+    <form method="post" class="standard-form">
+        {% csrf_token %}
+
+        <div
+            style="background: rgba(var(--primary-rgb), 0.03); padding: 2rem; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 2rem;">
+            {% for field in form %}
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main);">
+                    {{ field.label }}
+                </label>
+                <div style="position: relative;">
+                    {{ field }}
+                </div>
+                {% if field.help_text %}
+                <small style="display: block; margin-top: 0.4rem; color: var(--text-dim); font-size: 0.85rem;">
+                    {{ field.help_text }}
+                </small>
+                {% endif %}
+                {% for error in field.errors %}
+                <p style="color: #ef4444; font-size: 0.85rem; margin-top: 0.4rem; font-weight: 500;">
+                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                </p>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; align-items: center;">
+            <a href="{% url 'core:dashboard' %}"
+                style="color: var(--text-dim); text-decoration: none; font-size: 0.95rem;">{% trans "キャンセル" %}</a>
+            <button type="submit" class="btn btn-primary" style="padding: 0.8rem 2.5rem; font-weight: 600;">
+                {% trans "取引先とユーザーを登録する" %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .form-group input {
+        width: 100%;
+        padding: 0.85rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-app);
+        color: var(--text-main);
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.1);
+    }
+</style>
+{% endblock %}

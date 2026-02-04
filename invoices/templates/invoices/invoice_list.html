@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load humanize %}
+
+{% block title %}{% trans "請求書一覧" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">{% trans "支払通知・請求書一覧" %}</h2>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-secondary" style="font-size: 0.9rem;">
+            {% trans "ダッシュボードに戻る" %}
+        </a>
+    </div>
+
+    {% if invoices %}
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-main);">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--glass-border);">
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "作成日" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "請求番号" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "案件名" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "対象年月" %}</th>
+                    <th style="text-align: right; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "合計金額" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem; padding-left: 2rem;">{% trans "ステータス" %}</th>
+                    <th style="text-align: right; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "アクション" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for invoice in invoices %}
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: background 0.3s; cursor: default;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.02)'"
+                    onmouseout="this.style.background='transparent'">
+                    <td style="padding: 1rem;">{{ invoice.issue_date }}</td>
+                    <td style="padding: 1rem; font-family: monospace;">{{ invoice.invoice_no }}</td>
+                    <td style="padding: 1rem; font-weight: 500;">{{ invoice.order.project.name }}</td>
+                    <td style="padding: 1rem;">{{ invoice.target_month|date:"Y年m月" }}</td>
+                    <td style="padding: 1rem; text-align: right; font-weight: 600;">¥{{ invoice.total_amount|intcomma }}</td>
+                    <td style="padding: 1rem; padding-left: 2rem;">
+                        <span style="
+                            padding: 0.2rem 0.6rem; 
+                            border-radius: 4px; 
+                            font-size: 0.8rem;
+                            {% if invoice.status == 'DRAFT' %}background: rgba(239, 68, 68, 0.2); color: #fca5a5;
+                            {% elif invoice.status == 'ISSUED' %}background: rgba(245, 158, 11, 0.2); color: #fde047;
+                            {% else %}background: rgba(34, 197, 94, 0.2); color: #86efac;{% endif %}
+                        ">
+                            {{ invoice.get_status_display }}
+                        </span>
+                    </td>
+                    <td style="padding: 1rem; text-align: right;">
+                        <a href="{% url 'invoices:partner_invoice_pdf' invoice.id %}" class="btn"
+                            style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;">
+                            {% trans "PDF表示" %}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="text-align: center; color: var(--text-dim); padding: 3rem;">
+        {% trans "現在、表示できる請求書はありません。" %}
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

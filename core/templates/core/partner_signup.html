@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "パートナーユーザー登録" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="max-width: 600px; margin: 0 auto;">
+    <h1 style="margin-top: 0; font-family: 'Outfit', sans-serif;">{% trans "パートナーユーザー登録" %}</h1>
+    <p style="color: var(--text-dim); margin-bottom: 2rem;">
+        {% trans "取引先（パートナー）の担当者アカウントを新規登録します。" %}
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div style="margin-bottom: 2rem;">
+            {{ form.as_p }}
+        </div>
+        <div class="flex">
+            <button type="submit" class="btn">{% trans "登録する" %}</button>
+            <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">{% trans "キャンセル" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

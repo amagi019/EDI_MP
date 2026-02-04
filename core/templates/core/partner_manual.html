@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "操作マニュアル" %} | EDI-MP{% endblock %}
+
+{% block content %}
+<div class="fade-in" style="max-width: 1000px; margin: 0 auto;">
+    <div class="card" style="padding: 3rem; line-height: 1.8;">
+        <h1
+            style="margin-top: 0; font-family: 'Outfit', sans-serif; border-bottom: 2px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 2rem;">
+            <i class="fas fa-book-reader" style="color: var(--primary-color);"></i> {% trans "EDI-MP パートナー向け操作マニュアル" %}
+        </h1>
+
+        <div class="manual-section">
+            <h2 id="section1"><i class="fas fa-key"></i> 1. {% trans "初回ログインとパスワード変更" %}</h2>
+            <p>{% trans "管理者から発行されたIDと仮パスワードでログインしてください。初回ログイン時は自動的にパスワード変更画面が表示されますので、ご自身で管理可能な新しいパスワードを設定してください。" %}
+            </p>
+        </div>
+
+        <div class="manual-section">
+            <h2 id="section2"><i class="fas fa-id-card"></i> 2. {% trans "会社情報の登録・更新（オンボーディング）" %}</h2>
+            <p>{% trans "適格な支払処理のために、貴社の基本情報の登録が必要です。" %}</p>
+            <ul>
+                <li><strong>{% trans "基本情報" %}:</strong> {% trans "会社名（フリガナ）、代表者名、住所を入力してください。" %}</li>
+                <li><strong>{% trans "インボイス登録番号" %}:</strong> {% trans "「T」から始まる13桁の番号を正確に入力してください。" %}</li>
+                <li><strong>{% trans "振込先情報" %}:</strong> {% trans "銀行名、支店名をマスターから選択し、口座種別、番号、名義を入力してください。" %}</li>
+            </ul>
+        </div>
+
+        <div class="manual-section">
+            <h2 id="section3"><i class="fas fa-file-signature"></i> 3. {% trans "注文書の確認と承認" %}</h2>
+            <p>{% trans "新しい注文が発行されるとメールで通知されます。一覧から詳細を開き、「注文書印刷」をクリックして内容を確認してください。" %}</p>
+            <div
+                style="background: rgba(var(--primary-rgb), 0.05); border-left: 4px solid var(--primary-color); padding: 1rem; margin: 1rem 0;">
+                <p style="margin: 0;"><strong>注意:</strong> システムの「承認」ボタンをクリックすることで正式な受領となります。承認後は自動的に「注文請書」が生成されます。</p>
+            </div>
+        </div>
+
+        <div class="manual-section">
+            <h2 id="section4"><i class="fas fa-money-check-alt"></i> 4. {% trans "支払通知の確認" %}</h2>
+            <p>{% trans "メニューの「請求書（支払通知）一覧」より、弊社からの支払予定額を確認できます。金額に相違がある場合は、速やかに弊社担当者までご連絡ください。" %}</p>
+        </div>
+
+        <div class="manual-section">
+            <h2 id="section5"><i class="fas fa-pen-nib"></i> 5. {% trans "電子署名の実施" %}</h2>
+            <p>基本契約などの法的文書については、外部の電子署名サービス（Google Docs等）から依頼が届く場合があります。オンラインでの署名完了後、EDIシステム側のステータスも自動的に更新されます。</p>
+        </div>
+
+        <div
+            style="margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border-color); text-align: center;">
+            <p style="color: var(--text-dim);">{% trans "操作方法について不明な点は、弊社担当窓口までお問い合わせください。" %}</p>
+            <a href="{% url 'core:dashboard' %}" class="btn">{% trans "ダッシュボードに戻る" %}</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .manual-section {
+        margin-bottom: 3rem;
+    }
+
+    .manual-section h2 {
+        font-family: 'Outfit', sans-serif;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .manual-section h2 i {
+        font-size: 1.2rem;
+        opacity: 0.8;
+    }
+
+    .manual-section p {
+        font-size: 1.05rem;
+        color: var(--text-main);
+    }
+
+    .manual-section ul {
+        padding-left: 1.5rem;
+    }
+
+    .manual-section li {
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}

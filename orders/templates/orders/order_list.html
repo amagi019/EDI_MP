@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "注文書一覧" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">{% trans "受領待ちの注文書一覧" %}</h2>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-secondary" style="font-size: 0.9rem;">
+            {% trans "ダッシュボードに戻る" %}
+        </a>
+    </div>
+
+    {% if orders %}
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-main);">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--glass-border);">
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "注文日" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "注文番号" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "件名" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "期間" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "ステータス" %}</th>
+                    <th style="padding: 1rem; color: var(--text-dim); font-size: 0.9rem; text-align: center;">{% trans "書類" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: background 0.3s;">
+                    <td style="padding: 1rem;">{{ order.order_date }}</td>
+                    <td style="padding: 1rem; font-family: monospace;">{{ order.order_id }}</td>
+                    <td style="padding: 1rem; font-weight: 600;">{{ order.project.name }}</td>
+                    <td style="padding: 1rem; font-size: 0.9rem;">{{ order.work_start }} ～ {{ order.work_end }}</td>
+                    <td style="padding: 1rem;">
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; {% if order.status == 'UNCONFIRMED' %}background: rgba(239, 68, 68, 0.2); color: #fca5a5;{% elif order.status == 'APPROVED' %}background: rgba(34, 197, 94, 0.2); color: #86efac;{% else %}background: rgba(234, 179, 8, 0.2); color: #fde047;{% endif %}">
+                            {{ order.get_status_display }}
+                        </span>
+                    </td>
+                    <td style="padding: 1rem; text-align: center; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <a href="{% url 'orders:order_detail' order.order_id %}" class="btn btn-secondary" style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;">{% trans "詳細" %}</a>
+                        <a href="{% url 'orders:customer_order_pdf' order.order_id %}" class="btn" style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;">{% trans "注文書" %}</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="text-align: center; color: var(--text-dim); padding: 3rem;">{% trans "現在、表示できる注文書はありません。" %}</p>
+    {% endif %}
+</div>
+{% endblock %}

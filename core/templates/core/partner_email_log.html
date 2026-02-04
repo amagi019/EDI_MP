@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "送信メールログ" %} | EDI-MP{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1 style="margin: 0; font-family: 'Outfit', sans-serif;">
+            <i class="fas fa-envelope-open-text" style="color: var(--primary-color);"></i>
+            {% trans "送信メール履歴" %}: {{ customer.name }}
+        </h1>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> {% trans "ダッシュボードに戻る" %}
+        </a>
+    </div>
+
+    {% if email_logs %}
+    <div style="display: grid; gap: 2rem;">
+        {% for log in email_logs %}
+        <div
+            style="background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+            <div
+                style="background: rgba(var(--primary-rgb), 0.05); padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <strong style="font-size: 1.1rem; color: var(--text-main);">{{ log.subject }}</strong>
+                <span style="color: var(--text-dim); font-size: 0.9rem;">
+                    <i class="far fa-clock"></i> {{ log.sent_at|date:"Y/m/d H:i" }}
+                </span>
+            </div>
+            <div
+                style="padding: 1.5rem; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; color: var(--text-main); line-height: 1.6; background: var(--bg-card);">
+                {{ log.body }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 4rem; color: var(--text-dim);">
+        <i class="fas fa-history" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+        <p>{% trans "送信履歴はありません。" %}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

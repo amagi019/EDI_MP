@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "登録完了" %} | EDI-MP{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="max-width: 800px; margin: 0 auto; padding: 3rem;">
+    <div style="text-align: center; margin-bottom: 3rem;">
+        <div
+            style="width: 80px; height: 80px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2.5rem; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);">
+            <i class="fas fa-check"></i>
+        </div>
+        <h1 style="margin: 0; font-family: 'Outfit', sans-serif;">{% trans "取引先の登録が完了しました" %}</h1>
+        <p style="color: var(--text-dim); margin-top: 1rem; font-size: 1.1rem;">
+            {% trans "以下の担当者アカウントが作成されました。" %}
+        </p>
+    </div>
+
+    <div
+        style="background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 3rem;">
+        <div style="display: grid; grid-template-columns: 120px 1fr; gap: 1rem; align-items: center;">
+            <span style="color: var(--text-dim); font-size: 0.9rem;">ID (Email):</span>
+            <strong style="font-size: 1.2rem; color: var(--primary-color);">{{ registered_email }}</strong>
+
+            <span style="color: var(--text-dim); font-size: 0.9rem;">{% trans "作成パスワード" %}:</span>
+            <strong style="font-size: 1.2rem; color: var(--primary-color);">{{ registered_password }}</strong>
+        </div>
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--border-color);">
+            <p style="margin: 0; font-size: 0.9rem; color: var(--text-dim);">
+                <i class="fas fa-info-circle"></i> {% trans "招待メールに同じ情報が記載されていますが、必要に応じて上記の情報をコピーして案内してください。" %}
+            </p>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 3rem;">
+        <h3
+            style="font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+            <i class="fas fa-paper-plane" style="color: var(--secondary-color);"></i>
+            {% trans "自社担当者が次に行うこと" %}
+        </h3>
+
+        <div style="grid-template-columns: 1fr; display: grid; gap: 1.5rem;">
+            <div style="display: flex; gap: 1rem;">
+                <div
+                    style="flex-shrink: 0; width: 28px; height: 28px; background: var(--secondary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem;">
+                    1</div>
+                <div>
+                    <h4 style="margin: 0 0 0.5rem;">{% trans "先方担当者への追加フォロー" %}</h4>
+                    <p style="margin: 0; font-size: 0.95rem; color: var(--text-dim); line-height: 1.5;">
+                        {% trans
+                        "システムより招待メールが自動送信されています。先方担当者へ「アカウント発行メールが届いていること」を確認し、「初回ログイン後に基本情報（振込先等）の入力が必要であること」を伝えるとスムーズです。"
+                        %}
+                    </p>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <div
+                    style="flex-shrink: 0; width: 28px; height: 28px; background: var(--secondary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem;">
+                    2</div>
+                <div>
+                    <h4 style="margin: 0 0 0.5rem;">{% trans "先方の登録内容を確認する" %}</h4>
+                    <p style="margin: 0; font-size: 0.95rem; color: var(--text-dim); line-height: 1.5;">
+                        {% trans "先方が情報を入力すると、管理画面の「取引先詳細」に内容が反映されます。内容に不備がないか確認してください。" %}
+                    </p>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <div
+                    style="flex-shrink: 0; width: 28px; height: 28px; background: var(--secondary-color); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem;">
+                    3</div>
+                <div>
+                    <h4 style="margin: 0 0 0.5rem;">{% trans "基本契約の依頼を出す" %}</h4>
+                    <p style="margin: 0; font-size: 0.95rem; color: var(--text-dim); line-height: 1.5;">
+                        {% trans "情報登録が確認できたら、電子署名サービス等の外部ツールを使用して、基本契約の締結を依頼してください。" %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 1rem;">
+        <a href="{% url 'core:dashboard' %}" class="btn btn-primary" style="padding: 0.8rem 3rem;">
+            {% trans "ダッシュボードに戻る" %}
+        </a>
+    </div>
+</div>
+{% endblock %}
