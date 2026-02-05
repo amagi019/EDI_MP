@@ -211,7 +211,7 @@
 
 <body>
     <header>
-        <a href="/" class="brand">EDI SYSTEM</a>
+        <a href="/" class="brand">{% trans "EDIシステム" %}</a>
         <nav>
             <ul>
                 {% if user.is_authenticated %}
@@ -251,7 +251,7 @@
     </main>
 
     <footer>
-        &copy; {% now "Y" %} EDI System. All rights reserved.
+        &copy; {% now "Y" %} {% trans "EDIシステム" %}. All rights reserved.
     </footer>
 </body>
 

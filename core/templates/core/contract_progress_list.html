@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "基本契約進捗" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">{% trans "基本契約進捗一覧" %}</h2>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-secondary" style="font-size: 0.9rem;">
+            {% trans "ダッシュボードに戻る" %}
+        </a>
+    </div>
+
+    {% if contract_progress_list %}
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-main);">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "取引先名" %}</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "進捗ステータス" %}</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "更新日時" %}</th>
+                    {% if is_staff %}
+                    <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "アクション" %}</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for progress in contract_progress_list %}
+                <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;">
+                    <td style="padding: 1rem 1.5rem; font-weight: 500;">{{ progress.customer.name }}</td>
+                    <td style="padding: 1rem 1.5rem;">
+                        {% if progress.status == 'INVITED' %}
+                        <span
+                            style="background: rgba(129, 140, 248, 0.1); color: #818CF8; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(129, 140, 248, 0.2);">
+                            {{ progress.get_status_display }}
+                        </span>
+                        {% elif progress.status == 'INFO_DONE' %}
+                        <span
+                            style="background: rgba(245, 158, 11, 0.1); color: #FBBF24; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(245, 158, 11, 0.2);">
+                            {{ progress.get_status_display }}
+                        </span>
+                        {% elif progress.status == 'CONTRACT_SENT' %}
+                        <span
+                            style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.2);">
+                            {{ progress.get_status_display }}
+                        </span>
+                        {% elif progress.status == 'COMPLETED' %}
+                        <span
+                            style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.2);">
+                            {{ progress.get_status_display }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 1rem 1.5rem; color: var(--text-dim);">{{ progress.updated_at|date:"Y/m/d H:i" }}
+                    </td>
+                    {% if is_staff %}
+                    <td style="padding: 1rem 1.5rem;">
+                        <a href="{% url 'core:partner_email_log' progress.customer.customer_id %}"
+                            class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
+                            <i class="fas fa-search"></i> {% trans "詳細" %}
+                        </a>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div
+        style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.9rem;">
+        <p style="margin: 0;">
+            <i class="fas fa-info-circle" style="margin-right: 0.5rem; color: var(--secondary);"></i>
+            {% blocktrans with total=contract_progress_list|length %}
+            {{ total }} 件の取引先が表示されています。
+            {% endblocktrans %}
+        </p>
+    </div>
+
+    {% else %}
+    <p style="text-align: center; color: var(--text-dim); padding: 3rem;">{% trans "表示できる基本契約進捗情報はありません。" %}</p>
+    {% endif %}
+</div>
+{% endblock %}

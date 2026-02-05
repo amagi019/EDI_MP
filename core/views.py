@@ -168,3 +168,27 @@ class PartnerEmailLogView(LoginRequiredMixin, StaffOnlyMixin, TemplateView):
         context['customer'] = customer
         context['email_logs'] = SentEmailLog.objects.filter(customer=customer).order_by('-sent_at')
         return context
+
+class ContractProgressListView(LoginRequiredMixin, TemplateView):
+    """基本契約進捗一覧"""
+    template_name = 'core/contract_progress_list.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        
+        # スタッフユーザーのみ全ての進捗を表示、非スタッフは自分の進捗のみ表示
+        if user.is_staff:
+            contract_progress_list = MasterContractProgress.objects.select_related('customer').all().order_by('-updated_at')
+        else:
+            # 非スタッフの場合、自分の顧客情報の進捗のみ表示
+            if hasattr(user, 'profile') and user.profile.customer:
+                contract_progress_list = MasterContractProgress.objects.filter(
+                    customer=user.profile.customer
+                ).select_related('customer')
+            else:
+                contract_progress_list = MasterContractProgress.objects.none()
+        
+        context['contract_progress_list'] = contract_progress_list
+        context['is_staff'] = user.is_staff
+        return context
