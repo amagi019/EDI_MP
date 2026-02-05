@@ -66,14 +66,10 @@
             <table style="width: 100%; border-collapse: collapse; min-width: 800px;">
                 <thead>
                     <tr style="border-bottom: 2px solid var(--border-color); text-align: left;">
-                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "取引先名" %}
-                        </th>
-                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "進捗ステータス"
-                            %}</th>
-                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "更新日時" %}
-                        </th>
-                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "アクション" %}
-                        </th>
+                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "取引先名" %}</th>
+                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "進捗ステータス" %}</th>
+                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "更新日時" %}</th>
+                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "アクション" %}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -103,8 +99,7 @@
                             </span>
                             {% endif %}
                         </td>
-                        <td style="padding: 1rem 1.5rem; color: var(--text-dim);">{{ progress.updated_at|date:"Y/m/d
-                            H:i" }}</td>
+                        <td style="padding: 1rem 1.5rem; color: var(--text-dim);">{{ progress.updated_at|date:"Y/m/d  H:i" }}</td>
                         <td style="padding: 1rem 1.5rem;">
                             <a href="{% url 'core:partner_email_log' progress.customer.customer_id %}"
                                 class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
