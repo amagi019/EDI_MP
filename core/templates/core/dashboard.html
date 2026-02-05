@@ -99,7 +99,7 @@
                             </span>
                             {% endif %}
                         </td>
-                        <td style="padding: 1rem 1.5rem; color: var(--text-dim);">{{ progress.updated_at|date:"Y/m/d  H:i" }}</td>
+                        <td style="padding: 1rem 1.5rem; color: var(--text-dim);">{{ progress.updated_at|date:"Y/m/d H:i" }}</td>
                         <td style="padding: 1rem 1.5rem;">
                             <a href="{% url 'core:partner_email_log' progress.customer.customer_id %}"
                                 class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
