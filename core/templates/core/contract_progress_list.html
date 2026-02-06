@@ -17,11 +17,19 @@
         <table style="width: 100%; border-collapse: collapse; color: var(--text-main);">
             <thead>
                 <tr style="border-bottom: 1px solid var(--border);">
-                    <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "取引先名" %}</th>
-                    <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "進捗ステータス" %}</th>
-                    <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "更新日時" %}</th>
+                    <th
+                        style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">
+                        {% trans "取引先名" %}</th>
+                    <th
+                        style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">
+                        {% trans "進捗ステータス" %}</th>
+                    <th
+                        style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">
+                        {% trans "更新日時" %}</th>
                     {% if is_staff %}
-                    <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "アクション" %}</th>
+                    <th
+                        style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">
+                        {% trans "アクション" %}</th>
                     {% endif %}
                 </tr>
             </thead>
@@ -50,6 +58,16 @@
                             style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.2);">
                             {{ progress.get_status_display }}
                         </span>
+                        {% endif %}
+
+                        {# 書類未提出のアラート表示（招待済みステータス以外で、ファイルがない場合） #}
+                        {% if progress.status != 'INVITED' and not progress.customer.attachment_file %}
+                        <div style="margin-top: 0.25rem;">
+                            <span
+                                style="color: #EF4444; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">
+                                <i class="fas fa-exclamation-triangle"></i> {% trans "書類未提出" %}
+                            </span>
+                        </div>
                         {% endif %}
                     </td>
                     <td style="padding: 1rem 1.5rem; color: var(--text-dim);">{{ progress.updated_at|date:"Y/m/d H:i" }}

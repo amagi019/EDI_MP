@@ -20,6 +20,11 @@ from core import views as core_views
 from django.conf import settings
 from django.conf.urls.static import static
 
+# 管理サイトのタイトル設定
+admin.site.site_header = "EDI Sophia"
+admin.site.site_title = "EDI Sophia"
+admin.site.index_title = "メニュー"
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),
