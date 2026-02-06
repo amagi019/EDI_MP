@@ -206,6 +206,61 @@
             border-top: 1px solid var(--border);
         }
     </style>
+    <style>
+        /* Layout */
+        .app-container {
+            display: flex;
+            min-height: calc(100vh - 73px);
+            /* 100vh - header height */
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1rem;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .sidebar-link:hover,
+        .sidebar-link.active {
+            background: rgba(79, 70, 229, 0.1);
+            color: #818CF8;
+        }
+
+        .sidebar-link i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Font Awesome for icons */
+        @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -215,7 +270,7 @@
         <nav>
             <ul>
                 {% if user.is_authenticated %}
-                <li><span style="color: var(--text-dim);">{{ user.username }}</span></li>
+                <li><span style="color: var(--text-dim);">{{ user.username }} {% trans "さん" %}</span></li>
                 {% if user.is_staff %}
                 <li><a href="/admin/" target="_blank">{% trans "管理画面" %}</a></li>
                 {% endif %}
@@ -235,20 +290,50 @@
         </nav>
     </header>
 
-    <main>
-        {% if messages %}
-        <div style="margin-bottom: 2rem;">
-            {% for message in messages %}
-            <div
-                style="padding: 1rem; border-radius: 8px; background: rgba(79, 70, 229, 0.1); border: 1px solid rgba(79, 70, 229, 0.2); color: #818CF8;">
-                {{ message|safe }}
-            </div>
-            {% endfor %}
-        </div>
+    <div class="app-container">
+        {% if user.is_authenticated %}
+        <aside class="sidebar">
+            <a href="{% url 'core:dashboard' %}"
+                class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-home"></i> {% trans "ダッシュボード" %}
+            </a>
+
+            {% if not user.is_staff %}
+            <div style="margin: 1rem 0; border-top: 1px solid var(--border);"></div>
+            <a href="{% url 'core:partner_onboarding' %}"
+                class="sidebar-link {% if 'partner_onboarding' in request.path %}active{% endif %}">
+                <i class="fas fa-building"></i> {% trans "会社情報登録・更新" %}
+            </a>
+            <a href="{% url 'core:partner_manual' %}"
+                class="sidebar-link {% if 'partner_manual' in request.path %}active{% endif %}">
+                <i class="fas fa-book-open"></i> {% trans "操作マニュアル" %}
+            </a>
+            {% endif %}
+
+            {% if user.is_staff %}
+            <div style="margin: 1rem 0; border-top: 1px solid var(--border);"></div>
+            <a href="{% url 'admin:index' %}" target="_blank" class="sidebar-link">
+                <i class="fas fa-cog"></i> {% trans "管理画面" %}
+            </a>
+            {% endif %}
+        </aside>
         {% endif %}
 
-        {% block content %}{% endblock %}
-    </main>
+        <main class="content">
+            {% if messages %}
+            <div style="margin-bottom: 2rem;">
+                {% for message in messages %}
+                <div
+                    style="padding: 1rem; border-radius: 8px; background: rgba(79, 70, 229, 0.1); border: 1px solid rgba(79, 70, 229, 0.2); color: #818CF8;">
+                    {{ message|safe }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
 
     <footer>
         &copy; {% now "Y" %} {% trans "EDIシステム" %}. All rights reserved.

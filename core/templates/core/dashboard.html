@@ -19,16 +19,7 @@
         <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">{% trans "注文書一覧" %}</a>
         <a href="{% url 'invoices:partner_invoice_list' %}" class="btn btn-secondary">{% trans "請求書（支払通知）一覧" %}</a>
         <a href="{% url 'core:contract_progress_list' %}" class="btn btn-secondary">{% trans "基本契約進捗" %}</a>
-        {% if not user.is_staff %}
-        <a href="{% url 'core:partner_onboarding' %}" class="btn"
-            style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color);">
-            <i class="fas fa-edit"></i> {% trans "会社情報を登録・更新する" %}
-        </a>
-        <a href="{% url 'core:partner_manual' %}" class="btn"
-            style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color);">
-            <i class="fas fa-book-open"></i> {% trans "操作マニュアル" %}
-        </a>
-        {% endif %}
+
     </div>
     {% endif %}
 
