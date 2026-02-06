@@ -159,3 +159,6 @@ PASSWORD_HASHERS = [
 
 # メール設定（開発用：コンソール出力）
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# デフォルトのプライマリキーフィールド型
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
