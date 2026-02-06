@@ -154,3 +154,19 @@ class MasterContractProgress(models.Model):
 
     def __str__(self):
         return f"{self.customer.name}: {self.get_status_display()}"
+
+
+class EmailTemplate(models.Model):
+    """メールテンプレート"""
+    code = models.CharField(_("テンプレートコード"), max_length=50, unique=True, help_text=_("システム内で識別するためのコード"))
+    subject = models.CharField(_("件名"), max_length=255)
+    body = models.TextField(_("本文"), help_text=_("Djangoテンプレート構文が使用可能です。例: {{ partner_name }}"))
+    description = models.CharField(_("説明"), max_length=255, blank=True)
+    updated_at = models.DateTimeField(_("更新日時"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("メールテンプレート")
+        verbose_name_plural = _("メールテンプレート")
+
+    def __str__(self):
+        return f"{self.subject} ({self.code})"

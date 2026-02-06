@@ -129,9 +129,10 @@ class QuickPartnerRegistrationForm(forms.Form):
 
     def send_invitation_email(self, customer, email, password):
         from django.core.mail import send_mail
-        from django.template.loader import render_to_string
-        from .domain.models import CompanyInfo, SentEmailLog
+        from django.template import Template, Context
+        from .domain.models import CompanyInfo, SentEmailLog, EmailTemplate
         
+        # 会社情報の取得
         company = CompanyInfo.objects.first()
         if not company:
             company = CompanyInfo() # デフォルト値を使用
@@ -143,11 +144,58 @@ class QuickPartnerRegistrationForm(forms.Form):
             'partner_name': customer.name,
             'email': email,
             'password': password,
-            'login_url': 'http://localhost:8000/accounts/login/', # 本番環境ではドメインを動的に取得すべき
+            # 本番環境では request.build_absolute_uri 等を使用すべきだが、簡易化のため設定または固定値
+            'login_url': 'http://localhost:8000/accounts/login/', 
         }
+
+        # メールテンプレートの取得（存在しない場合は初期データを作成）
+        template_code = 'partner_invitation'
+        default_subject = "【{{ company_name }}】EDIシステム アカウント発行のご案内"
+        default_body = """{{ company_name }}
+{{ partner_name }} 様
+
+EDIシステムをご案内いたします。
+
+この度、弊社との取引に関連して、EDIシステムのアカウントを発行いたしました。
+本システムでは、注文書の確認、および会社情報の登録を行っていただけます。
+
+以下の情報を使用してログインし、まず初めに「基本情報登録」をお願いいたします。
+
+■ ログイン情報
+ログインURL: {{ login_url }}
+ログインID: {{ email }}
+仮パスワード: {{ password }}
+
+■ 初回ログイン後の流れ
+1. 仮パスワードでログインしてください。
+2. 自動的にパスワード変更画面が表示されますので、新しいパスワードを設定してください。
+3. ダッシュボードの「会社情報を登録・更新する」より、貴社の基本情報および振込先情報の入力をお願いいたします。
+
+本メールに心当たりがない場合は、お手数ですが破棄していただくか、弊社窓口までご連絡ください。
+
+--------------------------------------------------
+{{ company_name }}
+{{ company_address }}
+TEL: {{ company_tel }}
+--------------------------------------------------
+"""
+        template, created = EmailTemplate.objects.get_or_create(
+            code=template_code,
+            defaults={
+                'subject': default_subject,
+                'body': default_body,
+                'description': '新規取引先招待メール'
+            }
+        )
         
-        subject = f"【{company.name}】EDIシステム アカウント発行のご案内"
-        message = render_to_string('core/emails/partner_invitation.txt', context)
+        # テンプレートエンジンでレンダリング
+        # 件名もテンプレート処理する（会社名などを埋め込むため）
+        subject_template = Template(template.subject)
+        body_template = Template(template.body)
+        
+        ctx = Context(context)
+        subject = subject_template.render(ctx)
+        message = body_template.render(ctx)
         
         # メールログの記録
         SentEmailLog.objects.create(

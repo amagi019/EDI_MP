@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from .domain.models import Profile, Customer, CompanyInfo, BankMaster
+from .domain.models import Profile, Customer, CompanyInfo, BankMaster, SentEmailLog, MasterContractProgress, EmailTemplate
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
@@ -49,3 +49,18 @@ class CompanyInfoAdmin(admin.ModelAdmin):
 class BankMasterAdmin(admin.ModelAdmin):
     list_display = ('bank_code', 'bank_name', 'branch_code', 'branch_name')
     search_fields = ('bank_name', 'branch_name', 'bank_code')
+
+admin.site.register(SentEmailLog)
+admin.site.register(MasterContractProgress)
+
+@admin.register(EmailTemplate)
+class EmailTemplateAdmin(admin.ModelAdmin):
+    list_display = ('code', 'subject', 'description', 'updated_at')
+    search_fields = ('code', 'subject', 'description')
+    readonly_fields = ('code', 'updated_at') # コードは変更不可にする（開発時以外）
+    
+    def get_readonly_fields(self, request, obj=None):
+        # 新規作成時はコード入力可能、編集時は不可にするのが安全
+        if obj:
+            return self.readonly_fields
+        return ('updated_at',)

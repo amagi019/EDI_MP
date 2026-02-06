@@ -1,0 +1,17 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+.venv
+venv
+env
+.env
+db.sqlite3
+media/
+static/
+.gemini/
+.agent/
+brain/
+docs/
+设计书/
+*.pdf

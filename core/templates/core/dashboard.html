@@ -17,7 +17,7 @@
         </a>
         {% endif %}
         <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">{% trans "注文書一覧" %}</a>
-        <a href="{% url 'invoices:partner_invoice_list' %}" class="btn btn-secondary">{% trans "請求書一覧" %}</a>
+        <a href="{% url 'invoices:partner_invoice_list' %}" class="btn btn-secondary">{% trans "請求書（支払通知）一覧" %}</a>
         <a href="{% url 'core:contract_progress_list' %}" class="btn btn-secondary">{% trans "基本契約進捗" %}</a>
         {% if not user.is_staff %}
         <a href="{% url 'core:partner_onboarding' %}" class="btn"
