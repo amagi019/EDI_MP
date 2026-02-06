@@ -19,6 +19,10 @@ class Customer(models.Model):
     cc = models.TextField(_("Cc"), blank=True, help_text=_("複数指定する場合はカンマ区切りで入力してください"))
     bcc = models.TextField(_("Bcc"), blank=True, help_text=_("複数指定する場合はカンマ区切りで入力してください"))
     
+    class Meta:
+        verbose_name = _("パートナー")
+        verbose_name_plural = _("パートナー")
+
     # 代表者・主担当情報
     representative_name = models.CharField(_("代表者名"), max_length=64, blank=True)
     representative_name_kana = models.CharField(_("代表者名（フリガナ）"), max_length=128, blank=True)
@@ -57,6 +61,10 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True, blank=True, verbose_name="取引先") # 内部ユーザーはNull可
     is_first_login = models.BooleanField(default=True)  # 初回ログインフラグ
+
+    class Meta:
+        verbose_name = _("ユーザープロフィール")
+        verbose_name_plural = _("ユーザープロフィール")
 
     def __str__(self):
         return self.user.username

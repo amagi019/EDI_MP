@@ -9,6 +9,10 @@ class Project(models.Model):
     project_id = models.CharField(_("プロジェクトID"), max_length=50, primary_key=True)
     name = models.CharField(_("プロジェクト名"), max_length=100)
 
+    class Meta:
+        verbose_name = _("プロジェクト")
+        verbose_name_plural = _("プロジェクト")
+
     def save(self, *args, **kwargs):
         if not self.project_id:
             # PRJで始まるIDの中から最大値を取得
@@ -33,12 +37,20 @@ class Workplace(models.Model):
     name = models.CharField(_("勤務場所名"), max_length=100)
     address = models.CharField(_("住所"), max_length=255, blank=True)
 
+    class Meta:
+        verbose_name = _("勤務場所")
+        verbose_name_plural = _("勤務場所")
+
     def __str__(self):
         return self.name
 
 class Deliverable(models.Model):
     deliverable_id = models.CharField(_("成果物ID"), max_length=50, primary_key=True)
     description = models.CharField(_("成果物の内容"), max_length=255)
+
+    class Meta:
+        verbose_name = _("成果物")
+        verbose_name_plural = _("成果物")
 
     def __str__(self):
         return self.description
@@ -47,12 +59,20 @@ class PaymentTerm(models.Model):
     payment_term_id = models.CharField(_("支払条件ID"), max_length=50, primary_key=True)
     description = models.CharField(_("説明"), max_length=255)
 
+    class Meta:
+        verbose_name = _("支払条件")
+        verbose_name_plural = _("支払条件")
+
     def __str__(self):
         return self.description
 
 class ContractTerm(models.Model):
     contract_term_id = models.CharField(_("契約条件ID"), max_length=50, primary_key=True)
     description = models.CharField(_("説明"), max_length=255)
+
+    class Meta:
+        verbose_name = _("契約条件")
+        verbose_name_plural = _("契約条件")
 
     def __str__(self):
         return self.description
@@ -61,6 +81,10 @@ class Product(models.Model):
     product_id = models.CharField(_("商品ID"), max_length=50, primary_key=True)
     name = models.CharField(_("商品名"), max_length=100)
     price = models.IntegerField(_("単価"))
+
+    class Meta:
+        verbose_name = _("商品")
+        verbose_name_plural = _("商品")
 
     def __str__(self):
         return self.name
@@ -75,6 +99,10 @@ class Order(models.Model):
         ('RECEIVED', _('受領済')),
         ('APPROVED', _('承認済')),
     ]
+
+    class Meta:
+        verbose_name = _("注文情報")
+        verbose_name_plural = _("注文情報")
 
     order_id = models.CharField(_("注文番号"), max_length=20, primary_key=True, help_text="MP+YYYYMMDD+6桁連番")
     customer = models.ForeignKey('core.Customer', on_delete=models.CASCADE, verbose_name=_("取引先"))
@@ -150,6 +178,10 @@ class OrderItem(models.Model):
     quantity = models.IntegerField(_("数量"), default=1)
     price = models.IntegerField(_("金額")) # 商品単価 * 数量？ それとも登録時の固定単価？
 
+    class Meta:
+        verbose_name = _("注文明細")
+        verbose_name_plural = _("注文明細")
+
     def __str__(self):
         return f"{self.order.order_id} - {self.product.name}"
 
@@ -158,6 +190,10 @@ class Person(models.Model):
     role = models.CharField(_("役割"), max_length=50, help_text="委託責任者、指揮命令者など")
     name = models.CharField(_("氏名"), max_length=50)
     contact = models.CharField(_("連絡先"), max_length=100, blank=True)
+
+    class Meta:
+        verbose_name = _("担当者")
+        verbose_name_plural = _("担当者")
 
     def __str__(self):
         return f"{self.name} ({self.role})"

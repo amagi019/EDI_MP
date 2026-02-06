@@ -10,6 +10,10 @@ class Invoice(models.Model):
         ('SENT', _('送付済')),
     ]
 
+    class Meta:
+        verbose_name = _("請求・支払通知書")
+        verbose_name_plural = _("請求・支払通知書")
+
     order = models.OneToOneField(Order, on_delete=models.CASCADE, verbose_name=_("注文"), related_name='invoice')
     
     # 請求・支払通知書番号
