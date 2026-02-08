@@ -91,6 +91,36 @@ class Product(models.Model):
 
 # トランザクションモデル
 
+class OrderBasicInfo(models.Model):
+    TIMING_CHOICES = [
+        ('FIRST_DAY', _('月初')),
+        ('10TH_DAY', _('10日')),
+        ('15TH_DAY', _('15日')),
+        ('20TH_DAY', _('20日')),
+        ('LAST_DAY', _('月末')),
+    ]
+
+    customer = models.ForeignKey('core.Customer', on_delete=models.CASCADE, verbose_name=_("取引先"))
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name=_("プロジェクト"))
+    project_start_date = models.DateField(_("プロジェクト開始日"))
+    project_end_date = models.DateField(_("プロジェクト終了日"))
+    order_issuance_timing = models.CharField(
+        _("注文書発行タイミング"), max_length=20, choices=TIMING_CHOICES, default='LAST_DAY'
+    )
+    invoice_issuance_timing = models.CharField(
+        _("請求書発行タイミング"), max_length=20, choices=TIMING_CHOICES, default='LAST_DAY'
+    )
+
+    class Meta:
+        verbose_name = _("発注基本情報")
+        verbose_name_plural = _("発注基本情報")
+        unique_together = ('customer', 'project')
+
+    def __str__(self):
+        return f"{self.project.name} - {self.customer.name}"
+
+# トランザクションモデル（実績）
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ('DRAFT', _('下書き')),
@@ -174,16 +204,43 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.PROTECT, verbose_name=_("商品"))
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, verbose_name=_("商品"), null=True, blank=True)
+    
+    person_name = models.CharField(_("作業者氏名"), max_length=64, blank=True)
+    effort = models.DecimalField(_("工数"), max_digits=3, decimal_places=2, default=1.00)
+    base_fee = models.IntegerField(_("月額基本料金"), default=0)
+    
+    actual_hours = models.DecimalField(_("実稼働時間"), max_digits=6, decimal_places=2, default=0.00)
+    time_lower_limit = models.DecimalField(_("基準時間_下限"), max_digits=5, decimal_places=2, default=140.00)
+    time_upper_limit = models.DecimalField(_("基準時間_上限"), max_digits=5, decimal_places=2, default=180.00)
+    shortage_rate = models.IntegerField(_("不足単価"), default=0)
+    excess_rate = models.IntegerField(_("超過単価"), default=0)
+
     quantity = models.IntegerField(_("数量"), default=1)
-    price = models.IntegerField(_("金額")) # 商品単価 * 数量？ それとも登録時の固定単価？
+    price = models.IntegerField(_("金額"), default=0, help_text=_("自動計算: (工数×基本料金) + 調整金"))
 
     class Meta:
         verbose_name = _("注文明細")
         verbose_name_plural = _("注文明細")
 
+    def save(self, *args, **kwargs):
+        # 調整金の計算
+        adjustment = 0
+        if self.actual_hours > 0:
+            if self.actual_hours < self.time_lower_limit:
+                shortage_hours = self.time_lower_limit - self.actual_hours
+                adjustment = -int(shortage_hours * self.shortage_rate)
+            elif self.actual_hours > self.time_upper_limit:
+                excess_hours = self.actual_hours - self.time_upper_limit
+                adjustment = int(excess_hours * self.excess_rate)
+        
+        # 合計金額の計算 (工数 * 基本料金 + 調整金)
+        self.price = int(self.effort * self.base_fee) + adjustment
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.order.order_id} - {self.product.name}"
+        name = self.person_name or (self.product.name if self.product else _("明細"))
+        return f"{self.order.order_id} - {name}"
 
 class Person(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='persons')

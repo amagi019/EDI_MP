@@ -5,18 +5,30 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.generic import ListView
 from .models import Invoice
-from .services.pdf_generator import generate_invoice_pdf
+from .services.pdf_generator import generate_invoice_pdf, generate_payment_notice_pdf
 
 class AdminInvoicePDFView(View):
     """管理者用 請求書PDFダウンロード"""
     
     @method_decorator(user_passes_test(lambda u: u.is_staff))
     def get(self, request, invoice_id):
-        invoice = get_object_or_404(Invoice, pk=invoice_id) # ID or invoice_no
+        invoice = get_object_or_404(Invoice, pk=invoice_id)
         buffer = generate_invoice_pdf(invoice)
         
         response = HttpResponse(buffer, content_type='application/pdf')
         response['Content-Disposition'] = f'inline; filename="invoice_{invoice.invoice_no}.pdf"'
+        return response
+
+class AdminPaymentNoticePDFView(View):
+    """管理者用 支払い通知書PDFダウンロード"""
+    
+    @method_decorator(user_passes_test(lambda u: u.is_staff))
+    def get(self, request, invoice_id):
+        invoice = get_object_or_404(Invoice, pk=invoice_id)
+        buffer = generate_payment_notice_pdf(invoice)
+        
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="payment_notice_{invoice.invoice_no}.pdf"'
         return response
 
 class PartnerInvoicePDFView(View):

@@ -1,9 +1,17 @@
 from django.contrib import admin
 from django.db import models
-from .models import Order, OrderItem, Person, Project, Workplace, Deliverable, PaymentTerm, ContractTerm, Product
+from .models import Order, OrderItem, Person, Project, Workplace, Deliverable, PaymentTerm, ContractTerm, Product, OrderBasicInfo
+
+@admin.register(OrderBasicInfo)
+class OrderBasicInfoAdmin(admin.ModelAdmin):
+    list_display = ('project', 'customer', 'project_start_date', 'project_end_date', 'order_issuance_timing', 'invoice_issuance_timing')
+    list_filter = ('customer', 'order_issuance_timing', 'invoice_issuance_timing')
+    search_fields = ('project__name', 'customer__name')
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
+    fields = ('person_name', 'effort', 'base_fee', 'actual_hours', 'time_lower_limit', 'time_upper_limit', 'shortage_rate', 'excess_rate', 'price')
+    readonly_fields = ('price',)
     extra = 1
 
 class PersonInline(admin.TabularInline):
