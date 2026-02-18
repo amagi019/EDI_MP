@@ -22,8 +22,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # プロジェクトファイルのコピー
 COPY . /app/
 
-# 静的ファイルの集約（デプロイ時またはコンテナ起動時に実行可能）
-# RUN python manage.py collectstatic --noinput
+# 静的ファイルの集約
+RUN python manage.py collectstatic --noinput --settings=EDI_MP.settings
 
 # コンテナ起動コマンド（Gunicornを使用）
 CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 EDI_MP.wsgi:application

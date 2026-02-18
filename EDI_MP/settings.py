@@ -37,6 +37,15 @@ DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 
+# CSRF設定（プロキシ経由のアクセスを許可）
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
+    'http://localhost:8080', 
+    'http://127.0.0.1:8080',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'https://edi-system-test-55008100947.asia-northeast1.run.app'
+])
+
 
 # Application definition
 
@@ -157,8 +166,8 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.ScryptPasswordHasher',
 ]
 
-# メール設定（開発用：コンソール出力）
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# メール設定（テスト環境ではコンソール出力、本番では環境変数で切り替え）
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 
 # デフォルトのプライマリキーフィールド型
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

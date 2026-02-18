@@ -67,6 +67,13 @@ python manage.py runserver
 
 ---
 
+## 5. ドキュメント
+- [ユーザーマニュアル](docs/USER_MANUAL.md): システムの利用方法詳細
+- [運用テスト仕様書](docs/operational_test_plan.md): 動作確認手順
+- [GCPデプロイガイド](GCP_DEPLOY_GUIDE.md): 環境構築・デプロイ手順
+
+---
+
 ## 5. 管理者向けのパスワード変更
 1. ログイン中: `/accounts/password_change/`
 2. 管理者画面: 「ユーザー」モデルから変更。

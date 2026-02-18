@@ -4,6 +4,23 @@
 
 ## 1. GCP環境の初期設定
 ターミナルで以下のコマンドを順に実行してください。
+1. Homebrewでインストール
+brew install --cask google-cloud-sdk
+2. パスの設定（自動で反映されない場合）
+source "$(brew --prefix)/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/path.zsh.inc"
+source "$(brew --prefix)/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/completion.zsh.inc"
+3. 初期化
+最後に、Googleアカウントとの連携とプロジェクト設定を行います。
+gcloud init
+ブラウザが開くので、使用するGoogleアカウントでサインインし、認証を完了させてください。その後、ターミナルに戻り、プロジェクトの選択やゾーンの設定など、対話形式で初期設定を完了させます。 
+ブラウザでログイン: 使用したいGoogleアカウントを選択し、Google Cloud SDKへの権限を「許可」します。
+プロジェクトの選択: ターミナルに戻ると、既存のプロジェクト一覧が表示されます。使用するプロジェクトの番号を入力するか、新しく作成します。
+    Create a nuw projectを選択し、プロジェクト名を入力します。
+2. 新しくプロジェクトを作成する場合
+まだプロジェクトがない、あるいはこの場で新しく作りたい場合は、自分で決めた任意のID を入力してください Google Workspace Guides。 
+命名ルール: 6〜30文字、小文字の英数字とハイフンのみ、先頭は小文字 Google Cloud Documentation。
+
+
 
 ### プロジェクトの設定
 ```bash
@@ -11,10 +28,14 @@
 gcloud auth login
 
 # プロジェクトの作成（既存の場合は設定のみ）
-gcloud projects create [PROJECT_ID]
-gcloud config set project [PROJECT_ID]
+gcloud projects create [PROJECT_ID]　　gcloud projects create edi-sophia
+gcloud config set project [PROJECT_ID]　　gcloud config set project edi-sophia
 
 # 必要なAPIの有効化
+# Storage API の有効化
+gcloud services enable storage-component.googleapis.com
+# Cloud Run、Cloud SQL、Secret Manager、Cloud Build の有効化
+
 gcloud services enable \
     run.googleapis.com \
     sqladmin.googleapis.com \
