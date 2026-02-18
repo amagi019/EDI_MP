@@ -43,7 +43,8 @@ CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
     'http://127.0.0.1:8080',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-    'https://edi-system-test-55008100947.asia-northeast1.run.app'
+    'https://edi-system-test-55008100947.asia-northeast1.run.app',
+    'https://edi-system-55008100947.asia-northeast1.run.app',
 ])
 
 
