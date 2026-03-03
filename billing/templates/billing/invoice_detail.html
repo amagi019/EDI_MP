@@ -1,0 +1,151 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "請求書詳細" %}{% endblock %}
+{% block extra_css %}
+<style>
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <div class="flex justify-between" style="align-items: center; margin-bottom: 2rem;">
+        <h1>📄 {{ invoice.subject|default:"請求書" }}</h1>
+        <div class="flex" style="gap: 0.5rem;">
+            <a href="{% url 'billing:invoice_update' invoice.pk %}" class="btn btn-secondary">✏️ {% trans "編集" %}</a>
+            <a href="{% url 'billing:invoice_pdf' invoice.pk %}" class="btn btn-secondary" target="_blank">👁 PDF</a>
+            <a href="{% url 'billing:invoice_pdf_download' invoice.pk %}" class="btn btn-secondary">📥 DL</a>
+        </div>
+    </div>
+    <div class="card">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div>
+                <div style="color: var(--text-dim); font-size: 0.85rem;">{% trans "請求先" %}</div>
+                <div style="font-size: 1.1rem; font-weight: 600;">{{ invoice.customer.name }}</div>
+                {% if invoice.customer.contact_person %}
+                <div style="color: var(--text-dim);">{{ invoice.customer.contact_person }} 様</div>
+                {% endif %}
+            </div>
+            <div style="text-align: right;">
+                <span class="status-badge" style="{{ status_style }}">{{ status_display }}</span>
+            </div>
+            <div>
+                <div style="color: var(--text-dim); font-size: 0.85rem;">{% trans "請求日" %}</div>
+                <div>{{ invoice.issue_date }}</div>
+            </div>
+            <div>
+                <div style="color: var(--text-dim); font-size: 0.85rem;">{% trans "支払期日" %}</div>
+                <div>{{ invoice.due_date|default:"-" }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <h2 style="margin-bottom: 1rem;">{% trans "明細" %}</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border);">
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">商品名</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">単価</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">人月</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">税区分</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">金額</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">{{ item.product_name }}</td>
+                    <td style="padding: 0.75rem; text-align: right;">¥{{ item.unit_price_fmt }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ item.man_month }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ item.tax_rate_display }}</td>
+                    <td style="padding: 0.75rem; text-align: right; font-weight: 500;">¥{{ item.amount_fmt }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="border-top: 2px solid var(--border);">
+                    <td colspan="4" style="padding: 0.75rem; text-align: right; color: var(--text-dim);">小計</td>
+                    <td style="padding: 0.75rem; text-align: right; font-weight: 600;">¥{{ invoice.subtotal_fmt }}</td>
+                </tr>
+                {% for rate, amounts in tax_summary.items %}
+                <tr>
+                    <td colspan="4"
+                        style="padding: 0.5rem 0.75rem; text-align: right; color: var(--text-dim); font-size: 0.9rem;">
+                        消費税（{{ rate }}）</td>
+                    <td style="padding: 0.5rem 0.75rem; text-align: right; font-size: 0.9rem;">¥{{ amounts.tax_fmt }}
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr style="border-top: 2px solid var(--primary);">
+                    <td colspan="4"
+                        style="padding: 1rem 0.75rem; text-align: right; font-size: 1.1rem; font-weight: 600;">合計（税込）
+                    </td>
+                    <td
+                        style="padding: 1rem 0.75rem; text-align: right; font-size: 1.3rem; font-weight: 700; color: var(--secondary);">
+                        ¥{{ invoice.total_fmt }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% if invoice.notes %}
+    <div class="card">
+        <h2 style="margin-bottom: 0.5rem;">備考</h2>
+        <p style="white-space: pre-wrap; color: var(--text-dim);">{{ invoice.notes }}</p>
+    </div>
+    {% endif %}
+    <div class="card">
+        <h2 style="margin-bottom: 1rem;">🔧 アクション</h2>
+        <div class="flex" style="gap: 1rem; flex-wrap: wrap;">
+            <button type="button" class="btn" style="background: linear-gradient(135deg, #10B981, #059669);"
+                onclick="document.getElementById('driveModal').style.display='flex'">☁️ ドライブに保存</button>
+            <a href="{% url 'billing:invoice_mail' invoice.pk %}" class="btn"
+                style="background: linear-gradient(135deg, #F59E0B, #D97706);">✉️ メール送信</a>
+            <a href="{% url 'billing:invoice_delete' invoice.pk %}" class="btn"
+                style="background: linear-gradient(135deg, #EF4444, #DC2626);">🗑 削除</a>
+        </div>
+        {% if invoice.drive_file_id %}
+        <div
+            style="margin-top: 1rem; padding: 0.75rem; background: rgba(16,185,129,0.1); border-radius: 8px; color: var(--secondary);">
+            ✅ Googleドライブに保存済み —
+            <a href="https://drive.google.com/file/d/{{ invoice.drive_file_id }}/view" target="_blank"
+                style="color: #10B981;">開く</a>
+        </div>
+        {% endif %}
+    </div>
+    <div class="card">
+        <h2 style="margin-bottom: 1rem;">PDFプレビュー</h2>
+        <iframe src="{% url 'billing:invoice_pdf' invoice.pk %}"
+            style="width: 100%; height: 600px; border: 1px solid var(--border); border-radius: 8px;"></iframe>
+    </div>
+</div>
+
+<!-- ドライブ保存モーダル -->
+<div id="driveModal"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:var(--card-bg, #1e293b); border-radius:12px; padding:2rem; width:500px; max-width:90%;">
+        <h2 style="margin-bottom:1rem;">☁️ Google ドライブに保存</h2>
+        <form method="post" action="{% url 'billing:invoice_drive_upload' invoice.pk %}">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="display:block; margin-bottom:0.5rem; color:var(--text-dim);">保存先フォルダ</label>
+                <input type="text" name="folder_url" placeholder="GoogleドライブのフォルダURLまたはフォルダIDを入力"
+                    style="width:100%; margin-bottom:0.5rem;">
+                <div style="font-size:0.8rem; color:var(--text-dim);">例: https://drive.google.com/drive/folders/xxxxx
+                </div>
+            </div>
+            <div style="margin-bottom:1.5rem;">
+                <label style="color:var(--text-dim); cursor:pointer;"><input type="checkbox" name="use_mydrive"
+                        value="1"> マイドライブ直下に保存</label>
+            </div>
+            <div class="flex" style="gap:1rem; justify-content:flex-end;">
+                <button type="button" class="btn btn-secondary"
+                    onclick="document.getElementById('driveModal').style.display='none'">キャンセル</button>
+                <button type="submit" class="btn"
+                    style="background:linear-gradient(135deg, #10B981, #059669);">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "請求書発行" %} - {% trans "ダッシュボード" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <h1 style="margin-bottom: 2rem;">📄 {% trans "請求書発行" %}</h1>
+
+    <div
+        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="card" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--text-main);">{{ total_count }}</div>
+            <div style="color: var(--text-dim); margin-top: 0.5rem;">{% trans "全請求書" %}</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--text-dim);">{{ draft_count }}</div>
+            <div style="color: var(--text-dim); margin-top: 0.5rem;">{% trans "下書き" %}</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--accent);">{{ issued_count }}</div>
+            <div style="color: var(--text-dim); margin-top: 0.5rem;">{% trans "発行済" %}</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">{{ sent_count }}</div>
+            <div style="color: var(--text-dim); margin-top: 0.5rem;">{% trans "送付済" %}</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 1.5rem;">
+            <div style="font-size: 2rem; font-weight: 700; color: var(--secondary);">{{ paid_count }}</div>
+            <div style="color: var(--text-dim); margin-top: 0.5rem;">{% trans "入金済" %}</div>
+        </div>
+    </div>
+
+    <div class="flex" style="gap: 1rem; margin-bottom: 2rem;">
+        <a href="{% url 'billing:invoice_create' %}" class="btn">＋ {% trans "新規請求書" %}</a>
+        <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary">{% trans "請求書一覧" %}</a>
+        <a href="{% url 'billing:customer_list' %}" class="btn btn-secondary">{% trans "請求先" %}</a>
+        <a href="{% url 'billing:product_list' %}" class="btn btn-secondary">{% trans "商品" %}</a>
+    </div>
+
+    {% if unpaid_invoices %}
+    <div class="card">
+        <h2 style="margin-bottom: 1rem;">⚠️ {% trans "未入金の請求書" %}</h2>
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "請求日" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "請求先" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "件名" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "金額" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "状態" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in unpaid_invoices %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">{{ inv.issue_date }}</td>
+                    <td style="padding: 0.75rem;">{{ inv.customer.name }}</td>
+                    <td style="padding: 0.75rem;"><a href="{% url 'billing:invoice_detail' inv.pk %}"
+                            style="color: #818CF8;">{{ inv.subject|default:"-" }}</a></td>
+                    <td style="padding: 0.75rem; text-align: right;">¥{{ inv.total_fmt }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ inv.get_status_display }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

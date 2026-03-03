@@ -7,7 +7,12 @@ import datetime
 
 class Project(models.Model):
     project_id = models.CharField(_("プロジェクトID"), max_length=50, primary_key=True)
+    customer = models.ForeignKey('core.Customer', on_delete=models.CASCADE, verbose_name=_("取引先"))
     name = models.CharField(_("プロジェクト名"), max_length=100)
+
+    class Meta:
+        verbose_name = _("プロジェクト")
+        verbose_name_plural = _("プロジェクト")
 
     def save(self, *args, **kwargs):
         if not self.project_id:
@@ -29,43 +34,94 @@ class Project(models.Model):
         return f"[{self.project_id}] {self.name}"
 
 class Workplace(models.Model):
-    workplace_id = models.CharField(_("勤務場所ID"), max_length=50, primary_key=True)
     name = models.CharField(_("勤務場所名"), max_length=100)
     address = models.CharField(_("住所"), max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = _("勤務場所")
+        verbose_name_plural = _("勤務場所")
 
     def __str__(self):
         return self.name
 
 class Deliverable(models.Model):
-    deliverable_id = models.CharField(_("成果物ID"), max_length=50, primary_key=True)
     description = models.CharField(_("成果物の内容"), max_length=255)
+
+    class Meta:
+        verbose_name = _("成果物")
+        verbose_name_plural = _("成果物")
 
     def __str__(self):
         return self.description
 
 class PaymentTerm(models.Model):
-    payment_term_id = models.CharField(_("支払条件ID"), max_length=50, primary_key=True)
-    description = models.CharField(_("説明"), max_length=255)
+    partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"))
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name=_("プロジェクト"))
+    description = models.TextField(_("説明"), blank=True)
+
+    class Meta:
+        verbose_name = _("支払条件")
+        verbose_name_plural = _("支払条件")
+        unique_together = ('partner', 'project')
 
     def __str__(self):
-        return self.description
+        return f"{self.partner.name} × {self.project.name}"
 
 class ContractTerm(models.Model):
-    contract_term_id = models.CharField(_("契約条件ID"), max_length=50, primary_key=True)
-    description = models.CharField(_("説明"), max_length=255)
+    partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"))
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name=_("プロジェクト"))
+    description = models.TextField(_("説明"), blank=True)
+
+    class Meta:
+        verbose_name = _("契約条件")
+        verbose_name_plural = _("契約条件")
+        unique_together = ('partner', 'project')
 
     def __str__(self):
-        return self.description
+        return f"{self.partner.name} × {self.project.name}"
 
 class Product(models.Model):
-    product_id = models.CharField(_("商品ID"), max_length=50, primary_key=True)
     name = models.CharField(_("商品名"), max_length=100)
     price = models.IntegerField(_("単価"))
+
+    class Meta:
+        verbose_name = _("商品")
+        verbose_name_plural = _("商品")
 
     def __str__(self):
         return self.name
 
 # トランザクションモデル
+
+class OrderBasicInfo(models.Model):
+    TIMING_CHOICES = [
+        ('FIRST_DAY', _('月初')),
+        ('10TH_DAY', _('10日')),
+        ('15TH_DAY', _('15日')),
+        ('20TH_DAY', _('20日')),
+        ('LAST_DAY', _('月末')),
+    ]
+
+    partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"))
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name=_("プロジェクト"))
+    project_start_date = models.DateField(_("プロジェクト開始日"))
+    project_end_date = models.DateField(_("プロジェクト終了日"))
+    order_issuance_timing = models.CharField(
+        _("注文書発行タイミング"), max_length=20, choices=TIMING_CHOICES, default='LAST_DAY'
+    )
+    invoice_issuance_timing = models.CharField(
+        _("請求書発行タイミング"), max_length=20, choices=TIMING_CHOICES, default='LAST_DAY'
+    )
+
+    class Meta:
+        verbose_name = _("発注基本情報")
+        verbose_name_plural = _("発注基本情報")
+        unique_together = ('partner', 'project')
+
+    def __str__(self):
+        return f"{self.project.name} - {self.partner.name}"
+
+# トランザクションモデル（実績）
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -76,8 +132,12 @@ class Order(models.Model):
         ('APPROVED', _('承認済')),
     ]
 
+    class Meta:
+        verbose_name = _("注文情報")
+        verbose_name_plural = _("注文情報")
+
     order_id = models.CharField(_("注文番号"), max_length=20, primary_key=True, help_text="MP+YYYYMMDD+6桁連番")
-    customer = models.ForeignKey('core.Customer', on_delete=models.CASCADE, verbose_name=_("取引先"))
+    partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"), db_column='customer_id')
     project = models.ForeignKey(Project, on_delete=models.PROTECT, verbose_name=_("プロジェクト"))
     status = models.CharField(_("ステータス"), max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     
@@ -123,6 +183,7 @@ class Order(models.Model):
 
     # 外部連携
     external_signature_id = models.CharField(_("外部署名ID"), max_length=100, blank=True, null=True)
+    drive_file_id = models.CharField(_("DriveファイルID"), max_length=200, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.order_id:
@@ -139,25 +200,82 @@ class Order(models.Model):
             else:
                 next_id_num = 1
             self.order_id = f"{prefix}{str(next_id_num).zfill(6)}"
+
+        # パートナー×プロジェクトから支払条件・契約条件を自動設定
+        if self.partner_id and self.project_id:
+            if not self.payment_term_id:
+                pt = PaymentTerm.objects.filter(
+                    partner_id=self.partner_id, project_id=self.project_id
+                ).first()
+                if pt:
+                    self.payment_term = pt
+            if not self.contract_term_id:
+                ct = ContractTerm.objects.filter(
+                    partner_id=self.partner_id, project_id=self.project_id
+                ).first()
+                if ct:
+                    self.contract_term = ct
+
+            # PaymentTerm/ContractTermのdescriptionをテキストフィールドに反映
+            if self.payment_term and not self.payment_condition:
+                self.payment_condition = self.payment_term.description
+            if self.contract_term and not self.contract_items:
+                self.contract_items = self.contract_term.description
+
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.order_id} - {self.customer}"
+        return f"{self.order_id} - {self.partner}"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey(Product, on_delete=models.PROTECT, verbose_name=_("商品"))
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, verbose_name=_("商品"), null=True, blank=True)
+    
+    person_name = models.CharField(_("作業者氏名"), max_length=64, blank=True)
+    effort = models.DecimalField(_("工数"), max_digits=3, decimal_places=2, default=1.00)
+    base_fee = models.IntegerField(_("月額基本料金"), default=0)
+    
+    actual_hours = models.DecimalField(_("実稼働時間"), max_digits=6, decimal_places=2, default=0.00)
+    time_lower_limit = models.DecimalField(_("基準時間_下限"), max_digits=5, decimal_places=2, default=140.00)
+    time_upper_limit = models.DecimalField(_("基準時間_上限"), max_digits=5, decimal_places=2, default=180.00)
+    shortage_rate = models.IntegerField(_("不足単価"), default=0)
+    excess_rate = models.IntegerField(_("超過単価"), default=0)
+
     quantity = models.IntegerField(_("数量"), default=1)
-    price = models.IntegerField(_("金額")) # 商品単価 * 数量？ それとも登録時の固定単価？
+    price = models.IntegerField(_("金額"), default=0, help_text=_("自動計算: (工数×基本料金) + 調整金"))
+
+    class Meta:
+        verbose_name = _("注文明細")
+        verbose_name_plural = _("注文明細")
+
+    def save(self, *args, **kwargs):
+        # 調整金の計算
+        adjustment = 0
+        if self.actual_hours > 0:
+            if self.actual_hours < self.time_lower_limit:
+                shortage_hours = self.time_lower_limit - self.actual_hours
+                adjustment = -int(shortage_hours * self.shortage_rate)
+            elif self.actual_hours > self.time_upper_limit:
+                excess_hours = self.actual_hours - self.time_upper_limit
+                adjustment = int(excess_hours * self.excess_rate)
+        
+        # 合計金額の計算 (工数 * 基本料金 + 調整金)
+        self.price = int(self.effort * self.base_fee) + adjustment
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.order.order_id} - {self.product.name}"
+        name = self.person_name or (self.product.name if self.product else _("明細"))
+        return f"{self.order.order_id} - {name}"
 
 class Person(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='persons')
     role = models.CharField(_("役割"), max_length=50, help_text="委託責任者、指揮命令者など")
     name = models.CharField(_("氏名"), max_length=50)
     contact = models.CharField(_("連絡先"), max_length=100, blank=True)
+
+    class Meta:
+        verbose_name = _("担当者")
+        verbose_name_plural = _("担当者")
 
     def __str__(self):
         return f"{self.name} ({self.role})"

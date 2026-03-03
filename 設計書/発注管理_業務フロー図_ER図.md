@@ -2,7 +2,8 @@
 
 ```mermaid
 flowchart TD
-    A[自社システムから注文データインポート] --> B[EDIで注文PDF自動生成]
+    Start[プロジェクト・取引先の紐付けと発行タイミングの設定] --> A[自社システムから注文データインポート]
+    A --> B[設定された発行タイミングに基づき注文PDF自動生成]
     B --> C[取引先へ自動メール送信]
     C --> D[取引先がEDIにログイン]
     D --> E[注文書をDL/確認]
@@ -14,6 +15,8 @@ flowchart TD
 ```mermaid
 erDiagram
     CUSTOMER ||--o{ ORDER : "発注"
+    CUSTOMER ||--o{ ORDER_BASIC_INFO : "設定"
+    PROJECT ||--o{ ORDER_BASIC_INFO : "設定"
     ORDER ||--|{ ORDER_ITEM : "注文明細"
     ORDER_ITEM }o--|| PRODUCT : "商品"
     ORDER ||--|| PROJECT : "参照"
@@ -85,5 +88,14 @@ erDiagram
         string product_id PK
         string name
         int price
+    }
+    ORDER_BASIC_INFO {
+        int    id PK
+        string customer_id FK
+        string project_id FK
+        date   project_start_date
+        date   project_end_date
+        string order_issuance_timing
+        string invoice_issuance_timing
     }
 ```

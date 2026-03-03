@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if object %}{% trans "請求先編集" %}{% else %}{% trans "請求先登録" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <h1 style="margin-bottom: 2rem;">🏢 {% if object %}{% trans "請求先編集" %}{% else %}{% trans "請求先登録" %}{% endif %}</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="card">
+            {% for field in form %}
+            <div style="margin-bottom: 0.5rem;">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                <div style="color: var(--text-dim); font-size: 0.8rem;">{{ field.help_text }}</div>
+                {% endif %}
+                {% if field.errors %}
+                <div style="color: #EF4444; font-size: 0.85rem;">{{ field.errors.0 }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="flex" style="gap: 1rem;">
+            <button type="submit" class="btn">💾 {% trans "保存" %}</button>
+            <a href="{% url 'billing:customer_list' %}" class="btn btn-secondary">{% trans "キャンセル" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

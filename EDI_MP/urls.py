@@ -20,11 +20,17 @@ from core import views as core_views
 from django.conf import settings
 from django.conf.urls.static import static
 
+# 管理サイトのタイトル設定
+admin.site.site_header = "EDI Sophia"
+admin.site.site_title = "EDI Sophia"
+admin.site.index_title = "メニュー"
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),
     path('orders/', include('orders.urls')),
     path('invoices/', include('invoices.urls')),
+    path('billing/', include('billing.presentation.urls')),
     path('accounts/password_change/', core_views.CustomPasswordChangeView.as_view(), name='password_change'),
     path('accounts/', include('django.contrib.auth.urls')),
 ]

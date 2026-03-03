@@ -2,60 +2,57 @@ from decimal import Decimal
 from math import floor
 
 class BillingCalculator:
-    """SES精算計算ロジック"""
+    """SES精算計算ロジック（明細対応版）"""
 
     @staticmethod
-    def calculate(invoice):
+    def calculate_invoice(invoice):
         """
-        Invoiceオブジェクトを受け取り、work_timeとOrderの条件に基づいて
-        金額フィールド（excess, deduction, total等）を更新する。
+        Invoiceに関連付くすべてのInvoiceItemを計算し、Invoice本体の合計金額を更新する。
         """
-        order = invoice.order
-        work_time = invoice.work_time
+        subtotal = 0
         
-        # 契約条件の取り出し（Decimal型で計算）
-        lower_limit = order.time_lower_limit
-        upper_limit = order.time_upper_limit
-        base_fee = order.base_fee
-        excess_fee = order.excess_fee
-        shortage_fee = order.shortage_fee
-        
-        excess_amount = 0
-        deduction_amount = 0
-        
-        # 精算計算
-        if work_time > upper_limit and upper_limit > 0:
-            # 超過
-            over_time = work_time - upper_limit
-            # 一般的には切り捨て等の端数処理があるかもしれないが、一旦単純計算
-            # 要件定義に詳細がないため、標準的な計算とする
-            # 超過単価 * 超過時間
-            # Decimal * Int なので注意。Pythonでは計算可能だが、結果をIntにする必要があるか？
-            # 「超過金額：¥0」等の表記から整数を期待
+        # 各明細の計算
+        for item in invoice.items.all():
+            excess_amount = 0
+            shortage_amount = 0
             
-            # PythonのDecimal計算
-            amount = Decimal(excess_fee) * over_time
-            excess_amount = int(amount) # 切り捨て
+            # 精算幅のチェック
+            if item.work_time > item.time_upper_limit and item.time_upper_limit > 0:
+                # 超過
+                over_time = item.work_time - item.time_upper_limit
+                amount = Decimal(item.excess_rate) * over_time
+                excess_amount = int(amount)
+            elif item.work_time < item.time_lower_limit and item.time_lower_limit > 0:
+                # 不足
+                short_time = item.time_lower_limit - item.work_time
+                amount = Decimal(item.shortage_rate) * short_time
+                shortage_amount = int(amount)
             
-        elif work_time < lower_limit and lower_limit > 0:
-            # 不足（控除）
-            shortage_time = lower_limit - work_time
-            amount = Decimal(shortage_fee) * shortage_time
-            deduction_amount = int(amount) # 切り捨て
-        
-        # 合計計算
-        # 基本給 + 超過 - 控除
-        subtotal = base_fee + excess_amount - deduction_amount
-        
-        # 消費税（10%固定とする、軽減税率等は考慮せず）
+            # 明細合計 = (単価 * 1.0) + 超過 - 控除
+            # ※ 工数は現在の InvoiceItem には記録していない（OrderのOrderItemにある）が、
+            # 基本的には工数は1.0として、単価（base_fee）を調整済みとして扱うか、
+            # 将来的には InvoiceItem にも effort を持たせる検討が必要。
+            # 現状はシンプルに base_fee + excess - shortage とする。
+            item_subtotal = item.base_fee + excess_amount - shortage_amount
+            
+            # 明細を更新
+            item.excess_amount = excess_amount
+            item.shortage_amount = shortage_amount
+            item.item_subtotal = item_subtotal
+            item.save()
+            
+            subtotal += item_subtotal
+            
+        # Invoice（親）の合計値を計算
         tax = int(subtotal * 0.1)
         total = subtotal + tax
         
-        # 結果をInvoiceにセット
-        invoice.excess_amount = excess_amount
-        invoice.deduction_amount = deduction_amount
-        invoice.subtotal_amount = subtotal
-        invoice.tax_amount = tax
-        invoice.total_amount = total
+        # データベースを直接更新（無限ループ回避のため）
+        from invoices.models import Invoice
+        Invoice.objects.filter(pk=invoice.pk).update(
+            subtotal_amount=subtotal,
+            tax_amount=tax,
+            total_amount=total
+        )
         
         return invoice

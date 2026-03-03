@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "請求書詳細" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">{% trans "請求書詳細" %}</h2>
+        <a href="{% url 'invoices:invoice_list' %}" class="btn btn-secondary" style="font-size: 0.9rem;">{% trans "一覧に戻る" %}</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "請求番号" %}</p>
+            <p style="font-family: monospace; font-size: 1.1rem;">{{ invoice.invoice_no }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "ステータス" %}</p>
+            <p>{% if invoice.status == 'CONFIRMED' %}<span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.85rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">{{ invoice.get_status_display }}</span>{% elif invoice.status == 'PAID' %}<span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.85rem; background: rgba(59, 130, 246, 0.2); color: #93c5fd;">{{ invoice.get_status_display }}</span>{% else %}<span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.85rem; background: rgba(234, 179, 8, 0.2); color: #fde047;">{{ invoice.get_status_display }}</span>{% endif %}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "対象年月" %}</p>
+            <p>{{ invoice.target_month }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "プロジェクト" %}</p>
+            <p>{{ invoice.order.project.name }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "支払締切日" %}</p>
+            <p>{{ invoice.payment_deadline|default:"-" }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "作成日" %}</p>
+            <p>{{ invoice.issue_date }}</p>
+        </div>
+    </div>
+
+    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-dim);">{% trans "請求明細" %}</h3>
+    <div style="overflow-x: auto; margin-bottom: 2rem;">
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-main);">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--glass-border);">
+                    <th style="text-align: left; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "作業者" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "実稼働時間" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "基本料金" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "精算幅" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "超過/控除" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "金額" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in invoice.items.all %}
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <td style="padding: 0.8rem;">{{ item.person_name }}</td>
+                    <td style="padding: 0.8rem; text-align: right;">{{ item.work_time }}h</td>
+                    <td style="padding: 0.8rem; text-align: right;">¥{{ item.base_fee }}</td>
+                    <td style="padding: 0.8rem; text-align: right;">{{ item.time_lower_limit }}～{{ item.time_upper_limit }}h</td>
+                    <td style="padding: 0.8rem; text-align: right;">{% if item.excess_amount > 0 %}<span style="color: #fca5a5;">+¥{{ item.excess_amount }}</span>{% elif item.shortage_amount > 0 %}<span style="color: #93c5fd;">-¥{{ item.shortage_amount }}</span>{% else %}-{% endif %}</td>
+                    <td style="padding: 0.8rem; text-align: right; font-weight: 600;">¥{{ item.item_subtotal }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 2rem;">
+        <div style="min-width: 250px;">
+            <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: var(--text-dim);">{% trans "税抜合計" %}</span><span>¥{{ invoice.subtotal_amount }}</span></div>
+            <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: var(--text-dim);">{% trans "消費税(10%)" %}</span><span>¥{{ invoice.tax_amount }}</span></div>
+            <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; font-size: 1.2rem; font-weight: 700;"><span>{% trans "税込合計" %}</span><span>¥{{ invoice.total_amount }}</span></div>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+        <a href="{% url 'invoices:partner_invoice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none;" target="_blank">{% trans "PDF表示" %}</a>
+        {% if invoice.status == 'ISSUED' or invoice.status == 'SENT' %}<form method="post" action="{% url 'invoices:invoice_confirm' invoice.pk %}" style="margin: 0;">{% csrf_token %}<button type="submit" class="btn" onclick="return confirm('この請求書を確定しますか？')">{% trans "確定する" %}</button></form>{% endif %}
+    </div>
+</div>
+{% endblock %}

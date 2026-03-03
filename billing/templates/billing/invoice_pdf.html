@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm 20mm;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 18pt;
+            margin: 0 0 20px 0;
+            letter-spacing: 0.3em;
+            border-bottom: 3px double #333;
+            padding-bottom: 10px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .customer-info {
+            font-size: 12pt;
+        }
+
+        .customer-name {
+            font-size: 14pt;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+
+        .company-info {
+            text-align: right;
+            font-size: 9pt;
+        }
+
+        .company-name {
+            font-size: 11pt;
+            font-weight: bold;
+        }
+
+        .total-box {
+            border: 2px solid #333;
+            padding: 10px 20px;
+            margin: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14pt;
+        }
+
+        .total-box .label {
+            font-weight: bold;
+        }
+
+        .total-box .amount {
+            font-size: 18pt;
+            font-weight: bold;
+        }
+
+        .meta-table {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .meta-table td {
+            padding: 3px 8px;
+            font-size: 9.5pt;
+        }
+
+        .meta-table .label {
+            color: #666;
+            width: 80px;
+        }
+
+        table.items {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        table.items th {
+            background: #f5f5f5;
+            border: 1px solid #ccc;
+            padding: 6px 8px;
+            font-size: 9pt;
+            text-align: center;
+        }
+
+        table.items td {
+            border: 1px solid #ccc;
+            padding: 6px 8px;
+            font-size: 9.5pt;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .summary-table {
+            width: 250px;
+            margin-left: auto;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .summary-table td {
+            padding: 4px 8px;
+            font-size: 10pt;
+        }
+
+        .summary-table .label-cell {
+            text-align: right;
+            color: #666;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .summary-table .value-cell {
+            text-align: right;
+            font-weight: 500;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .summary-table .grand-label {
+            text-align: right;
+            font-weight: bold;
+            border-top: 2px solid #333;
+            padding-top: 8px;
+        }
+
+        .summary-table .grand-value {
+            text-align: right;
+            font-weight: bold;
+            font-size: 12pt;
+            border-top: 2px solid #333;
+            padding-top: 8px;
+        }
+
+        .footer-section {
+            margin-top: 20px;
+        }
+
+        .footer-section .label {
+            font-weight: bold;
+            font-size: 9pt;
+            color: #666;
+        }
+
+        .notes {
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 9pt;
+            white-space: pre-wrap;
+            min-height: 40px;
+        }
+
+        .bank-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 9pt;
+        }
+
+        .registration {
+            font-size: 8.5pt;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>請 求 書</h1>
+
+    <div class="header">
+        <div class="customer-info">
+            <div class="customer-name">{{ invoice.customer.name }} 御中</div>
+            {% if invoice.customer.contact_person %}
+            <div style="margin-top: 5px;">{{ invoice.customer.title }} {{ invoice.customer.contact_person }} 様</div>
+            {% endif %}
+        </div>
+        <div class="company-info">
+            {% if company %}
+            <div class="company-name">{{ company.name }}</div>
+            <div>{{ company.postal_code }} {{ company.address }}</div>
+            <div>TEL: {{ company.tel }}</div>
+            {% if company.registration_no %}
+            <div class="registration">登録番号: {{ company.registration_no }}</div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <table class="meta-table">
+        <tr>
+            <td class="label">請求日:</td>
+            <td>{{ invoice.issue_date }}</td>
+            <td class="label">支払期日:</td>
+            <td>{{ invoice.due_date|default:"-" }}</td>
+        </tr>
+        <tr>
+            <td class="label">件名:</td>
+            <td colspan="3">{{ invoice.subject|default:"-" }}</td>
+        </tr>
+    </table>
+
+    <div class="total-box">
+        <span class="label">請求金額</span>
+        <span class="amount">¥{{ total_fmt }} (税込)</span>
+    </div>
+
+    <table class="items">
+        <thead>
+            <tr>
+                <th style="width: 5%;">No.</th>
+                <th>摘要</th>
+                <th style="width: 14%;">単価</th>
+                <th style="width: 8%;">数量</th>
+                <th style="width: 14%;">金額</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="text-center">{{ forloop.counter }}</td>
+                <td>{{ item.product_name }}</td>
+                <td class="text-right">¥{{ item.unit_price_fmt }}</td>
+                <td class="text-center">{{ item.man_month }}</td>
+                <td class="text-right">¥{{ item.amount_fmt }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table class="summary-table">
+        <tr>
+            <td class="label-cell">小計</td>
+            <td class="value-cell">¥{{ subtotal_fmt }}</td>
+        </tr>
+        {% for rate, amounts in tax_summary.items %}
+        <tr>
+            <td class="label-cell">消費税（{{ rate }}）</td>
+            <td class="value-cell">¥{{ amounts.tax_fmt }}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+            <td class="grand-label">合計</td>
+            <td class="grand-value">¥{{ total_fmt }}</td>
+        </tr>
+    </table>
+
+    <div class="footer-section">
+        <div style="font-size: 10pt; font-weight: bold;">支払期日: {{ invoice.due_date|default:"-" }}</div>
+    </div>
+
+    {% if invoice.notes %}
+    <div class="notes">
+        <strong>備考:</strong><br>{{ invoice.notes }}
+    </div>
+    {% endif %}
+
+    {% if company %}
+    <div class="bank-info">
+        <strong>お振込先</strong><br>
+        {{ company.bank_name }} {{ company.bank_branch }}<br>
+        {{ company.account_type }} {{ company.account_number }}<br>
+        名義: {{ company.account_name }}
+    </div>
+    {% endif %}
+</body>
+
+</html>

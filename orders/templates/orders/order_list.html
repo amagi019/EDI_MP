@@ -7,9 +7,7 @@
 <div class="card fade-in">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">{% trans "受領待ちの注文書一覧" %}</h2>
-        <a href="{% url 'core:dashboard' %}" class="btn btn-secondary" style="font-size: 0.9rem;">
-            {% trans "ダッシュボードに戻る" %}
-        </a>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-secondary" style="font-size: 0.9rem;">{% trans "ダッシュボードに戻る" %}</a>
     </div>
 
     {% if orders %}
@@ -32,15 +30,8 @@
                     <td style="padding: 1rem; font-family: monospace;">{{ order.order_id }}</td>
                     <td style="padding: 1rem; font-weight: 600;">{{ order.project.name }}</td>
                     <td style="padding: 1rem; font-size: 0.9rem;">{{ order.work_start }} ～ {{ order.work_end }}</td>
-                    <td style="padding: 1rem;">
-                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; {% if order.status == 'UNCONFIRMED' %}background: rgba(239, 68, 68, 0.2); color: #fca5a5;{% elif order.status == 'APPROVED' %}background: rgba(34, 197, 94, 0.2); color: #86efac;{% else %}background: rgba(234, 179, 8, 0.2); color: #fde047;{% endif %}">
-                            {{ order.get_status_display }}
-                        </span>
-                    </td>
-                    <td style="padding: 1rem; text-align: center; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                        <a href="{% url 'orders:order_detail' order.order_id %}" class="btn btn-secondary" style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;">{% trans "詳細" %}</a>
-                        <a href="{% url 'orders:customer_order_pdf' order.order_id %}" class="btn" style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;">{% trans "注文書" %}</a>
-                    </td>
+                    <td style="padding: 1rem;">{% if order.status == 'UNCONFIRMED' %}<span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(239, 68, 68, 0.2); color: #fca5a5;">{{ order.get_status_display }}</span>{% elif order.status == 'APPROVED' %}<span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">{{ order.get_status_display }}</span>{% else %}<span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(234, 179, 8, 0.2); color: #fde047;">{{ order.get_status_display }}</span>{% endif %}</td>
+                    <td style="padding: 1rem; text-align: center; display: flex; gap: 0.5rem; justify-content: flex-end;">{% if user.is_staff %}<a href="{% url 'orders:order_detail' order.order_id %}" class="btn btn-secondary" style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;">{% trans "詳細" %}</a> <a href="{% url 'orders:admin_order_pdf' order.order_id %}" class="btn" style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;" target="_blank">{% trans "注文書" %}</a>{% else %}<a href="{% url 'orders:order_detail' order.order_id %}" class="btn btn-secondary" style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;">{% trans "詳細" %}</a> <a href="{% url 'orders:customer_order_pdf' order.order_id %}" class="btn" style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;">{% trans "注文書" %}</a>{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

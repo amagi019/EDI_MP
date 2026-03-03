@@ -6,9 +6,31 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
+
 class Customer(models.Model):
-    """取引先（顧客）"""
-    customer_id = models.CharField(max_length=32, primary_key=True)
+    """取引先（我が社に注文を出す会社）"""
+    name = models.CharField(_("会社名"), max_length=128)
+    postal_code = models.CharField(_("郵便番号"), max_length=10, blank=True)
+    address = models.CharField(_("住所"), max_length=255, blank=True)
+    tel = models.CharField(_("電話番号"), max_length=20, blank=True)
+    email = models.EmailField(_("メールアドレス"), blank=True)
+    representative_title = models.CharField(_("代表者役職"), max_length=64, default="代表取締役", blank=True)
+    representative_name = models.CharField(_("代表者名"), max_length=64, blank=True)
+    registration_no = models.CharField(_("登録番号"), max_length=20, blank=True, help_text=_("T13桁の番号"))
+    url = models.URLField(_("URL"), max_length=200, blank=True)
+
+    class Meta:
+        db_table = 'core_client'
+        verbose_name = _("取引先")
+        verbose_name_plural = _("取引先")
+
+    def __str__(self):
+        return self.name
+
+
+class Partner(models.Model):
+    """パートナー（我が社が注文を出す会社）"""
+    partner_id = models.CharField(max_length=32, primary_key=True)
     name = models.CharField(_("会社名"), max_length=128)
     name_kana = models.CharField(_("会社名（フリガナ）"), max_length=255, blank=True)
     postal_code = models.CharField(_("郵便番号"), max_length=10, blank=True)
@@ -19,6 +41,11 @@ class Customer(models.Model):
     cc = models.TextField(_("Cc"), blank=True, help_text=_("複数指定する場合はカンマ区切りで入力してください"))
     bcc = models.TextField(_("Bcc"), blank=True, help_text=_("複数指定する場合はカンマ区切りで入力してください"))
     
+    class Meta:
+        db_table = 'core_customer'
+        verbose_name = _("パートナー")
+        verbose_name_plural = _("パートナー")
+
     # 代表者・主担当情報
     representative_name = models.CharField(_("代表者名"), max_length=64, blank=True)
     representative_name_kana = models.CharField(_("代表者名（フリガナ）"), max_length=128, blank=True)
@@ -40,30 +67,34 @@ class Customer(models.Model):
     account_name = models.CharField(_("口座名義"), max_length=128, blank=True)
 
     def save(self, *args, **kwargs):
-        if not self.customer_id:
-            last_customer = Customer.objects.filter(customer_id__regex=r'^\d+$').order_by('-customer_id').first()
-            if last_customer:
-                next_id = int(last_customer.customer_id) + 1
+        if not self.partner_id:
+            last_partner = Partner.objects.filter(partner_id__regex=r'^\d+$').order_by('-partner_id').first()
+            if last_partner:
+                next_id = int(last_partner.partner_id) + 1
             else:
                 next_id = 1
-            self.customer_id = str(next_id).zfill(10)
+            self.partner_id = str(next_id).zfill(10)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"[{self.customer_id}] {self.name}"
+        return f"[{self.partner_id}] {self.name}"
 
 class Profile(models.Model):
     """ユーザープロフィール（初回ログインフラグ管理）"""
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True, blank=True, verbose_name="取引先") # 内部ユーザーはNull可
+    partner = models.ForeignKey(Partner, on_delete=models.CASCADE, null=True, blank=True, verbose_name="パートナー")
     is_first_login = models.BooleanField(default=True)  # 初回ログインフラグ
+
+    class Meta:
+        verbose_name = _("ユーザープロフィール")
+        verbose_name_plural = _("ユーザープロフィール")
 
     def __str__(self):
         return self.user.username
 
 @receiver(post_delete, sender=Profile)
 def delete_user_on_profile_delete(sender, instance, **kwargs):
-    """Profileが削除されたとき（Customer削除等に連動）、紐付くUserも削除する"""
+    """Profileが削除されたとき、紐付くUserも削除する"""
     if instance.user:
         try:
             instance.user.delete()
@@ -121,7 +152,7 @@ class BankMaster(models.Model):
 
 class SentEmailLog(models.Model):
     """送信済みメールログ"""
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name=_("取引先"), related_name="email_logs")
+    partner = models.ForeignKey(Partner, on_delete=models.CASCADE, verbose_name=_("パートナー"), related_name="email_logs")
     subject = models.CharField(_("件名"), max_length=255)
     body = models.TextField(_("本文"))
     sent_at = models.DateTimeField(_("送信日時"), auto_now_add=True)
@@ -132,7 +163,7 @@ class SentEmailLog(models.Model):
         ordering = ['-sent_at']
 
     def __str__(self):
-        return f"{self.customer.name} - {self.subject} ({self.sent_at})"
+        return f"{self.partner.name} - {self.subject} ({self.sent_at})"
 
 
 class MasterContractProgress(models.Model):
@@ -144,7 +175,7 @@ class MasterContractProgress(models.Model):
         ('COMPLETED', '締結完了'),
     ]
 
-    customer = models.OneToOneField(Customer, on_delete=models.CASCADE, verbose_name=_("取引先"), related_name="contract_progress", unique=True)
+    partner = models.OneToOneField(Partner, on_delete=models.CASCADE, verbose_name=_("パートナー"), related_name="contract_progress", unique=True)
     status = models.CharField(_("ステータス"), max_length=20, choices=STATUS_CHOICES, default='INVITED')
     updated_at = models.DateTimeField(_("更新日時"), auto_now=True)
 
@@ -153,4 +184,20 @@ class MasterContractProgress(models.Model):
         verbose_name_plural = _("基本契約進捗")
 
     def __str__(self):
-        return f"{self.customer.name}: {self.get_status_display()}"
+        return f"{self.partner.name}: {self.get_status_display()}"
+
+
+class EmailTemplate(models.Model):
+    """メールテンプレート"""
+    code = models.CharField(_("テンプレートコード"), max_length=50, unique=True, help_text=_("システム内で識別するためのコード"))
+    subject = models.CharField(_("件名"), max_length=255)
+    body = models.TextField(_("本文"), help_text=_("Djangoテンプレート構文が使用可能です。例: {{ partner_name }}"))
+    description = models.CharField(_("説明"), max_length=255, blank=True)
+    updated_at = models.DateTimeField(_("更新日時"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("メールテンプレート")
+        verbose_name_plural = _("メールテンプレート")
+
+    def __str__(self):
+        return f"{self.subject} ({self.code})"

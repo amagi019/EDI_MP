@@ -12,111 +12,149 @@
     {% if is_authorized %}
     <div style="margin: 1.5rem 0; display: flex; gap: 1rem; flex-wrap: wrap;">
         {% if user.is_staff %}
-        <a href="{% url 'core:quick_partner_registration' %}" class="btn"
-            style="background: var(--primary-gradient); color: white; border: none; padding: 0.75rem 1.5rem; font-weight: 600; box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);">
-            <i class="fas fa-user-plus"></i> {% trans "新規取引先を登録する" %}
+        <a href="{% url 'core:quick_partner_registration' %}" class="btn btn-secondary">
+            <i class="fas fa-user-plus"></i> {% trans "パートナー新規登録" %}
         </a>
         {% endif %}
-        <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">{% trans "注文書一覧を確認する" %}</a>
-        <a href="{% url 'invoices:partner_invoice_list' %}" class="btn btn-secondary">{% trans "請求書一覧を確認する" %}</a>
-        {% if not user.is_staff %}
-        <a href="{% url 'core:partner_onboarding' %}" class="btn"
-            style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color);">
-            <i class="fas fa-edit"></i> {% trans "会社情報を登録・更新する" %}
-        </a>
-        <a href="{% url 'core:partner_manual' %}" class="btn"
-            style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color);">
-            <i class="fas fa-book-open"></i> {% trans "操作マニュアル" %}
-        </a>
-        {% endif %}
+        <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">{% trans "注文書一覧" %}</a>
+        <a href="{% url 'invoices:invoice_list' %}" class="btn btn-secondary">{% trans "請求書（支払通知）一覧" %}</a>
+        <a href="{% url 'core:contract_progress_list' %}" class="btn btn-secondary">{% trans "基本契約進捗" %}</a>
     </div>
     {% endif %}
 
     <div
         style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
-        <div
-            style="background: rgba(79, 70, 229, 0.1); border: 1px solid rgba(79, 70, 229, 0.2); border-radius: 12px; padding: 1.5rem;">
+        <div onclick="toggleDetail('unconfirmed')"
+            style="background: rgba(79, 70, 229, 0.1); border: 1px solid rgba(79, 70, 229, 0.2); border-radius: 12px; padding: 1.5rem; cursor: pointer; transition: transform 0.2s;"
+            onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
             <h3 style="margin: 0; color: #818CF8;">{% trans "未確認の発注" %}</h3>
             <p style="font-size: 2rem; font-weight: 700; margin: 0.5rem 0;">{{ unconfirmed_orders_count }} <span
-                    style="font-size: 1rem; color: var(--text-dim);">{% trans "件" %}</span></p>
+                    style="font-size: 1rem; color: var(--text-dim);">件</span></p>
+            <div style="font-size: 0.8rem; color: var(--text-dim);">クリックで詳細表示 ▼</div>
         </div>
-        <div
-            style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 1.5rem;">
+        <div onclick="toggleDetail('received')"
+            style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 1.5rem; cursor: pointer; transition: transform 0.2s;"
+            onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
             <h3 style="margin: 0; color: #34D399;">{% trans "受領済の通知" %}</h3>
             <p style="font-size: 2rem; font-weight: 700; margin: 0.5rem 0;">{{ received_orders_count }} <span
-                    style="font-size: 1rem; color: var(--text-dim);">{% trans "件" %}</span></p>
+                    style="font-size: 1rem; color: var(--text-dim);">件</span></p>
+            <div style="font-size: 0.8rem; color: var(--text-dim);">クリックで詳細表示 ▼</div>
         </div>
-        <div
-            style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; padding: 1.5rem;">
+        <div onclick="toggleDetail('confirming')"
+            style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; padding: 1.5rem; cursor: pointer; transition: transform 0.2s;"
+            onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
             <h3 style="margin: 0; color: #FBBF24;">{% trans "支払通知確認中" %}</h3>
             <p style="font-size: 2rem; font-weight: 700; margin: 0.5rem 0;">{{ confirming_invoices_count }} <span
-                    style="font-size: 1rem; color: var(--text-dim);">{% trans "件" %}</span></p>
+                    style="font-size: 1rem; color: var(--text-dim);">件</span></p>
+            <div style="font-size: 0.8rem; color: var(--text-dim);">クリックで詳細表示 ▼</div>
         </div>
     </div>
 
-    {% if user.is_staff and contract_progress_list %}
-    <div style="margin-top: 3rem;">
-        <h3
-            style="font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
-            <i class="fas fa-tasks" style="color: var(--primary-color);"></i>
-            {% trans "取引先オンボーディング・基本契約進捗" %}
-        </h3>
-        <div
-            style="overflow-x: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px;">
-            <table style="width: 100%; border-collapse: collapse; min-width: 800px;">
+    <!-- 未確認の発注 詳細 -->
+    <div id="detail-unconfirmed" style="display:none; margin-top:1.5rem;">
+        <div class="card" style="border-left: 4px solid #818CF8;">
+            <h3 style="color: #818CF8; margin-top:0;">📋 未確認の発注</h3>
+            {% if unconfirmed_orders %}
+            <table style="width: 100%; border-collapse: collapse;">
                 <thead>
-                    <tr style="border-bottom: 2px solid var(--border-color); text-align: left;">
-                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "取引先名" %}
-                        </th>
-                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "進捗ステータス"
-                            %}</th>
-                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "更新日時" %}
-                        </th>
-                        <th style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600;">{% trans "アクション" %}
-                        </th>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">パートナー</th>
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">プロジェクト</th>
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">対象月</th>
+                        <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">状態</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for progress in contract_progress_list %}
-                    <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.2s;">
-                        <td style="padding: 1rem 1.5rem; font-weight: 500;">{{ progress.customer.name }}</td>
-                        <td style="padding: 1rem 1.5rem;">
-                            {% if progress.status == 'INVITED' %}
-                            <span
-                                style="background: rgba(129, 140, 248, 0.1); color: #818CF8; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(129, 140, 248, 0.2);">
-                                {{ progress.get_status_display }}
-                            </span>
-                            {% elif progress.status == 'INFO_DONE' %}
-                            <span
-                                style="background: rgba(245, 158, 11, 0.1); color: #FBBF24; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(245, 158, 11, 0.2);">
-                                {{ progress.get_status_display }}
-                            </span>
-                            {% elif progress.status == 'CONTRACT_SENT' %}
-                            <span
-                                style="background: rgba(var(--secondary-rgb), 0.1); color: var(--secondary-color); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid var(--secondary-color);">
-                                {{ progress.get_status_display }}
-                            </span>
-                            {% elif progress.status == 'COMPLETED' %}
-                            <span
-                                style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.2);">
-                                {{ progress.get_status_display }}
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td style="padding: 1rem 1.5rem; color: var(--text-dim);">{{ progress.updated_at|date:"Y/m/d
-                            H:i" }}</td>
-                        <td style="padding: 1rem 1.5rem;">
-                            <a href="{% url 'core:partner_email_log' progress.customer.customer_id %}"
-                                class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
-                                <i class="fas fa-search"></i> {% trans "招待メールを閲覧" %}
-                            </a>
-                        </td>
+                    {% for order in unconfirmed_orders %}
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 0.75rem;">{{ order.partner.name }}</td>
+                        <td style="padding: 0.75rem;">{{ order.project.name }}</td>
+                        <td style="padding: 0.75rem;">{{ order.target_month|date:"Y年n月" }}</td>
+                        <td style="padding: 0.75rem; text-align: center;">{{ order.get_status_display }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% else %}
+            <p style="color: var(--text-dim);">該当するデータはありません。</p>
+            {% endif %}
         </div>
     </div>
-    {% endif %}
+
+    <!-- 受領済の通知 詳細 -->
+    <div id="detail-received" style="display:none; margin-top:1.5rem;">
+        <div class="card" style="border-left: 4px solid #34D399;">
+            <h3 style="color: #34D399; margin-top:0;">✅ 受領済の通知</h3>
+            {% if received_orders %}
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">パートナー</th>
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">プロジェクト</th>
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">対象月</th>
+                        <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">状態</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in received_orders %}
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 0.75rem;">{{ order.partner.name }}</td>
+                        <td style="padding: 0.75rem;">{{ order.project.name }}</td>
+                        <td style="padding: 0.75rem;">{{ order.target_month|date:"Y年n月" }}</td>
+                        <td style="padding: 0.75rem; text-align: center;">{{ order.get_status_display }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: var(--text-dim);">該当するデータはありません。</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 支払通知確認中 詳細 -->
+    <div id="detail-confirming" style="display:none; margin-top:1.5rem;">
+        <div class="card" style="border-left: 4px solid #FBBF24;">
+            <h3 style="color: #FBBF24; margin-top:0;">⏳ 支払通知確認中</h3>
+            {% if confirming_invoices %}
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">パートナー</th>
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">プロジェクト</th>
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">請求番号</th>
+                        <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">状態</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in confirming_invoices %}
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 0.75rem;">{{ inv.order.partner.name }}</td>
+                        <td style="padding: 0.75rem;">{{ inv.order.project.name }}</td>
+                        <td style="padding: 0.75rem;">{{ inv.invoice_no }}</td>
+                        <td style="padding: 0.75rem; text-align: center;">{{ inv.get_status_display }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: var(--text-dim);">該当するデータはありません。</p>
+            {% endif %}
+        </div>
+    </div>
 </div>
+
+<script>
+    function toggleDetail(name) {
+        var ids = ['unconfirmed', 'received', 'confirming'];
+        for (var i = 0; i < ids.length; i++) {
+            var el = document.getElementById('detail-' + ids[i]);
+            if (ids[i] === name) {
+                el.style.display = el.style.display === 'none' ? 'block' : 'none';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+    }
+</script>
 {% endblock %}

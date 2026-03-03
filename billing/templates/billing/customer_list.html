@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "請求先一覧" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <div class="flex justify-between" style="align-items: center; margin-bottom: 2rem;">
+        <h1>🏢 {% trans "請求先一覧" %}</h1>
+        <a href="{% url 'billing:customer_create' %}" class="btn">＋ {% trans "新規登録" %}</a>
+    </div>
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "取引先名" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "担当者" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "メール" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "電話" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "操作" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in customers %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem; font-weight: 500;">{{ c.name }}</td>
+                    <td style="padding: 0.75rem;">{{ c.contact_person|default:"-" }}</td>
+                    <td style="padding: 0.75rem;">{{ c.email|default:"-" }}</td>
+                    <td style="padding: 0.75rem;">{{ c.phone|default:"-" }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <a href="{% url 'billing:customer_update' c.pk %}"
+                            style="color: #818CF8; margin-right: 0.5rem;">{% trans "編集" %}</a>
+                        <a href="{% url 'billing:customer_delete' c.pk %}" style="color: #EF4444;">{% trans "削除" %}</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-dim);">{% trans "請求先が登録されていません" %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

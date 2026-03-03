@@ -18,15 +18,15 @@ class AdminCreationForm(UserCreationForm):
             Profile.objects.get_or_create(user=user)
         return user
 
-from .domain.models import Customer
+from .domain.models import Partner
 
 class PartnerUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True, label="メールアドレス")
-    customer = forms.ModelChoiceField(
-        queryset=Customer.objects.all(),
+    partner = forms.ModelChoiceField(
+        queryset=Partner.objects.all(),
         required=True,
-        label="取引先",
-        help_text="このユーザーが所属する取引先を選択してください。"
+        label="パートナー",
+        help_text="このユーザーが所属するパートナーを選択してください。"
     )
 
     class Meta(UserCreationForm.Meta):
@@ -38,15 +38,15 @@ class PartnerUserCreationForm(UserCreationForm):
             user.save()
             from .domain.models import Profile
             profile, created = Profile.objects.get_or_create(user=user)
-            profile.customer = self.cleaned_data.get('customer')
+            profile.partner = self.cleaned_data.get('partner')
             profile.save()
         return user
 
 
 class PartnerOnboardingForm(forms.ModelForm):
-    """パートナー情報登録フォーム（改善版）"""
+    """パートナー情報登録フォーム"""
     class Meta:
-        model = Customer
+        model = Partner
         fields = [
             'name', 'name_kana', 'postal_code', 'address', 'tel', 'fax', 'email',
             'representative_name', 'representative_name_kana', 'representative_position',
@@ -59,13 +59,11 @@ class PartnerOnboardingForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # レイアウト調整（自作CSS用）
         self.fields['attachment_file'].widget.attrs.update({'class': 'file-input'})
 
     def clean_registration_no(self):
         registration_no = self.cleaned_data.get('registration_no')
         if registration_no:
-            # 簡易バリデーション: Tから始まる14桁
             import re
             from django.utils.translation import gettext_lazy as _
             if not re.match(r'^T\d{13}$', registration_no.strip()):
@@ -74,8 +72,8 @@ class PartnerOnboardingForm(forms.ModelForm):
 
 
 class QuickPartnerRegistrationForm(forms.Form):
-    """自社担当者が取引先名とユーザーを同時に登録するフォーム（パスワード自動生成）"""
-    company_name = forms.CharField(max_length=128, label="取引先企業名", help_text="正式名称を入力してください。")
+    """自社担当者がパートナーとユーザーを同時に登録するフォーム"""
+    company_name = forms.CharField(max_length=128, label="パートナー企業名", help_text="正式名称を入力してください。")
     email = forms.EmailField(required=True, label="担当者メールアドレス", help_text="ログインIDとして使用されます。")
 
     def clean_email(self):
@@ -90,68 +88,104 @@ class QuickPartnerRegistrationForm(forms.Form):
         import string
         from django.db import transaction
         from django.contrib.auth.models import User
-        from .domain.models import Customer, Profile, MasterContractProgress
+        from .domain.models import Partner, Profile, MasterContractProgress
         
         with transaction.atomic():
             email = self.cleaned_data["email"]
             company_name = self.cleaned_data["company_name"]
             
-            # 10桁のパスワードを自動生成
             alphabet = string.ascii_letters + string.digits
             password = ''.join(secrets.choice(alphabet) for i in range(10))
             
-            # User作成
             user = User.objects.create_user(
                 username=email,
                 email=email,
                 password=password
             )
             
-            # Customer作成
-            customer = Customer.objects.create(
+            partner = Partner.objects.create(
                 name=company_name,
                 email=email
             )
             
-            # Profile作成と紐付け
             profile, created = Profile.objects.get_or_create(user=user)
-            profile.customer = customer
+            profile.partner = partner
             profile.save()
             
-            # 進捗状況の初期化
-            MasterContractProgress.objects.create(customer=customer, status='INVITED')
+            MasterContractProgress.objects.create(partner=partner, status='INVITED')
             
-            # メール送信 (生成したパスワードを含める)
-            self.send_invitation_email(customer, email, password)
+            self.send_invitation_email(partner, email, password)
             
             user.raw_password = password
             return user
 
-    def send_invitation_email(self, customer, email, password):
+    def send_invitation_email(self, partner, email, password):
         from django.core.mail import send_mail
-        from django.template.loader import render_to_string
-        from .domain.models import CompanyInfo, SentEmailLog
+        from django.template import Template, Context
+        from .domain.models import CompanyInfo, SentEmailLog, EmailTemplate
         
         company = CompanyInfo.objects.first()
         if not company:
-            company = CompanyInfo() # デフォルト値を使用
+            company = CompanyInfo()
             
         context = {
             'company_name': company.name,
             'company_address': company.address,
             'company_tel': company.tel,
-            'partner_name': customer.name,
+            'partner_name': partner.name,
             'email': email,
             'password': password,
-            'login_url': 'http://localhost:8000/accounts/login/', # 本番環境ではドメインを動的に取得すべき
+            'login_url': 'http://localhost:8000/accounts/login/', 
         }
+
+        template_code = 'partner_invitation'
+        default_subject = "【{{ company_name }}】EDIシステム アカウント発行のご案内"
+        default_body = """{{ company_name }}
+{{ partner_name }} 様
+
+EDIシステムをご案内いたします。
+
+この度、弊社との取引に関連して、EDIシステムのアカウントを発行いたしました。
+本システムでは、注文書の確認、および会社情報の登録を行っていただけます。
+
+以下の情報を使用してログインし、まず初めに「基本情報登録」をお願いいたします。
+
+■ ログイン情報
+ログインURL: {{ login_url }}
+ログインID: {{ email }}
+仮パスワード: {{ password }}
+
+■ 初回ログイン後の流れ
+1. 仮パスワードでログインしてください。
+2. 自動的にパスワード変更画面が表示されますので、新しいパスワードを設定してください。
+3. ダッシュボードの「会社情報を登録・更新する」より、貴社の基本情報および振込先情報の入力をお願いいたします。
+
+本メールに心当たりがない場合は、お手数ですが破棄していただくか、弊社窓口までご連絡ください。
+
+--------------------------------------------------
+{{ company_name }}
+{{ company_address }}
+TEL: {{ company_tel }}
+--------------------------------------------------
+"""
+        template, created = EmailTemplate.objects.get_or_create(
+            code=template_code,
+            defaults={
+                'subject': default_subject,
+                'body': default_body,
+                'description': '新規パートナー招待メール'
+            }
+        )
         
-        subject = f"【{company.name}】EDIシステム アカウント発行のご案内"
-        message = render_to_string('core/emails/partner_invitation.txt', context)
+        subject_template = Template(template.subject)
+        body_template = Template(template.body)
         
-        # メールログの記録
+        ctx = Context(context)
+        subject = subject_template.render(ctx)
+        message = body_template.render(ctx)
+        
         SentEmailLog.objects.create(
-            customer=customer,
+            partner=partner,
             subject=subject,
             body=message
         )
@@ -160,12 +194,11 @@ class QuickPartnerRegistrationForm(forms.Form):
             send_mail(
                 subject,
                 message,
-                f"noreply@{email.split('@')[1]}", # 簡易的な送信元
+                f"noreply@{email.split('@')[1]}",
                 [email],
                 fail_silently=False,
             )
         except Exception as e:
-            # 送信失敗してもユーザー登録自体は完了しているため、エラーログのみ記録
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to send invitation email: {e}")

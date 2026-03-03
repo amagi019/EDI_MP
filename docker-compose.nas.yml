@@ -1,0 +1,73 @@
+version: '3.9'
+
+# ============================================================
+# EDI_MP - NAS本番用 Docker Compose 定義
+# QNAP TS-462 向け設定
+# 使用方法:
+#   docker-compose -f docker-compose.nas.yml up -d --build
+# ============================================================
+
+services:
+
+  # ------------------------------------------------------------
+  # PostgreSQL データベース
+  # ------------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: edi-mp-db
+    volumes:
+      - edi-pgdata:/var/lib/postgresql/data
+    env_file:
+      - .env.nas
+    environment:
+      - POSTGRES_DB=edi_mp
+      - POSTGRES_USER=edi_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edi_user -d edi_mp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - edi-net
+    restart: unless-stopped
+
+  # ------------------------------------------------------------
+  # Django アプリケーション（Gunicorn）:8090
+  # ------------------------------------------------------------
+  web:
+    build: .
+    container_name: edi-mp-web
+    ports:
+      - "8090:8090"
+    volumes:
+      - edi-media:/app/media
+    env_file:
+      - .env.nas
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python scripts/create_tables.py &&
+             python manage.py migrate --fake --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn EDI_MP.wsgi:application --bind 0.0.0.0:8090 --workers 2 --timeout 120"
+    networks:
+      - edi-net
+    restart: unless-stopped
+
+# ------------------------------------------------------------
+# ボリューム定義
+# ------------------------------------------------------------
+volumes:
+  edi-pgdata:
+    name: edi-mp-pgdata
+  edi-media:
+    name: edi-mp-media
+
+# ------------------------------------------------------------
+# ネットワーク
+# ------------------------------------------------------------
+networks:
+  edi-net:
+    driver: bridge
