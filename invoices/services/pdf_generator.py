@@ -66,7 +66,7 @@ def generate_invoice_pdf(invoice):
     p.drawCentredString(width / 2, height - 35*mm, "御 請 求 書")
 
     # 3. 宛先 (取引先)
-    customer = invoice.order.customer
+    customer = invoice.order.partner
     p.setFont(font_name, 12)
     p.drawString(20*mm, height - 55*mm, f"{customer.name}  御中")
     if invoice.department:
@@ -172,7 +172,7 @@ def generate_payment_notice_pdf(invoice):
     p.drawCentredString(width / 2, height - 35*mm, f"{ym_str} 検収兼お支払通知書")
 
     # 3. 宛先 (自社 -> 取引先殿)
-    customer = invoice.order.customer
+    customer = invoice.order.partner
     p.setFont(font_name, 12)
     p.drawString(20*mm, height - 55*mm, f"{customer.name}  殿")
 

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "商品一覧" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <div class="flex justify-between" style="align-items: center; margin-bottom: 2rem;">
+        <h1>📦 {% trans "商品一覧" %}</h1>
+        <a href="{% url 'billing:product_create' %}" class="btn">＋ {% trans "新規登録" %}</a>
+    </div>
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "商品名" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "単価" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "単位" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "税区分" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "操作" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in products %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem; font-weight: 500;">{{ p.name }}</td>
+                    <td style="padding: 0.75rem; text-align: right;">¥{{ p.unit_price_fmt }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ p.unit }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{{ p.get_tax_category_display }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <a href="{% url 'billing:product_update' p.pk %}"
+                            style="color: #818CF8; margin-right: 0.5rem;">{% trans "編集" %}</a>
+                        <a href="{% url 'billing:product_delete' p.pk %}" style="color: #EF4444;">{% trans "削除" %}</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-dim);">{% trans "商品が登録されていません" %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "メール送信" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <h1 style="margin-bottom: 2rem;">✉️ {% trans "請求書メール送信" %}</h1>
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <div style="color: var(--text-dim); font-size: 0.9rem;">
+            <strong>{{ invoice.customer.name }}</strong> — {{ invoice.subject|default:"-" }}
+            （¥{{ invoice.total|floatformat:0 }}）
+        </div>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="card">
+            <div style="margin-bottom: 1rem;">
+                <label>{{ form.to_email.label }}</label>
+                {{ form.to_email }}
+                {% if form.to_email.errors %}
+                <div style="color: #EF4444; font-size: 0.85rem;">{{ form.to_email.errors.0 }}</div>
+                {% endif %}
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label>{{ form.cc_email.label }}</label>
+                {{ form.cc_email }}
+                <div style="color: var(--text-dim); font-size: 0.8rem;">{% trans "複数指定する場合はカンマ区切り" %}</div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label>{{ form.subject.label }}</label>
+                {{ form.subject }}
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label>{{ form.body.label }}</label>
+                {{ form.body }}
+            </div>
+        </div>
+        <div class="card" style="background: rgba(79,70,229,0.05);">
+            <div style="color: var(--text-dim); font-size: 0.9rem;">📎 {% trans "添付ファイル: 請求書PDF（自動生成して添付されます）" %}</div>
+        </div>
+        <div class="flex" style="gap: 1rem; margin-top: 1rem;">
+            <button type="submit" class="btn">📤 {% trans "送信" %}</button>
+            <a href="{% url 'billing:invoice_detail' invoice.pk %}" class="btn btn-secondary">{% trans "戻る" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

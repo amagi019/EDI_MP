@@ -7,6 +7,7 @@ import datetime
 
 class Project(models.Model):
     project_id = models.CharField(_("プロジェクトID"), max_length=50, primary_key=True)
+    customer = models.ForeignKey('core.Customer', on_delete=models.CASCADE, verbose_name=_("取引先"))
     name = models.CharField(_("プロジェクト名"), max_length=100)
 
     class Meta:
@@ -33,7 +34,6 @@ class Project(models.Model):
         return f"[{self.project_id}] {self.name}"
 
 class Workplace(models.Model):
-    workplace_id = models.CharField(_("勤務場所ID"), max_length=50, primary_key=True)
     name = models.CharField(_("勤務場所名"), max_length=100)
     address = models.CharField(_("住所"), max_length=255, blank=True)
 
@@ -45,7 +45,6 @@ class Workplace(models.Model):
         return self.name
 
 class Deliverable(models.Model):
-    deliverable_id = models.CharField(_("成果物ID"), max_length=50, primary_key=True)
     description = models.CharField(_("成果物の内容"), max_length=255)
 
     class Meta:
@@ -56,29 +55,32 @@ class Deliverable(models.Model):
         return self.description
 
 class PaymentTerm(models.Model):
-    payment_term_id = models.CharField(_("支払条件ID"), max_length=50, primary_key=True)
-    description = models.CharField(_("説明"), max_length=255)
+    partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"))
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name=_("プロジェクト"))
+    description = models.TextField(_("説明"), blank=True)
 
     class Meta:
         verbose_name = _("支払条件")
         verbose_name_plural = _("支払条件")
+        unique_together = ('partner', 'project')
 
     def __str__(self):
-        return self.description
+        return f"{self.partner.name} × {self.project.name}"
 
 class ContractTerm(models.Model):
-    contract_term_id = models.CharField(_("契約条件ID"), max_length=50, primary_key=True)
-    description = models.CharField(_("説明"), max_length=255)
+    partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"))
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name=_("プロジェクト"))
+    description = models.TextField(_("説明"), blank=True)
 
     class Meta:
         verbose_name = _("契約条件")
         verbose_name_plural = _("契約条件")
+        unique_together = ('partner', 'project')
 
     def __str__(self):
-        return self.description
+        return f"{self.partner.name} × {self.project.name}"
 
 class Product(models.Model):
-    product_id = models.CharField(_("商品ID"), max_length=50, primary_key=True)
     name = models.CharField(_("商品名"), max_length=100)
     price = models.IntegerField(_("単価"))
 
@@ -100,7 +102,7 @@ class OrderBasicInfo(models.Model):
         ('LAST_DAY', _('月末')),
     ]
 
-    customer = models.ForeignKey('core.Customer', on_delete=models.CASCADE, verbose_name=_("取引先"))
+    partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"))
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name=_("プロジェクト"))
     project_start_date = models.DateField(_("プロジェクト開始日"))
     project_end_date = models.DateField(_("プロジェクト終了日"))
@@ -114,10 +116,10 @@ class OrderBasicInfo(models.Model):
     class Meta:
         verbose_name = _("発注基本情報")
         verbose_name_plural = _("発注基本情報")
-        unique_together = ('customer', 'project')
+        unique_together = ('partner', 'project')
 
     def __str__(self):
-        return f"{self.project.name} - {self.customer.name}"
+        return f"{self.project.name} - {self.partner.name}"
 
 # トランザクションモデル（実績）
 
@@ -135,7 +137,7 @@ class Order(models.Model):
         verbose_name_plural = _("注文情報")
 
     order_id = models.CharField(_("注文番号"), max_length=20, primary_key=True, help_text="MP+YYYYMMDD+6桁連番")
-    customer = models.ForeignKey('core.Customer', on_delete=models.CASCADE, verbose_name=_("取引先"))
+    partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"), db_column='customer_id')
     project = models.ForeignKey(Project, on_delete=models.PROTECT, verbose_name=_("プロジェクト"))
     status = models.CharField(_("ステータス"), max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     
@@ -181,6 +183,7 @@ class Order(models.Model):
 
     # 外部連携
     external_signature_id = models.CharField(_("外部署名ID"), max_length=100, blank=True, null=True)
+    drive_file_id = models.CharField(_("DriveファイルID"), max_length=200, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.order_id:
@@ -197,10 +200,32 @@ class Order(models.Model):
             else:
                 next_id_num = 1
             self.order_id = f"{prefix}{str(next_id_num).zfill(6)}"
+
+        # パートナー×プロジェクトから支払条件・契約条件を自動設定
+        if self.partner_id and self.project_id:
+            if not self.payment_term_id:
+                pt = PaymentTerm.objects.filter(
+                    partner_id=self.partner_id, project_id=self.project_id
+                ).first()
+                if pt:
+                    self.payment_term = pt
+            if not self.contract_term_id:
+                ct = ContractTerm.objects.filter(
+                    partner_id=self.partner_id, project_id=self.project_id
+                ).first()
+                if ct:
+                    self.contract_term = ct
+
+            # PaymentTerm/ContractTermのdescriptionをテキストフィールドに反映
+            if self.payment_term and not self.payment_condition:
+                self.payment_condition = self.payment_term.description
+            if self.contract_term and not self.contract_items:
+                self.contract_items = self.contract_term.description
+
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.order_id} - {self.customer}"
+        return f"{self.order_id} - {self.partner}"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')

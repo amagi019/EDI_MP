@@ -14,7 +14,7 @@ class InvoiceItemInline(admin.TabularInline):
 class InvoiceAdmin(admin.ModelAdmin):
     list_display = ('invoice_no', 'order', 'target_month', 'total_amount', 'status', 'view_pdf_links')
     list_filter = ('status', 'target_month')
-    search_fields = ('invoice_no', 'order__order_id', 'order__customer__name')
+    search_fields = ('invoice_no', 'order__order_id', 'order__partner__name')
     readonly_fields = ('invoice_no', 'subtotal_amount', 'tax_amount', 'total_amount', 'acceptance_no')
     inlines = [InvoiceItemInline]
     
@@ -23,7 +23,11 @@ class InvoiceAdmin(admin.ModelAdmin):
             'fields': ('order', 'invoice_no', 'acceptance_no', 'status', 'department')
         }),
         ('日付', {
-            'fields': ('target_month', 'issue_date', 'acceptance_date', 'payment_deadline')
+            'fields': ('target_month', 'issue_date', 'acceptance_date', 'payment_deadline', 'payment_date')
+        }),
+        ('稼働報告書', {
+            'fields': ('work_report_file',),
+            'description': 'Excel等の稼働報告書ファイルを添付してください。'
         }),
         ('計算結果（自動計算）', {
             'fields': ('subtotal_amount', 'tax_amount', 'total_amount'),

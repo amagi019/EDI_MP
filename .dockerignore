@@ -6,6 +6,7 @@ __pycache__
 venv
 env
 .env
+.env.nas
 db.sqlite3
 media/
 static/
@@ -13,5 +14,8 @@ static/
 .agent/
 brain/
 docs/
-设计书/
+設計書/
 *.pdf
+deploy_nas.sh
+docker-compose.nas.yml
+backups/

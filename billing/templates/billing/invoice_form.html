@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if object %}{% trans "請求書編集" %}{% else %}{% trans "請求書作成" %}{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+    .formset-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-start;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+    }
+
+    .formset-row input,
+    .formset-row select {
+        margin-bottom: 0;
+    }
+
+    .formset-row .delete-check {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: #EF4444;
+        font-size: 0.85rem;
+    }
+
+    .add-item-btn {
+        margin-top: 1rem;
+    }
+
+    .item-amount {
+        color: var(--secondary);
+        font-weight: 600;
+        min-width: 100px;
+        text-align: right;
+        padding-top: 0.75rem;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <h1 style="margin-bottom: 2rem;">
+        {% if object %}✏️ {% trans "請求書編集" %}{% else %}📄 {% trans "請求書作成" %}{% endif %}
+    </h1>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% if form.errors %}
+        <div class="card" style="background: rgba(239,68,68,0.1); border: 1px solid #EF4444;">
+            <strong style="color: #EF4444;">入力エラー:</strong>
+            <ul style="color: #EF4444; margin: 0.5rem 0 0 1rem;">
+                {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                <li>{{ field }}: {{ error }}</li>
+                {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if formset.errors %}
+        <div class="card" style="background: rgba(239,68,68,0.1); border: 1px solid #EF4444;">
+            <strong style="color: #EF4444;">明細エラー:</strong>
+            <ul style="color: #EF4444; margin: 0.5rem 0 0 1rem;">
+                {% for err_dict in formset.errors %}
+                {% for field, errors in err_dict.items %}
+                {% for error in errors %}
+                <li>{{ field }}: {{ error }}</li>
+                {% endfor %}
+                {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            <h2 style="margin-bottom: 1rem;">{% trans "基本情報" %}</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div>
+                    <label>{{ form.customer.label }}</label>
+                    {{ form.customer }}
+                </div>
+                <div>
+                    <label>{{ form.company.label }}</label>
+                    {{ form.company }}
+                </div>
+                <div>
+                    <label>{{ form.issue_date.label }}</label>
+                    {{ form.issue_date }}
+                </div>
+                <div>
+                    <label>{{ form.due_date.label }}</label>
+                    {{ form.due_date }}
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <label>{{ form.subject.label }}</label>
+                    {{ form.subject }}
+                </div>
+                <div>
+                    <label>{{ form.status.label }}</label>
+                    {{ form.status }}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 1rem;">{% trans "明細" %}</h2>
+            {{ formset.management_form }}
+
+            <div
+                style="display: flex; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 2px solid var(--border); font-weight: 500; color: var(--text-dim); font-size: 0.85rem;">
+                <div style="flex: 1;">{% trans "商品" %}</div>
+                <div style="width: 100px;">{% trans "単価" %}</div>
+                <div style="width: 100px;">{% trans "人月" %}</div>
+                <div style="width: 100px;">{% trans "税区分" %}</div>
+                <div style="width: 100px; text-align: right;">{% trans "金額" %}</div>
+                <div style="width: 40px;"></div>
+            </div>
+
+            <div id="formset-container">
+                {% for item_form in formset %}
+                <div class="formset-row">
+                    {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
+                    <div style="flex: 1;">{{ item_form.product }}</div>
+                    <div style="width: 100px;">{{ item_form.unit_price }}</div>
+                    <div style="width: 100px;">{{ item_form.man_month }}</div>
+                    <div style="width: 100px;">{{ item_form.tax_category }}</div>
+                    <div class="item-amount">-</div>
+                    <div style="width: 40px;">
+                        {% if item_form.DELETE %}
+                        <label class="delete-check">{{ item_form.DELETE }} ✕</label>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" class="btn btn-secondary add-item-btn" onclick="addFormsetRow()">
+                ＋ {% trans "明細追加" %}
+            </button>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 1rem;">{% trans "備考" %}</h2>
+            {{ form.notes }}
+        </div>
+
+        <div class="flex" style="gap: 1rem;">
+            <button type="submit" class="btn">💾 {% trans "保存" %}</button>
+            <a href="{% url 'billing:invoice_list' %}" class="btn btn-secondary">{% trans "キャンセル" %}</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    function addFormsetRow() {
+        const container = document.getElementById('formset-container');
+        const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+        const num = parseInt(totalForms.value);
+
+        const firstRow = container.querySelector('.formset-row');
+        if (!firstRow) return;
+
+        const newRow = firstRow.cloneNode(true);
+        newRow.querySelectorAll('input, select').forEach(function (el) {
+            if (el.type !== 'hidden' || el.name.includes('id')) {
+                el.value = '';
+            }
+            el.name = el.name.replace(/-\d+-/, '-' + num + '-');
+            el.id = el.id.replace(/-\d+-/, '-' + num + '-');
+        });
+
+        const checkbox = newRow.querySelector('input[type="checkbox"]');
+        if (checkbox) checkbox.checked = false;
+
+        // 人月のデフォルトを1.00に設定
+        var mmSel = newRow.querySelector('select[name*="man_month"]');
+        if (mmSel) mmSel.value = '1.00';
+
+        // 金額欄リセット
+        var amountEl = newRow.querySelector('.item-amount');
+        if (amountEl) amountEl.textContent = '-';
+
+        container.appendChild(newRow);
+        totalForms.value = num + 1;
+    }
+
+    // 商品選択時に単価等を自動入力
+    document.addEventListener('change', function (e) {
+        var sel = e.target;
+        if (sel.tagName === 'SELECT' && sel.name && sel.name.indexOf('product') !== -1 && sel.name.indexOf('product_name') === -1) {
+            var row = sel.closest('.formset-row');
+            if (!row || !sel.value) return;
+            fetch('/billing/api/products/' + sel.value + '/')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    var priceEl = row.querySelector('.unit-price');
+                    if (priceEl) priceEl.value = data.unit_price;
+                    var taxEl = row.querySelector('.form-select[name*="tax_category"]');
+                    if (taxEl) taxEl.value = data.tax_category;
+                    calcRowAmount(row);
+                });
+        }
+        if (sel.name && (sel.name.indexOf('man_month') !== -1 || sel.name.indexOf('product') !== -1)) {
+            var r2 = sel.closest('.formset-row');
+            if (r2) calcRowAmount(r2);
+        }
+    });
+
+    function calcRowAmount(row) {
+        var price = parseInt(row.querySelector('.unit-price').value) || 0;
+        var mmSel = row.querySelector('select[name*="man_month"]');
+        var mm = parseFloat(mmSel ? mmSel.value : 1) || 1;
+        var amount = Math.floor(price * mm);
+        var amountEl = row.querySelector('.item-amount');
+        if (amountEl) amountEl.textContent = '¥' + amount.toLocaleString();
+    }
+
+    // 初期表示時に金額を計算
+    document.querySelectorAll('.formset-row').forEach(function (row) {
+        calcRowAmount(row);
+    });
+</script>
+{% endblock %}

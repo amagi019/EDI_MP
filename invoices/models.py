@@ -8,6 +8,8 @@ class Invoice(models.Model):
         ('DRAFT', _('下書き')),
         ('ISSUED', _('発行済')),
         ('SENT', _('送付済')),
+        ('CONFIRMED', _('パートナー確定済')),
+        ('PAID', _('支払済')),
     ]
 
     class Meta:
@@ -23,9 +25,13 @@ class Invoice(models.Model):
     target_month = models.DateField(_("対象年月"), help_text="請求対象月")
     issue_date = models.DateField(_("作成日"), default=datetime.date.today)
     acceptance_date = models.DateField(_("検収日"), null=True, blank=True)
-    payment_deadline = models.DateField(_("支払締切日"), null=True, blank=True)
+    payment_deadline = models.DateField(_('支払締切日'), null=True, blank=True)
+    payment_date = models.DateField(_('支払日'), null=True, blank=True, help_text='実際に支払を行った日付')
     
-    department = models.CharField(_("部署名"), max_length=128, blank=True, help_text="請求書に表示する部署名")
+    department = models.CharField(_('部署名'), max_length=128, blank=True, help_text='請求書に表示する部署名')
+    
+    # 稼働報告書（エビデンス）
+    work_report_file = models.FileField(_('稼働報告書'), upload_to='invoices/work_reports/', blank=True, null=True, help_text='Excel等の稼働報告書ファイル')
     
     # サマリ金額（InvoiceItemの合計）
     subtotal_amount = models.IntegerField(_("税抜合計"), default=0)

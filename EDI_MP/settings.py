@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'core.apps.CoreConfig',
     'orders',
     'invoices',
+    'billing',
 ]
   # ドメイン層アプリ
 
@@ -155,7 +156,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'core:dashboard'
 LOGOUT_REDIRECT_URL = 'login'
-  # 後で定義
+
+# Google Drive連携
+GOOGLE_DRIVE_SERVICE_ACCOUNT = 'edi-drive-uploader@edi-sophia-test.iam.gserviceaccount.com'
+GOOGLE_DRIVE_ROOT_FOLDER_ID = env('GOOGLE_DRIVE_ROOT_FOLDER_ID', default='')  # 共有フォルダID
 
 
 # パスワードハッシュ化設定（Django標準を使用）

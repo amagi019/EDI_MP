@@ -312,6 +312,26 @@
 
             {% if user.is_staff %}
             <div style="margin: 1rem 0; border-top: 1px solid var(--border);"></div>
+            <div
+                style="padding: 0.5rem 1rem; color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                {% trans "請求書発行" %}</div>
+            <a href="{% url 'billing:dashboard' %}"
+                class="sidebar-link {% if 'billing' in request.path and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <i class="fas fa-file-invoice"></i> {% trans "ダッシュボード" %}
+            </a>
+            <a href="{% url 'billing:invoice_list' %}"
+                class="sidebar-link {% if 'billing/invoices' in request.path %}active{% endif %}">
+                <i class="fas fa-file-alt"></i> {% trans "請求書" %}
+            </a>
+            <a href="{% url 'billing:customer_list' %}"
+                class="sidebar-link {% if 'billing/customers' in request.path %}active{% endif %}">
+                <i class="fas fa-building"></i> {% trans "請求先" %}
+            </a>
+            <a href="{% url 'billing:product_list' %}"
+                class="sidebar-link {% if 'billing/products' in request.path %}active{% endif %}">
+                <i class="fas fa-box"></i> {% trans "商品" %}
+            </a>
+            <div style="margin: 1rem 0; border-top: 1px solid var(--border);"></div>
             <a href="{% url 'admin:index' %}" target="_blank" class="sidebar-link">
                 <i class="fas fa-cog"></i> {% trans "管理画面" %}
             </a>

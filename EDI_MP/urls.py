@@ -30,6 +30,7 @@ urlpatterns = [
     path('', include('core.urls')),
     path('orders/', include('orders.urls')),
     path('invoices/', include('invoices.urls')),
+    path('billing/', include('billing.presentation.urls')),
     path('accounts/password_change/', core_views.CustomPasswordChangeView.as_view(), name='password_change'),
     path('accounts/', include('django.contrib.auth.urls')),
 ]

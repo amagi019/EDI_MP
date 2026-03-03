@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 from django.core.mail import send_mail
 from django.conf import settings
 from django.urls import reverse
-from core.domain.models import CompanyInfo, Customer
+from core.domain.models import CompanyInfo, Partner
 from orders.models import Order
 
 class Command(BaseCommand):
@@ -30,15 +30,15 @@ class Command(BaseCommand):
         
         sent_count = 0
         for order in orders:
-            customer = order.customer
-            if not customer.email:
-                self.stdout.write(self.style.WARNING(f"Skip: {customer.name} has no email."))
+            partner = order.partner
+            if not partner.email:
+                self.stdout.write(self.style.WARNING(f"Skip: {partner.name} has no email."))
                 continue
 
             url = f"{site_url}{reverse('orders:order_detail', args=[order.order_id])}"
 
             subject = f"注文書発行のお知らせ（{company_name}）"
-            body = f"""{customer.name} 御中
+            body = f"""{partner.name} 御中
 
 いつもお世話になっております。
 {company_name}でございます。
@@ -76,12 +76,12 @@ EDIに注文書を登録しましたので、
                     subject,
                     body,
                     settings.DEFAULT_FROM_EMAIL,
-                    [customer.email],
+                    [partner.email],
                     fail_silently=False,
                 )
                 sent_count += 1
-                self.stdout.write(self.style.SUCCESS(f"Sent to: {customer.email}"))
+                self.stdout.write(self.style.SUCCESS(f"Sent to: {partner.email}"))
             except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Failed to send to {customer.email}: {e}"))
+                self.stdout.write(self.style.ERROR(f"Failed to send to {partner.email}: {e}"))
 
         self.stdout.write(self.style.SUCCESS(f"Successfully sent {sent_count} emails."))

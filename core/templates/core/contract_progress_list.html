@@ -19,7 +19,7 @@
                 <tr style="border-bottom: 1px solid var(--border);">
                     <th
                         style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">
-                        {% trans "取引先名" %}</th>
+                        {% trans "パートナー名" %}</th>
                     <th
                         style="padding: 1rem 1.5rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">
                         {% trans "進捗ステータス" %}</th>
@@ -36,7 +36,7 @@
             <tbody>
                 {% for progress in contract_progress_list %}
                 <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;">
-                    <td style="padding: 1rem 1.5rem; font-weight: 500;">{{ progress.customer.name }}</td>
+                    <td style="padding: 1rem 1.5rem; font-weight: 500;">{{ progress.partner.name }}</td>
                     <td style="padding: 1rem 1.5rem;">
                         {% if progress.status == 'INVITED' %}
                         <span
@@ -61,7 +61,7 @@
                         {% endif %}
 
                         {# 書類未提出のアラート表示（招待済みステータス以外で、ファイルがない場合） #}
-                        {% if progress.status != 'INVITED' and not progress.customer.attachment_file %}
+                        {% if progress.status != 'INVITED' and not progress.partner.attachment_file %}
                         <div style="margin-top: 0.25rem;">
                             <span
                                 style="color: #EF4444; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">
@@ -74,7 +74,7 @@
                     </td>
                     {% if is_staff %}
                     <td style="padding: 1rem 1.5rem;">
-                        <a href="{% url 'core:partner_email_log' progress.customer.customer_id %}"
+                        <a href="{% url 'core:partner_email_log' progress.partner.partner_id %}"
                             class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
                             <i class="fas fa-search"></i> {% trans "詳細" %}
                         </a>
@@ -91,7 +91,7 @@
         <p style="margin: 0;">
             <i class="fas fa-info-circle" style="margin-right: 0.5rem; color: var(--secondary);"></i>
             {% blocktrans with total=contract_progress_list|length %}
-            {{ total }} 件の取引先が表示されています。
+            {{ total }} 件のパートナーが表示されています。
             {% endblocktrans %}
         </p>
     </div>

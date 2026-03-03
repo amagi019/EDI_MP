@@ -40,7 +40,7 @@ class AdminOrderPDFView(View):
         return response
 
 class CustomerOrderPDFView(View):
-    """取引先用PDFダウンロード"""
+    """パートナー用PDFダウンロード"""
 
     @method_decorator(login_required)
     def get(self, request, order_id):
@@ -48,10 +48,10 @@ class CustomerOrderPDFView(View):
         
         # 権限チェック：自分の会社の注文書のみ閲覧可能
         # Profile -> Customer の紐付けを確認
-        if not hasattr(request.user, 'profile') or not request.user.profile.customer:
-            return HttpResponseForbidden("取引先情報が紐付いていません。")
+        if not hasattr(request.user, 'profile') or not request.user.profile.partner:
+            return HttpResponseForbidden("パートナー情報が紐付いていません。")
             
-        if order.customer != request.user.profile.customer:
+        if order.partner != request.user.profile.partner:
              return HttpResponseForbidden("この注文書を閲覧する権限がありません。")
 
         # 既に保存されたPDFがあればそれを返す（電帳法対応：原本の保持）
@@ -93,16 +93,16 @@ class AdminAcceptancePDFView(View):
         return response
 
 class CustomerAcceptancePDFView(View):
-    """取引先用注文請書PDFダウンロード"""
+    """パートナー用注文請書PDFダウンロード"""
 
     @method_decorator(login_required)
     def get(self, request, order_id):
         order = get_object_or_404(Order, order_id=order_id)
         
-        if not hasattr(request.user, 'profile') or not request.user.profile.customer:
-            return HttpResponseForbidden("取引先情報が紐付いていません。")
+        if not hasattr(request.user, 'profile') or not request.user.profile.partner:
+            return HttpResponseForbidden("パートナー情報が紐付いていません。")
             
-        if order.customer != request.user.profile.customer:
+        if order.partner != request.user.profile.partner:
              return HttpResponseForbidden("権限がありません。")
 
         if order.acceptance_pdf:
@@ -117,7 +117,7 @@ class CustomerAcceptancePDFView(View):
         return response
 
 class OrderListView(ListView):
-    """取引先用：自分宛ての注文書一覧"""
+    """パートナー用：自分宛ての注文書一覧"""
     model = Order
     template_name = 'orders/order_list.html'
     context_object_name = 'orders'
@@ -132,15 +132,15 @@ class OrderListView(ListView):
         if user.is_staff:
             return Order.objects.all().order_by('-order_date')
 
-        if not hasattr(user, 'profile') or not user.profile.customer:
-             # 取引先が紐付いていない場合は空リスト
+        if not hasattr(user, 'profile') or not user.profile.partner:
+             # パートナーが紐付いていない場合は空リスト
              return Order.objects.none()
         
         # 自分のCustomerの注文のみ ＆ 下書き（DRAFT）は非表示
-        return Order.objects.filter(customer=user.profile.customer).exclude(status='DRAFT').order_by('-order_date')
+        return Order.objects.filter(partner=user.profile.partner).exclude(status='DRAFT').order_by('-order_date')
 
 class OrderDetailView(DetailView):
-    """取引先用：注文書詳細"""
+    """パートナー用：注文書詳細"""
     model = Order
     template_name = 'orders/order_detail.html'
     context_object_name = 'order'
@@ -155,20 +155,20 @@ class OrderDetailView(DetailView):
         if user.is_staff:
             return Order.objects.all()
             
-        if not hasattr(user, 'profile') or not user.profile.customer:
+        if not hasattr(user, 'profile') or not user.profile.partner:
             return Order.objects.none()
-        # 取引先用にはDRAFTを非表示に
-        return Order.objects.filter(customer=user.profile.customer).exclude(status='DRAFT')
+        # パートナー用にはDRAFTを非表示に
+        return Order.objects.filter(partner=user.profile.partner).exclude(status='DRAFT')
 
 class OrderApproveView(View):
-    """取引先用：注文承認処理"""
+    """パートナー用：注文承認処理"""
     
     @method_decorator(login_required)
     def post(self, request, order_id):
         order = get_object_or_404(Order, order_id=order_id)
         
         # 権限チェック
-        if not hasattr(request.user, 'profile') or order.customer != request.user.profile.customer:
+        if not hasattr(request.user, 'profile') or order.partner != request.user.profile.partner:
              return HttpResponseForbidden("権限がありません。")
         
         if order.status == 'APPROVED':
@@ -199,7 +199,7 @@ class OrderApproveView(View):
 
         # 管理者へメール送信
         subject = f"【承認通知】注文番号：{order.order_id}"
-        message = f"""{order.customer.name} 様より、以下の注文書が承認されました。
+        message = f"""{order.partner.name} 様より、以下の注文書が承認されました。
 
 ■注文番号：{order.order_id}
 ■プロジェクト：{order.project.name}
@@ -238,6 +238,17 @@ class OrderPublishView(View):
         content = buffer.getvalue()
         order.order_pdf.save(f"order_{order.order_id}.pdf", ContentFile(content), save=False)
         order.save()
-        
-        messages.success(request, f"注文書 {order.order_id} を正式に発行しました。")
+
+        # Google Driveへ自動アップロード
+        try:
+            from .services.google_drive_service import upload_order_pdf
+            result = upload_order_pdf(order)
+            order.drive_file_id = result['file_id']
+            order.save(update_fields=['drive_file_id'])
+            messages.success(request, f"注文書 {order.order_id} を正式に発行し、Googleドライブにアップロードしました。")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Drive upload failed for {order.order_id}: {e}")
+            messages.success(request, f"注文書 {order.order_id} を正式に発行しました。（Driveへのアップロードは失敗しました）")
+
         return redirect('orders:order_detail', order_id=order_id)

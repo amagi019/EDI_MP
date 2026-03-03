@@ -4,9 +4,9 @@ from .models import Order, OrderItem, Person, Project, Workplace, Deliverable, P
 
 @admin.register(OrderBasicInfo)
 class OrderBasicInfoAdmin(admin.ModelAdmin):
-    list_display = ('project', 'customer', 'project_start_date', 'project_end_date', 'order_issuance_timing', 'invoice_issuance_timing')
-    list_filter = ('customer', 'order_issuance_timing', 'invoice_issuance_timing')
-    search_fields = ('project__name', 'customer__name')
+    list_display = ('project', 'partner', 'project_start_date', 'project_end_date', 'order_issuance_timing', 'invoice_issuance_timing')
+    list_filter = ('partner', 'order_issuance_timing', 'invoice_issuance_timing')
+    search_fields = ('project__name', 'partner__name')
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
@@ -24,15 +24,15 @@ from django import forms
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('order_id', 'customer', 'project', 'status', 'order_end_ym', 'order_date', 'view_pdf_links')
-    list_filter = ('status', 'order_end_ym', 'customer')
-    search_fields = ('order_id', 'customer__name', 'project__name')
+    list_display = ('order_id', 'partner', 'project', 'status', 'order_end_ym', 'order_date', 'view_pdf_links')
+    list_filter = ('status', 'order_end_ym', 'partner')
+    search_fields = ('order_id', 'partner__name', 'project__name')
     inlines = [OrderItemInline, PersonInline]
     date_hierarchy = 'order_date'
     
     fieldsets = (
         ('基本情報', {
-            'fields': ('order_id', 'customer', 'project', 'status', 'order_date', 'order_end_ym', 'work_start', 'work_end')
+            'fields': ('order_id', 'partner', 'project', 'status', 'order_date', 'order_end_ym', 'work_start', 'work_end')
         }),
         ('担当者・責任者情報', {
             'fields': ('甲_責任者', '甲_担当者', '乙_責任者', '乙_担当者', '作業責任者'),
@@ -52,7 +52,7 @@ class OrderAdmin(admin.ModelAdmin):
             'classes': ('collapse',),
         }),
         ('外部連携', {
-            'fields': ('external_signature_id',),
+            'fields': ('external_signature_id', 'drive_file_id'),
             'classes': ('collapse',),
         }),
         ('その他', {
@@ -75,19 +75,52 @@ class OrderAdmin(admin.ModelAdmin):
         )
     view_pdf_links.short_description = "PDFプレビュー"
 
+    actions = ['upload_to_drive']
+
+    def upload_to_drive(self, request, queryset):
+        from .services.google_drive_service import upload_order_pdf
+        success = 0
+        failed = 0
+        for order in queryset:
+            if not order.order_pdf:
+                self.message_user(request, f"{order.order_id}: PDFが生成されていません。先に正式発行してください。", level='warning')
+                failed += 1
+                continue
+            try:
+                result = upload_order_pdf(order)
+                order.drive_file_id = result['file_id']
+                order.save(update_fields=['drive_file_id'])
+                success += 1
+            except Exception as e:
+                self.message_user(request, f"{order.order_id}: アップロード失敗 - {e}", level='error')
+                failed += 1
+        if success:
+            self.message_user(request, f"{success}件の注文書をGoogleドライブにアップロードしました。")
+    upload_to_drive.short_description = "Google Driveにアップロード"
+
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ('project_id', 'name')
-    search_fields = ('name',)
+    list_display = ('project_id', 'customer', 'name')
+    list_filter = ('customer',)
+    search_fields = ('name', 'customer__name')
     readonly_fields = ('project_id',)
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('product_id', 'name', 'price')
+    list_display = ('id', 'name', 'price')
     search_fields = ('name',)
 
 # その他のマスタも簡易登録
 admin.site.register(Workplace)
 admin.site.register(Deliverable)
-admin.site.register(PaymentTerm)
-admin.site.register(ContractTerm)
+@admin.register(PaymentTerm)
+class PaymentTermAdmin(admin.ModelAdmin):
+    list_display = ('partner', 'project')
+    list_filter = ('partner',)
+    search_fields = ('partner__name', 'project__name')
+
+@admin.register(ContractTerm)
+class ContractTermAdmin(admin.ModelAdmin):
+    list_display = ('partner', 'project')
+    list_filter = ('partner',)
+    search_fields = ('partner__name', 'project__name')

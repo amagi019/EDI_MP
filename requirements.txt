@@ -1,7 +1,10 @@
-Django>=6.0.1
+Django>=4.2,<5.0
 reportlab
 Pillow
 gunicorn
 psycopg2-binary
 django-environ
 whitenoise
+google-api-python-client
+google-auth
+weasyprint

@@ -109,17 +109,12 @@ def generate_order_pdf(order, watermark=None):
     # 3. 宛先 (乙)
     p.setFont(font_name, 12)
     p.drawString(20*mm, height - 50*mm, "（乙）")
-    p.drawString(20*mm, height - 56*mm, f"{order.customer.name}  御中")
+    p.drawString(20*mm, height - 56*mm, f"{order.partner.name}  御中")
 
     # 4. 発行人 (甲)
     _draw_company_info(p, 110*mm, height - 55*mm, font_name, "甲")
 
-    # 5. 作成者印枠 (右側)
-    p.rect(width - 40*mm, height - 85*mm, 20*mm, 20*mm)
-    p.setFont(font_name, 7)
-    p.drawCentredString(width - 30*mm, height - 67*mm, "作成者")
-
-    # 6. 印影表示
+    # 6. 印影表示（枠なし）
     company = CompanyInfo.objects.first()
     if company and company.stamp_image:
         try:
@@ -134,8 +129,8 @@ def generate_order_pdf(order, watermark=None):
     # 8. 詳細テーブル
     kou_res = order.甲_責任者 or (company.responsible_person if company else "")
     kou_cnt = order.甲_担当者 or (company.contact_person if company else "")
-    otsu_res = order.乙_責任者 or order.customer.responsible_person
-    otsu_cnt = order.乙_担当者 or order.customer.contact_person
+    otsu_res = order.乙_責任者 or order.partner.responsible_person
+    otsu_cnt = order.乙_担当者 or order.partner.contact_person
 
     data = [
         ["業務名称", order.project.name if order.project else ""],
@@ -212,16 +207,16 @@ def generate_acceptance_pdf(order):
     p.setFont(font_name, 10)
     p.drawString(110*mm, height - 50*mm, "（乙）")
     p.setFont(font_name, 11)
-    p.drawString(110*mm, height - 55*mm, f"〒{order.customer.postal_code}")
-    p.drawString(110*mm, height - 60*mm, order.customer.address)
-    p.drawString(110*mm, height - 65*mm, order.customer.name)
-    p.drawString(110*mm, height - 70*mm, f"TEL:{order.customer.tel}")
+    p.drawString(110*mm, height - 55*mm, f"〒{order.partner.postal_code}")
+    p.drawString(110*mm, height - 60*mm, order.partner.address)
+    p.drawString(110*mm, height - 65*mm, order.partner.name)
+    p.drawString(110*mm, height - 70*mm, f"TEL:{order.partner.tel}")
 
     # 6. テーブル
     kou_res = order.甲_責任者 or (company.responsible_person if company else "")
     kou_cnt = order.甲_担当者 or (company.contact_person if company else "")
-    otsu_res = order.乙_責任者 or order.customer.responsible_person
-    otsu_cnt = order.乙_担当者 or order.customer.contact_person
+    otsu_res = order.乙_責任者 or order.partner.responsible_person
+    otsu_cnt = order.乙_担当者 or order.partner.contact_person
 
     data = [
         ["業務名称", order.project.name if order.project else ""],
@@ -258,7 +253,7 @@ def generate_acceptance_pdf(order):
     p.drawCentredString(40*mm, 25*mm, "承諾署名")
     p.rect(60*mm, 20*mm, 130*mm, 15*mm)
     p.setFont(font_name, 10)
-    p.drawString(65*mm, 27*mm, f"{order.customer.name}")
+    p.drawString(65*mm, 27*mm, f"{order.partner.name}")
 
     p.showPage()
     p.save()

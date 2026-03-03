@@ -1,15 +1,20 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-from .domain.models import Profile, Customer, CompanyInfo, BankMaster, SentEmailLog, MasterContractProgress, EmailTemplate
+from .domain.models import Profile, Partner, Customer, CompanyInfo, BankMaster, SentEmailLog, MasterContractProgress, EmailTemplate
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('customer_id', 'name', 'tel', 'email', 'registration_no')
+    list_display = ('name', 'tel', 'email', 'registration_no', 'representative_name')
+    search_fields = ('name', 'registration_no')
+
+@admin.register(Partner)
+class PartnerAdmin(admin.ModelAdmin):
+    list_display = ('partner_id', 'name', 'tel', 'email', 'registration_no')
     search_fields = ('name', 'email', 'registration_no')
-    readonly_fields = ('customer_id',)
+    readonly_fields = ('partner_id',)
     fieldsets = (
         (None, {
-            'fields': ('customer_id', 'name', 'name_kana', 'registration_no', 'postal_code', 'address', 'tel', 'fax', 'email', 'cc', 'bcc')
+            'fields': ('partner_id', 'name', 'name_kana', 'registration_no', 'postal_code', 'address', 'tel', 'fax', 'email', 'cc', 'bcc')
         }),
         (_('代表者・担当者情報'), {
             'fields': ('representative_name', 'representative_name_kana', 'representative_position', 'responsible_person', 'contact_person')
@@ -24,9 +29,9 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'customer', 'is_first_login')
-    list_filter = ('is_first_login', 'customer')
-    search_fields = ('user__username', 'customer__name')
+    list_display = ('user', 'partner', 'is_first_login')
+    list_filter = ('is_first_login', 'partner')
+    search_fields = ('user__username', 'partner__name')
 
 @admin.register(CompanyInfo)
 class CompanyInfoAdmin(admin.ModelAdmin):
@@ -57,10 +62,9 @@ admin.site.register(MasterContractProgress)
 class EmailTemplateAdmin(admin.ModelAdmin):
     list_display = ('code', 'subject', 'description', 'updated_at')
     search_fields = ('code', 'subject', 'description')
-    readonly_fields = ('code', 'updated_at') # コードは変更不可にする（開発時以外）
+    readonly_fields = ('code', 'updated_at')
     
     def get_readonly_fields(self, request, obj=None):
-        # 新規作成時はコード入力可能、編集時は不可にするのが安全
         if obj:
             return self.readonly_fields
         return ('updated_at',)

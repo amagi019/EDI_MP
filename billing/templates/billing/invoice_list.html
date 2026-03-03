@@ -1,0 +1,89 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "請求書一覧" %}{% endblock %}
+{% block extra_css %}
+<style>
+    .badge-paid {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10B981;
+    }
+
+    .badge-sent {
+        background: rgba(79, 70, 229, 0.15);
+        color: #818CF8;
+    }
+
+    .badge-issued {
+        background: rgba(245, 158, 11, 0.15);
+        color: #F59E0B;
+    }
+
+    .badge-draft {
+        background: rgba(148, 163, 184, 0.15);
+        color: #94A3B8;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <div class="flex justify-between" style="align-items: center; margin-bottom: 2rem;">
+        <h1>📄 {% trans "請求書一覧" %}</h1>
+        <a href="{% url 'billing:invoice_create' %}" class="btn">＋ {% trans "新規作成" %}</a>
+    </div>
+    <div class="card" style="padding: 1rem; margin-bottom: 1.5rem;">
+        <form method="get" class="flex" style="align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <select name="status" style="width: auto; margin-bottom: 0;" onchange="this.form.submit()">
+                <option value="">{% trans "すべて" %}</option>
+                {% for opt in status_options %}
+                <option value="{{ opt.value }}" {% if opt.selected %}selected{% endif %}>{{ opt.label }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="q" value="{{ search_query }}" placeholder="{% trans '検索...' %}"
+                style="width: auto; flex: 1; margin-bottom: 0;">
+            <button type="submit" class="btn btn-secondary">{% trans "検索" %}</button>
+        </form>
+    </div>
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "請求日" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "請求先" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "件名" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "税込合計" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "状態" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "操作" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">{{ inv.issue_date }}</td>
+                    <td style="padding: 0.75rem;">{{ inv.customer.name }}</td>
+                    <td style="padding: 0.75rem;"><a href="{% url 'billing:invoice_detail' inv.pk %}"
+                            style="color: #818CF8;">{{ inv.subject|default:"-" }}</a></td>
+                    <td style="padding: 0.75rem; text-align: right; font-weight: 600;">¥{{ inv.total_fmt }}</td>
+                    <td style="padding: 0.75rem; text-align: center;"><span class="status-badge"
+                            style="{{ inv.status_badge_style }}">{{ inv.get_status_display }}</span></td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <a href="{% url 'billing:invoice_update' inv.pk %}"
+                            style="color: var(--text-dim); margin-right: 0.5rem;" title="{% trans '編集' %}">✏️</a>
+                        <a href="{% url 'billing:invoice_pdf' inv.pk %}" style="color: var(--text-dim);"
+                            title="{% trans 'PDF' %}" target="_blank">📥</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="padding: 2rem; text-align: center; color: var(--text-dim);">{% trans "請求書がありません" %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
