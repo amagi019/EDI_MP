@@ -112,6 +112,7 @@ python manage.py runserver
 - [ユーザーマニュアル](docs/USER_MANUAL.md): システムの利用方法詳細
 - [運用テスト仕様書](docs/operational_test_plan.md): 動作確認手順
 - [GCPデプロイガイド](GCP_DEPLOY_GUIDE.md): 環境構築・デプロイ手順
+- [Git運用ガイド](docs/git_workflow.md): ブランチ運用・PR作成手順
 
 ---
 
