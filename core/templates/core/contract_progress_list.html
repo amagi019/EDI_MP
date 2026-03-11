@@ -58,6 +58,11 @@
                             style="background: rgba(16, 185, 129, 0.1); color: #10B981; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.2);">
                             {{ progress.get_status_display }}
                         </span>
+                        {% elif progress.status == 'PENDING_APPROVAL' %}
+                        <span
+                            style="background: rgba(251, 146, 60, 0.1); color: #FB923C; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid rgba(251, 146, 60, 0.2);">
+                            {{ progress.get_status_display }}
+                        </span>
                         {% endif %}
 
                         {# 書類未提出のアラート表示（招待済みステータス以外で、ファイルがない場合） #}
@@ -73,11 +78,33 @@
                     <td style="padding: 1rem 1.5rem; color: var(--text-dim);">{{ progress.updated_at|date:"Y/m/d H:i" }}
                     </td>
                     {% if is_staff %}
-                    <td style="padding: 1rem 1.5rem;">
+                    <td style="padding: 1rem 1.5rem; white-space: nowrap;">
                         <a href="{% url 'core:partner_email_log' progress.partner.partner_id %}"
                             class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
                             <i class="fas fa-search"></i> {% trans "詳細" %}
                         </a>
+                        {% if progress.status == 'INFO_DONE' %}
+                        <form method="post" action="{% url 'core:contract_generate' progress.partner.partner_id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
+                                <i class="fas fa-file-contract"></i> {% trans "契約書作成" %}
+                            </button>
+                        </form>
+                        {% elif progress.status == 'CONTRACT_SENT' %}
+                        <a href="{% url 'core:contract_preview' progress.partner.partner_id %}" class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;" target="_blank">
+                            <i class="fas fa-file-pdf"></i> {% trans "契約書PDF" %}
+                        </a>
+                        <form method="post" action="{% url 'core:contract_send' progress.partner.partner_id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;" onclick="return confirm('契約書をパートナーに送信しますか？')">
+                                <i class="fas fa-paper-plane"></i> {% trans "送信" %}
+                            </button>
+                        </form>
+                        {% elif progress.status == 'PENDING_APPROVAL' or progress.status == 'COMPLETED' %}
+                        <a href="{% url 'core:contract_preview' progress.partner.partner_id %}" class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;" target="_blank">
+                            <i class="fas fa-file-pdf"></i> {% trans "契約書PDF" %}
+                        </a>
+                        {% endif %}
                     </td>
                     {% endif %}
                 </tr>

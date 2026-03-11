@@ -5,12 +5,15 @@ from django.http import HttpResponse,  HttpResponseForbidden
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, CreateView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from django.urls import reverse
 from .models import Order
+from .forms import OrderCreateForm, OrderItemFormSet
 from .services.pdf_generator import generate_order_pdf, generate_acceptance_pdf
 from .services.signature_service import SignatureService
 
@@ -245,10 +248,78 @@ class OrderPublishView(View):
             result = upload_order_pdf(order)
             order.drive_file_id = result['file_id']
             order.save(update_fields=['drive_file_id'])
-            messages.success(request, f"注文書 {order.order_id} を正式に発行し、Googleドライブにアップロードしました。")
         except Exception as e:
             import logging
             logging.getLogger(__name__).warning(f"Drive upload failed for {order.order_id}: {e}")
-            messages.success(request, f"注文書 {order.order_id} を正式に発行しました。（Driveへのアップロードは失敗しました）")
+
+        # パートナーへ注文書送付メール
+        email_sent = False
+        if order.partner and order.partner.email:
+            subject = f"【注文書送付】注文番号：{order.order_id}"
+            login_url = f"{settings.CSRF_TRUSTED_ORIGINS[0].rstrip('/')}/accounts/login/" if settings.CSRF_TRUSTED_ORIGINS else "http://localhost:8000/accounts/login/"
+            message = f"""{order.partner.name} 様
+
+以下の注文書を送付いたします。
+システムにログインして内容をご確認の上、承認をお願いいたします。
+
+■注文番号：{order.order_id}
+■プロジェクト：{order.project.name}
+■注文日：{order.order_date}
+■期間：{order.work_start} 〜 {order.work_end}
+
+▼ログインURL
+{login_url}
+
+ご不明な点がございましたら、担当者までお問い合わせください。
+"""
+            try:
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [order.partner.email], fail_silently=False)
+                email_sent = True
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Order notification email failed for {order.order_id}: {e}")
+
+        if email_sent:
+            messages.success(request, f"注文書 {order.order_id} を正式に発行し、パートナーへメール通知しました。")
+        else:
+            messages.success(request, f"注文書 {order.order_id} を正式に発行しました。（メール通知は送信されませんでした）")
 
         return redirect('orders:order_detail', order_id=order_id)
+
+
+class OrderCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    """スタッフ用：発注書新規作成"""
+    model = Order
+    form_class = OrderCreateForm
+    template_name = 'orders/order_create.html'
+
+    def test_func(self):
+        return self.request.user.is_staff
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.request.POST:
+            context['item_formset'] = OrderItemFormSet(self.request.POST, prefix='items')
+        else:
+            context['item_formset'] = OrderItemFormSet(prefix='items')
+        return context
+
+    def form_valid(self, form):
+        context = self.get_context_data()
+        item_formset = context['item_formset']
+
+        if item_formset.is_valid():
+            self.object = form.save(commit=False)
+            self.object.status = 'DRAFT'
+            self.object.save()
+
+            item_formset.instance = self.object
+            item_formset.save()
+
+            messages.success(self.request, f"発注書 {self.object.order_id} を下書きとして作成しました。")
+            return redirect('orders:order_detail', order_id=self.object.order_id)
+        else:
+            return self.render_to_response(self.get_context_data(form=form))
+
+    def form_invalid(self, form):
+        return self.render_to_response(self.get_context_data(form=form))

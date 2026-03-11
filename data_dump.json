@@ -1,0 +1,1048 @@
+[
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$600000$iZw5pEJVDHRO3EdPK2f0CF$MzvgPJVE9hW0xhL0wnaXdUps0DgEVQvD+GvdicRhDzA=",
+    "last_login": "2026-03-02T15:05:21.467Z",
+    "is_superuser": true,
+    "username": "amagi19",
+    "first_name": "吉川",
+    "last_name": "裕",
+    "email": "y.yosikawa@gmail.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-02-06T09:57:23Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$600000$tfL4TlT4ZzGvVyoatkglxt$vJG4MpBRACZWQjEO6mRmzhwP8x6WSG5Gmcwt6SxFaeQ=",
+    "last_login": "2026-02-07T07:11:58.314Z",
+    "is_superuser": false,
+    "username": "y.yoshikawa@macplanning.com",
+    "first_name": "",
+    "last_name": "",
+    "email": "y.yoshikawa@macplanning.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-02-06T10:05:02.493Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$600000$MdhnRdFmG61DIyKmIe9lJP$O4wIdHwdpFiK+mzvQKuRZox1AZXQOIn1RJRgA2GsyEw=",
+    "last_login": "2026-02-24T04:50:41.127Z",
+    "is_superuser": true,
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "email": "y.yoshikawa@macplanning.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-02-18T13:02:21.437Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$600000$XLbhpBI1DEdd4JKI0CstDe$H9QwSVG/1d729exLpyRtzfi2z+FLuXFfjb5OLMKejBc=",
+    "last_login": "2026-02-24T04:46:42.403Z",
+    "is_superuser": false,
+    "username": "test_partner",
+    "first_name": "",
+    "last_name": "",
+    "email": "test-partner@example.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-02-24T04:45:08.071Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "core.customer",
+  "pk": 1,
+  "fields": {
+    "name": "（未設定）",
+    "postal_code": "",
+    "address": "",
+    "tel": "",
+    "email": "",
+    "representative_title": "代表取締役",
+    "representative_name": "",
+    "registration_no": "",
+    "url": ""
+  }
+},
+{
+  "model": "core.customer",
+  "pk": 2,
+  "fields": {
+    "name": "株式会社イー・ビジネス",
+    "postal_code": "1050001",
+    "address": "東京都港区虎ノ門１丁目１７番１号虎ノ門ヒルズビジネスタワー５階",
+    "tel": "0368093235",
+    "email": "kishimoto.shinsuke@e-business.co.jp",
+    "representative_title": "代表取締役",
+    "representative_name": "花　東江",
+    "registration_no": "T2010001110043",
+    "url": "https://e-business.co.jp/"
+  }
+},
+{
+  "model": "core.customer",
+  "pk": 3,
+  "fields": {
+    "name": "テスト取引先株式会社",
+    "postal_code": "100-0001",
+    "address": "東京都千代田区千代田1-1",
+    "tel": "03-1234-5678",
+    "email": "",
+    "representative_title": "代表取締役",
+    "representative_name": "田中太郎",
+    "registration_no": "T1234567890123",
+    "url": ""
+  }
+},
+{
+  "model": "core.partner",
+  "pk": "0000000001",
+  "fields": {
+    "name": "ABC株式会社",
+    "name_kana": "エービーシーカブシキガイシャ",
+    "postal_code": "1160012",
+    "address": "東京都荒川区東尾久８−９−１４",
+    "tel": "0338921001",
+    "fax": "",
+    "email": "y.yoshikawa@macplanning.com",
+    "cc": "",
+    "bcc": "",
+    "representative_name": "小林一郎",
+    "representative_name_kana": "コバヤシイチロウ",
+    "representative_position": "代表取締役",
+    "responsible_person": "",
+    "contact_person": "",
+    "registration_no": "",
+    "attachment_file": "",
+    "bank_name": "GMOあおぞらネット銀行",
+    "bank_branch": "法人第二営業部支店",
+    "account_type": "普通",
+    "account_number": "4543109",
+    "account_name": "有限会社マックプランニング"
+  }
+},
+{
+  "model": "core.partner",
+  "pk": "0000000002",
+  "fields": {
+    "name": "株式会社グラントホープ",
+    "name_kana": "グラントホープ",
+    "postal_code": "170-0013",
+    "address": "東京都豊島区東池袋1-3-5　池袋伊藤ビル7F",
+    "tel": "0369142482",
+    "fax": "0369142483",
+    "email": "jimu@granthope.jp",
+    "cc": "nakaieka@granthope.jp",
+    "bcc": "",
+    "representative_name": "小柳 大輔",
+    "representative_name_kana": "コヤナギダイスケ",
+    "representative_position": "代表取締役",
+    "responsible_person": "",
+    "contact_person": "",
+    "registration_no": "T8010001217036",
+    "attachment_file": "",
+    "bank_name": "三菱ＵＦＪ銀行",
+    "bank_branch": "高島平支店",
+    "account_type": "普通",
+    "account_number": "4543109",
+    "account_name": "株式会社グラントホープ"
+  }
+},
+{
+  "model": "core.partner",
+  "pk": "0000000003",
+  "fields": {
+    "name": "テストパートナー株式会社",
+    "name_kana": "",
+    "postal_code": "",
+    "address": "",
+    "tel": "",
+    "fax": "",
+    "email": "test-partner@example.com",
+    "cc": "",
+    "bcc": "",
+    "representative_name": "",
+    "representative_name_kana": "",
+    "representative_position": "",
+    "responsible_person": "",
+    "contact_person": "",
+    "registration_no": "",
+    "attachment_file": "",
+    "bank_name": "",
+    "bank_branch": "",
+    "account_type": "普通",
+    "account_number": "",
+    "account_name": ""
+  }
+},
+{
+  "model": "core.profile",
+  "pk": 1,
+  "fields": {
+    "user": [
+      "y.yoshikawa@macplanning.com"
+    ],
+    "partner": "0000000001",
+    "is_first_login": false
+  }
+},
+{
+  "model": "core.profile",
+  "pk": 2,
+  "fields": {
+    "user": [
+      "admin"
+    ],
+    "partner": null,
+    "is_first_login": true
+  }
+},
+{
+  "model": "core.profile",
+  "pk": 3,
+  "fields": {
+    "user": [
+      "test_partner"
+    ],
+    "partner": "0000000003",
+    "is_first_login": false
+  }
+},
+{
+  "model": "core.companyinfo",
+  "pk": 1,
+  "fields": {
+    "name": "有限会社 マックプランニング",
+    "postal_code": "116-0012",
+    "address": "東京都荒川区東尾久8-9-14",
+    "tel": "090-3043-0477",
+    "fax": "",
+    "representative_title": "代表取締役",
+    "representative_name": "吉川 裕",
+    "registration_no": "T3011502011134",
+    "responsible_person": "吉川 裕",
+    "contact_person": "吉川 裕",
+    "bank_name": "GMOあおぞらネット銀行",
+    "bank_branch": "法人第二営業部支店",
+    "account_type": "普通",
+    "account_number": "2047690",
+    "account_name": "有限会社マックプランニング",
+    "stamp_image": "",
+    "logo_image": ""
+  }
+},
+{
+  "model": "core.sentemaillog",
+  "pk": 1,
+  "fields": {
+    "partner": "0000000001",
+    "subject": "【有限会社 マックプランニング】EDIシステム アカウント発行のご案内",
+    "body": "有限会社 マックプランニング\nABC株式会社 様\n\nEDIシステムをご案内いたします。\n\nこの度、弊社との取引に関連して、EDIシステムのアカウントを発行いたしました。\n本システムでは、注文書の確認、および会社情報の登録を行っていただけます。\n\n以下の情報を使用してログインし、まず初めに「基本情報登録」をお願いいたします。\n\n■ ログイン情報\nログインURL: http://localhost:8000/accounts/login/\nログインID: y.yoshikawa@macplanning.com\n仮パスワード: NKXFMPUgjZ\n\n■ 初回ログイン後の流れ\n1. 仮パスワードでログインしてください。\n2. 自動的にパスワード変更画面が表示されますので、新しいパスワードを設定してください。\n3. ダッシュボードの「会社情報を登録・更新する」より、貴社の基本情報および振込先情報の入力をお願いいたします。\n\n本メールに心当たりがない場合は、お手数ですが破棄していただくか、弊社窓口までご連絡ください。\n\n--------------------------------------------------\n有限会社 マックプランニング\n東京都荒川区東尾久8-9-14\nTEL: 090-3043-0477\n--------------------------------------------------\n",
+    "sent_at": "2026-02-06T10:05:02.580Z"
+  }
+},
+{
+  "model": "core.mastercontractprogress",
+  "pk": 1,
+  "fields": {
+    "partner": "0000000001",
+    "status": "INFO_DONE",
+    "updated_at": "2026-02-06T10:05:02.579Z"
+  }
+},
+{
+  "model": "core.mastercontractprogress",
+  "pk": 2,
+  "fields": {
+    "partner": "0000000003",
+    "status": "COMPLETED",
+    "updated_at": "2026-02-24T04:45:08.126Z"
+  }
+},
+{
+  "model": "orders.project",
+  "pk": "PRJ00000001",
+  "fields": {
+    "customer": 2,
+    "name": "横須賀市上下水道局の給排水設備工事等電子申請システム改修"
+  }
+},
+{
+  "model": "orders.project",
+  "pk": "PRJ_TEST001",
+  "fields": {
+    "customer": 3,
+    "name": "テストWebシステム開発"
+  }
+},
+{
+  "model": "orders.workplace",
+  "pk": 3,
+  "fields": {
+    "name": "弊社指定場所",
+    "address": ""
+  }
+},
+{
+  "model": "orders.paymentterm",
+  "pk": 1,
+  "fields": {
+    "partner": "0000000002",
+    "project": "PRJ00000001",
+    "description": "作業報告書査収による毎月末締め、翌々月15日に現金振込\r\n1 時間単位15分。\r\n2 休憩時間は顧客就業時間に準ずる。\r\n3 延長/中止の場合には、両者協議の上、継続検討を行うものとする。\r\n4 著しく勤怠不良の場合は、協議の上で減額する。"
+  }
+},
+{
+  "model": "orders.paymentterm",
+  "pk": 2,
+  "fields": {
+    "partner": "0000000003",
+    "project": "PRJ_TEST001",
+    "description": "月末締め翌月末払い"
+  }
+},
+{
+  "model": "orders.contractterm",
+  "pk": 1,
+  "fields": {
+    "partner": "0000000002",
+    "project": "PRJ00000001",
+    "description": "〈契約条項〉\r\n1.乙は、本作業にて知り得た知識・企業秘密・ノウハウその他の情報(本作業自体を含め)、一切乙以外の外部に漏洩しないものとする。\r\n2.顧客の都合によりこの注文書の業務が中断もしくは終了した場合は、その時点で、当該注文は解除され発注の効力を失う。"
+  }
+},
+{
+  "model": "orders.contractterm",
+  "pk": 2,
+  "fields": {
+    "partner": "0000000003",
+    "project": "PRJ_TEST001",
+    "description": "業務委託基本契約書に準ずる"
+  }
+},
+{
+  "model": "orders.orderbasicinfo",
+  "pk": 1,
+  "fields": {
+    "partner": "0000000002",
+    "project": "PRJ00000001",
+    "project_start_date": "2025-12-01",
+    "project_end_date": "2026-03-31",
+    "order_issuance_timing": "20TH_DAY",
+    "invoice_issuance_timing": "LAST_DAY"
+  }
+},
+{
+  "model": "orders.order",
+  "pk": "MP20260224000001",
+  "fields": {
+    "partner": "0000000002",
+    "project": "PRJ00000001",
+    "status": "UNCONFIRMED",
+    "order_end_ym": "2026-03-01",
+    "order_date": "2026-02-24",
+    "work_start": "2026-03-01",
+    "work_end": "2026-03-31",
+    "workplace": 3,
+    "deliverable": null,
+    "deliverable_text": "月別作業報告書",
+    "payment_term": 1,
+    "payment_condition": "作業報告書査収による毎月末締め、翌々月15日に現金振込\r\n1 時間単位15分。\r\n2 休憩時間は顧客就業時間に準ずる。\r\n3 延長/中止の場合には、両者協議の上、継続検討を行うものとする。\r\n4 著しく勤怠不良の場合は、協議の上で減額する。",
+    "contract_term": 1,
+    "contract_items": "〈契約条項〉\r\n1.乙は、本作業にて知り得た知識・企業秘密・ノウハウその他の情報(本作業自体を含め)、一切乙以外の外部に漏洩しないものとする。\r\n2.顧客の都合によりこの注文書の業務が中断もしくは終了した場合は、その時点で、当該注文は解除され発注の効力を失う。",
+    "甲_責任者": "吉川裕",
+    "甲_担当者": "",
+    "乙_責任者": "小柳 大輔",
+    "乙_担当者": "中家和馬",
+    "作業責任者": "前野 謙",
+    "base_fee": 720000,
+    "time_lower_limit": "140.00",
+    "time_upper_limit": "200.00",
+    "shortage_fee": 5140,
+    "excess_fee": 4230,
+    "remarks": "",
+    "created_at": "2026-02-24T00:52:50.344Z",
+    "updated_at": "2026-02-24T02:31:43.005Z",
+    "finalized_at": null,
+    "document_hash": "",
+    "order_pdf": "",
+    "acceptance_pdf": "",
+    "external_signature_id": null,
+    "drive_file_id": ""
+  }
+},
+{
+  "model": "orders.order",
+  "pk": "MP_TEST_001",
+  "fields": {
+    "partner": "0000000003",
+    "project": "PRJ_TEST001",
+    "status": "APPROVED",
+    "order_end_ym": "2026-03-01",
+    "order_date": "2026-02-24",
+    "work_start": "2026-03-01",
+    "work_end": "2026-03-31",
+    "workplace": null,
+    "deliverable": null,
+    "deliverable_text": "月別作業報告書",
+    "payment_term": 2,
+    "payment_condition": "月末締め翌月末払い",
+    "contract_term": 2,
+    "contract_items": "業務委託基本契約書に準ずる",
+    "甲_責任者": "",
+    "甲_担当者": "",
+    "乙_責任者": "",
+    "乙_担当者": "",
+    "作業責任者": "",
+    "base_fee": 600000,
+    "time_lower_limit": "140.00",
+    "time_upper_limit": "180.00",
+    "shortage_fee": 3000,
+    "excess_fee": 3000,
+    "remarks": "",
+    "created_at": "2026-02-24T04:45:08.129Z",
+    "updated_at": "2026-02-24T04:45:08.138Z",
+    "finalized_at": null,
+    "document_hash": "",
+    "order_pdf": "",
+    "acceptance_pdf": "",
+    "external_signature_id": null,
+    "drive_file_id": ""
+  }
+},
+{
+  "model": "orders.order",
+  "pk": "TEST-ORDER-001",
+  "fields": {
+    "partner": "0000000001",
+    "project": "PRJ00000001",
+    "status": "DRAFT",
+    "order_end_ym": "2026-02-28",
+    "order_date": "2026-02-07",
+    "work_start": "2026-02-01",
+    "work_end": "2026-02-28",
+    "workplace": null,
+    "deliverable": null,
+    "deliverable_text": "月別作業報告書",
+    "payment_term": null,
+    "payment_condition": "",
+    "contract_term": null,
+    "contract_items": "",
+    "甲_責任者": "",
+    "甲_担当者": "",
+    "乙_責任者": "",
+    "乙_担当者": "",
+    "作業責任者": "",
+    "base_fee": 0,
+    "time_lower_limit": "0.00",
+    "time_upper_limit": "0.00",
+    "shortage_fee": 0,
+    "excess_fee": 0,
+    "remarks": "",
+    "created_at": "2026-02-07T04:12:55.661Z",
+    "updated_at": "2026-02-24T02:28:25.284Z",
+    "finalized_at": null,
+    "document_hash": "",
+    "order_pdf": "",
+    "acceptance_pdf": "",
+    "external_signature_id": null,
+    "drive_file_id": ""
+  }
+},
+{
+  "model": "orders.orderitem",
+  "pk": 7,
+  "fields": {
+    "order": "TEST-ORDER-001",
+    "product": null,
+    "person_name": "山田 太郎",
+    "effort": "1.00",
+    "base_fee": 600000,
+    "actual_hours": "160.00",
+    "time_lower_limit": "140.00",
+    "time_upper_limit": "180.00",
+    "shortage_rate": 3000,
+    "excess_rate": 4000,
+    "quantity": 1,
+    "price": 600000
+  }
+},
+{
+  "model": "orders.orderitem",
+  "pk": 8,
+  "fields": {
+    "order": "TEST-ORDER-001",
+    "product": null,
+    "person_name": "佐藤 花子",
+    "effort": "1.00",
+    "base_fee": 550000,
+    "actual_hours": "190.00",
+    "time_lower_limit": "140.00",
+    "time_upper_limit": "180.00",
+    "shortage_rate": 3000,
+    "excess_rate": 4000,
+    "quantity": 1,
+    "price": 590000
+  }
+},
+{
+  "model": "orders.orderitem",
+  "pk": 10,
+  "fields": {
+    "order": "MP_TEST_001",
+    "product": null,
+    "person_name": "山田花子",
+    "effort": "1.00",
+    "base_fee": 600000,
+    "actual_hours": "0.00",
+    "time_lower_limit": "140.00",
+    "time_upper_limit": "180.00",
+    "shortage_rate": 3000,
+    "excess_rate": 3000,
+    "quantity": 1,
+    "price": 600000
+  }
+},
+{
+  "model": "invoices.invoice",
+  "pk": 2,
+  "fields": {
+    "order": "TEST-ORDER-001",
+    "invoice_no": "2602001",
+    "acceptance_no": "MP2602001",
+    "target_month": "2026-02-01",
+    "issue_date": "2026-02-07",
+    "acceptance_date": null,
+    "payment_deadline": null,
+    "payment_date": null,
+    "department": "開発部 第2チーム",
+    "work_report_file": "",
+    "subtotal_amount": 1190000,
+    "tax_amount": 119000,
+    "total_amount": 1309000,
+    "status": "DRAFT",
+    "created_at": "2026-02-07T04:12:55.663Z",
+    "updated_at": "2026-02-07T04:12:55.663Z"
+  }
+},
+{
+  "model": "invoices.invoice",
+  "pk": 3,
+  "fields": {
+    "order": "MP_TEST_001",
+    "invoice_no": "2602002",
+    "acceptance_no": "MP2602002",
+    "target_month": "2026-03-01",
+    "issue_date": "2026-02-24",
+    "acceptance_date": null,
+    "payment_deadline": "2026-04-30",
+    "payment_date": "2026-04-25",
+    "department": "",
+    "work_report_file": "",
+    "subtotal_amount": 600000,
+    "tax_amount": 60000,
+    "total_amount": 660000,
+    "status": "PAID",
+    "created_at": "2026-02-24T04:45:08.140Z",
+    "updated_at": "2026-02-24T04:45:08.149Z"
+  }
+},
+{
+  "model": "invoices.invoiceitem",
+  "pk": 3,
+  "fields": {
+    "invoice": 2,
+    "person_name": "山田 太郎",
+    "work_time": "160.00",
+    "base_fee": 600000,
+    "time_lower_limit": "140.00",
+    "time_upper_limit": "180.00",
+    "shortage_rate": 3000,
+    "excess_rate": 4000,
+    "excess_amount": 0,
+    "shortage_amount": 0,
+    "item_subtotal": 600000,
+    "remarks": ""
+  }
+},
+{
+  "model": "invoices.invoiceitem",
+  "pk": 4,
+  "fields": {
+    "invoice": 2,
+    "person_name": "佐藤 花子",
+    "work_time": "190.00",
+    "base_fee": 550000,
+    "time_lower_limit": "140.00",
+    "time_upper_limit": "180.00",
+    "shortage_rate": 3000,
+    "excess_rate": 4000,
+    "excess_amount": 40000,
+    "shortage_amount": 0,
+    "item_subtotal": 590000,
+    "remarks": ""
+  }
+},
+{
+  "model": "invoices.invoiceitem",
+  "pk": 5,
+  "fields": {
+    "invoice": 3,
+    "person_name": "山田花子",
+    "work_time": "160.00",
+    "base_fee": 600000,
+    "time_lower_limit": "140.00",
+    "time_upper_limit": "180.00",
+    "shortage_rate": 3000,
+    "excess_rate": 3000,
+    "excess_amount": 0,
+    "shortage_amount": 0,
+    "item_subtotal": 600000,
+    "remarks": ""
+  }
+},
+{
+  "model": "billing.billingcustomer",
+  "pk": 1,
+  "fields": {
+    "name": "株式会社 NTP",
+    "title": "代表取締役",
+    "contact_person": "上野 教生",
+    "email": "norio.ueno@next-third-place.com",
+    "cc_email": "accounting@ntp-inc.jp",
+    "phone": "090-3655-4219",
+    "postal_code": "6420001",
+    "address": "和歌山県海南市船尾378-72"
+  }
+},
+{
+  "model": "billing.billingcustomer",
+  "pk": 2,
+  "fields": {
+    "name": "テスト請求先",
+    "title": "代表取締役",
+    "contact_person": "吉川裕",
+    "email": "y.yosikawa@gmail.com",
+    "cc_email": "y.yoshikawa@macplanning.com",
+    "phone": "08088848374",
+    "postal_code": "410-0847",
+    "address": "３６"
+  }
+},
+{
+  "model": "billing.billingproduct",
+  "pk": 1,
+  "fields": {
+    "name": "プロジェクトに関わる開発業務（日髙）",
+    "unit_price": 750000,
+    "unit": "円",
+    "tax_category": "10"
+  }
+},
+{
+  "model": "billing.billingproduct",
+  "pk": 2,
+  "fields": {
+    "name": "プロジェクトに関わる開発業務（吉川）",
+    "unit_price": 780000,
+    "unit": "円",
+    "tax_category": "10"
+  }
+},
+{
+  "model": "billing.billinginvoice",
+  "pk": "2c76672d-e546-4d6f-a85a-6b02bd5b7a1a",
+  "fields": {
+    "customer": 1,
+    "company": 1,
+    "issue_date": "2026-02-27",
+    "due_date": "2026-04-01",
+    "subject": "プロジェクトに関わる開発業務",
+    "notes": "",
+    "status": "DRAFT",
+    "pdf_file": "",
+    "drive_file_id": "16BoI5v0UTmOKQ87LqHfWD7Tq-AVMWcI7",
+    "created_at": "2026-03-02T14:57:50.329Z",
+    "updated_at": "2026-03-02T15:39:06.758Z"
+  }
+},
+{
+  "model": "billing.billinginvoice",
+  "pk": "968487f5-1024-4116-8fa6-665634ca2b75",
+  "fields": {
+    "customer": 2,
+    "company": 1,
+    "issue_date": "2026-03-03",
+    "due_date": "2026-03-31",
+    "subject": "テスト請求書",
+    "notes": "",
+    "status": "SENT",
+    "pdf_file": "",
+    "drive_file_id": "",
+    "created_at": "2026-03-02T15:06:39.721Z",
+    "updated_at": "2026-03-03T02:18:39.089Z"
+  }
+},
+{
+  "model": "billing.billingitem",
+  "pk": 1,
+  "fields": {
+    "invoice": "2c76672d-e546-4d6f-a85a-6b02bd5b7a1a",
+    "product": 1,
+    "product_name": "プロジェクトに関わる開発業務（日髙）",
+    "unit_price": 750000,
+    "man_month": "1.00",
+    "tax_category": "10",
+    "sort_order": 0
+  }
+},
+{
+  "model": "billing.billingitem",
+  "pk": 2,
+  "fields": {
+    "invoice": "2c76672d-e546-4d6f-a85a-6b02bd5b7a1a",
+    "product": 2,
+    "product_name": "プロジェクトに関わる開発業務（吉川）",
+    "unit_price": 780000,
+    "man_month": "1.00",
+    "tax_category": "10",
+    "sort_order": 0
+  }
+},
+{
+  "model": "billing.billingitem",
+  "pk": 3,
+  "fields": {
+    "invoice": "968487f5-1024-4116-8fa6-665634ca2b75",
+    "product": 2,
+    "product_name": "プロジェクトに関わる開発業務（吉川）",
+    "unit_price": 780000,
+    "man_month": "1.00",
+    "tax_category": "10",
+    "sort_order": 0
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 4,
+  "fields": {
+    "action_time": "2026-02-07T02:56:14.704Z",
+    "user": [
+      "amagi19"
+    ],
+    "content_type": [
+      "orders",
+      "project"
+    ],
+    "object_id": "PRJ00000001",
+    "object_repr": "[PRJ00000001] 横須賀市上下水道局の給排水設備工事等電子申請システム改修",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 5,
+  "fields": {
+    "action_time": "2026-02-24T00:28:35.361Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "core",
+      "companyinfo"
+    ],
+    "object_id": "1",
+    "object_repr": "有限会社 マックプランニング",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 6,
+  "fields": {
+    "action_time": "2026-02-24T00:35:20.822Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "core",
+      "partner"
+    ],
+    "object_id": "0000000002",
+    "object_repr": "[0000000002] 株式会社グラントホープ",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 7,
+  "fields": {
+    "action_time": "2026-02-24T00:35:48.863Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "core",
+      "partner"
+    ],
+    "object_id": "0000000002",
+    "object_repr": "[0000000002] 株式会社グラントホープ",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"\\u96fb\\u8a71\\u756a\\u53f7\", \"FAX\\u756a\\u53f7\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 8,
+  "fields": {
+    "action_time": "2026-02-24T00:39:16.299Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "orderbasicinfo"
+    ],
+    "object_id": "1",
+    "object_repr": "横須賀市上下水道局の給排水設備工事等電子申請システム改修 - 株式会社グラントホープ",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 9,
+  "fields": {
+    "action_time": "2026-02-24T00:52:50.346Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "order"
+    ],
+    "object_id": "MP20260224000001",
+    "object_repr": "MP20260224000001 - [0000000002] 株式会社グラントホープ",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 10,
+  "fields": {
+    "action_time": "2026-02-24T00:53:09.566Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "workplace"
+    ],
+    "object_id": "3",
+    "object_repr": "弊社指定場所",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 11,
+  "fields": {
+    "action_time": "2026-02-24T00:56:48.632Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "order"
+    ],
+    "object_id": "MP20260224000001",
+    "object_repr": "MP20260224000001 - [0000000002] 株式会社グラントホープ",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"\\u52e4\\u52d9\\u5834\\u6240\", \"\\u57fa\\u672c\\u6599\\u91d1\", \"\\u57fa\\u6e96\\u6642\\u9593_\\u4e0b\\u9650\", \"\\u57fa\\u6e96\\u6642\\u9593_\\u4e0a\\u9650\", \"\\u4e0d\\u8db3\\u5358\\u4fa1\", \"\\u8d85\\u904e\\u5358\\u4fa1\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 12,
+  "fields": {
+    "action_time": "2026-02-24T00:58:14.201Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "paymentterm"
+    ],
+    "object_id": "2",
+    "object_repr": "作業報告書査収による毎月末締め、翌々月15日に現金振込 1 時間単位15分。 2 休憩時間は顧客就業時間に準ずる。 3 請求は株式会社イー・ビジネスからメール配信の「御請求書」内容を確認、「受諾」する 4 延長/中止の場合には、両者協議の上、継続検討を行うものとする。 5 著しく勤怠不良の場合は、協議の上で減額する。 6 注文請書の承諾は毎月の15日まで。",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 13,
+  "fields": {
+    "action_time": "2026-02-24T01:05:31.311Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "paymentterm"
+    ],
+    "object_id": "2",
+    "object_repr": "EB",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"\\u30bf\\u30a4\\u30c8\\u30eb\", \"\\u8aac\\u660e\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 14,
+  "fields": {
+    "action_time": "2026-02-24T02:05:50.402Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "core",
+      "customer"
+    ],
+    "object_id": "2",
+    "object_repr": "株式会社イー・ビジネス",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 15,
+  "fields": {
+    "action_time": "2026-02-24T02:06:19.438Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "core",
+      "customer"
+    ],
+    "object_id": "2",
+    "object_repr": "株式会社イー・ビジネス",
+    "action_flag": 2,
+    "change_message": "[]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 16,
+  "fields": {
+    "action_time": "2026-02-24T02:07:28.766Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "paymentterm"
+    ],
+    "object_id": "1",
+    "object_repr": "株式会社グラントホープ × 横須賀市上下水道局の給排水設備工事等電子申請システム改修",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 17,
+  "fields": {
+    "action_time": "2026-02-24T02:08:36.540Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "contractterm"
+    ],
+    "object_id": "1",
+    "object_repr": "株式会社グラントホープ × 横須賀市上下水道局の給排水設備工事等電子申請システム改修",
+    "action_flag": 1,
+    "change_message": "[{\"added\": {}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 18,
+  "fields": {
+    "action_time": "2026-02-24T02:11:52.080Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "orderbasicinfo"
+    ],
+    "object_id": "1",
+    "object_repr": "横須賀市上下水道局の給排水設備工事等電子申請システム改修 - 株式会社グラントホープ",
+    "action_flag": 2,
+    "change_message": "[]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 19,
+  "fields": {
+    "action_time": "2026-02-24T03:16:29.184Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "order"
+    ],
+    "object_id": "TEST-ORDER-ORD",
+    "object_repr": "TEST-ORDER-ORD - [0000000001] ABC株式会社",
+    "action_flag": 3,
+    "change_message": ""
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 20,
+  "fields": {
+    "action_time": "2026-02-24T03:58:43.021Z",
+    "user": [
+      "admin"
+    ],
+    "content_type": [
+      "orders",
+      "project"
+    ],
+    "object_id": "PRJ00000001",
+    "object_repr": "[PRJ00000001] 横須賀市上下水道局の給排水設備工事等電子申請システム改修",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"\\u53d6\\u5f15\\u5148\"]}}]"
+  }
+}
+]

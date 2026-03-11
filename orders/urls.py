@@ -4,6 +4,7 @@ from . import views, webhooks
 app_name = 'orders'
 
 urlpatterns = [
+    path('staff/create/', views.OrderCreateView.as_view(), name='order_create'),
     path('admin/pdf/<str:order_id>/', views.AdminOrderPDFView.as_view(), name='admin_order_pdf'),
     path('admin/acceptance/pdf/<str:order_id>/', views.AdminAcceptancePDFView.as_view(), name='admin_acceptance_pdf'),
     path('my/pdf/<str:order_id>/', views.CustomerOrderPDFView.as_view(), name='customer_order_pdf'),
@@ -14,3 +15,4 @@ urlpatterns = [
     path('admin/publish/<str:order_id>/', views.OrderPublishView.as_view(), name='order_publish'),
     path('webhook/signature/', webhooks.signature_webhook, name='signature_webhook'),
 ]
+

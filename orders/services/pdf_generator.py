@@ -74,11 +74,7 @@ def _get_fee_text(order):
         fee_text += "消費税抜き。作業報告書に基づく稼動実費精算とする。"
         return fee_text
     else:
-        return (f"月額基本料金：￥{order.base_fee:,}円/月 (消費税抜き)\n"
-                f"不足単価：￥{order.shortage_fee:,}/h\n"
-                f"超過単価：￥{order.excess_fee:,}/h\n"
-                f"※基準時間：{order.time_lower_limit}h～{order.time_upper_limit}h/月\n\n"
-                "作業報告書に基づく稼動実費精算とする。")
+        return "（明細行が登録されていません）"
 
 def generate_order_pdf(order, watermark=None):
     """注文書PDFの生成"""
@@ -114,11 +110,28 @@ def generate_order_pdf(order, watermark=None):
     # 4. 発行人 (甲)
     _draw_company_info(p, 110*mm, height - 55*mm, font_name, "甲")
 
-    # 6. 印影表示（枠なし）
+    # 6. 角印（印影）表示 - 社名の右端に被せて配置
+    stamp_path = None
     company = CompanyInfo.objects.first()
     if company and company.stamp_image:
         try:
-            p.drawImage(company.stamp_image.path, 155*mm, height - 85*mm, width=22*mm, height=22*mm, mask='auto', preserveAspectRatio=True)
+            stamp_path = company.stamp_image.path
+        except:
+            pass
+    if not stamp_path:
+        fallback = os.path.join(settings.MEDIA_ROOT, 'stamps', 'company_seal.png')
+        if os.path.exists(fallback):
+            stamp_path = fallback
+    if stamp_path:
+        try:
+            # 社名テキストの幅を計算して右端に被せる
+            p.setFont(font_name, 11)
+            name = company.name if company else "有限会社 マックプランニング"
+            name_width = p.stringWidth(name, font_name, 11)
+            stamp_size = 22 * mm
+            stamp_x = 110 * mm + name_width - stamp_size * 0.35  # 社名右端に35%被せる
+            stamp_y = height - 55*mm - 5*mm - stamp_size * 0.65  # 社名の縦位置に合わせる
+            p.drawImage(stamp_path, stamp_x, stamp_y, width=stamp_size, height=stamp_size, mask='auto', preserveAspectRatio=True)
         except:
             pass
 

@@ -6,6 +6,7 @@ from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.platypus import Table, TableStyle
 from reportlab.lib import colors
 import io
+import os
 import datetime
 from django.conf import settings
 from core.domain.models import CompanyInfo
@@ -76,13 +77,7 @@ def generate_invoice_pdf(invoice):
     # 4. 発行人 (自社)
     _draw_company_info(p, 120*mm, height - 55*mm, font_name)
 
-    # 5. 印影表示
-    company = CompanyInfo.objects.first()
-    if company and company.stamp_image:
-        try:
-            p.drawImage(company.stamp_image.path, 165*mm, height - 80*mm, width=22*mm, height=22*mm, mask='auto', preserveAspectRatio=True)
-        except:
-            pass
+    # 注: 請求書はパートナーが作成元のため角印は不要
 
     # 6. ご請求額サマリ
     p.setFont(font_name, 12)
@@ -178,6 +173,30 @@ def generate_payment_notice_pdf(invoice):
 
     # 4. 発行人 (取引先 -> 自社名義)
     _draw_company_info(p, 120*mm, height - 55*mm, font_name)
+
+    # 4.5 角印（印影）表示 - 社名の右端に被せて配置
+    stamp_path = None
+    company = CompanyInfo.objects.first()
+    if company and company.stamp_image:
+        try:
+            stamp_path = company.stamp_image.path
+        except:
+            pass
+    if not stamp_path:
+        fallback = os.path.join(settings.MEDIA_ROOT, 'stamps', 'company_seal.png')
+        if os.path.exists(fallback):
+            stamp_path = fallback
+    if stamp_path:
+        try:
+            p.setFont(font_name, 10)
+            name = company.name if company else "有限会社 マックプランニング"
+            name_width = p.stringWidth(name, font_name, 10)
+            stamp_size = 22 * mm
+            stamp_x = 120 * mm + name_width - stamp_size * 0.35
+            stamp_y = height - 55*mm - stamp_size * 0.65
+            p.drawImage(stamp_path, stamp_x, stamp_y, width=stamp_size, height=stamp_size, mask='auto', preserveAspectRatio=True)
+        except:
+            pass
 
     # 5. メッセージ
     p.setFont(font_name, 10)

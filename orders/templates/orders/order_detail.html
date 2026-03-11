@@ -18,14 +18,21 @@
             </p>
         </div>
         <div style="display: flex; gap: 1rem; align-items: center;">
-            <a href="{% url 'orders:customer_order_pdf' order.order_id %}" class="btn"
-                style="background: var(--surface); border: 1px solid var(--primary); color: var(--text-main); font-size: 0.9rem;">
+            {% if user.is_staff %}
+            <a href="{% url 'orders:admin_order_pdf' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid var(--primary); color: var(--text-main); font-size: 0.9rem;" target="_blank">
                 <i class="fas fa-file-pdf"></i> {% trans "注文書印刷" %}
             </a>
-            <a href="{% url 'orders:customer_acceptance_pdf' order.order_id %}" class="btn"
-                style="background: var(--surface); border: 1px solid var(--secondary); color: var(--text-main); font-size: 0.9rem;">
+            <a href="{% url 'orders:admin_acceptance_pdf' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid var(--secondary); color: var(--text-main); font-size: 0.9rem;" target="_blank">
                 <i class="fas fa-file-invoice"></i> {% trans "注文請書印刷" %}
             </a>
+            {% else %}
+            <a href="{% url 'orders:customer_order_pdf' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid var(--primary); color: var(--text-main); font-size: 0.9rem;">
+                <i class="fas fa-file-pdf"></i> {% trans "注文書印刷" %}
+            </a>
+            <a href="{% url 'orders:customer_acceptance_pdf' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid var(--secondary); color: var(--text-main); font-size: 0.9rem;">
+                <i class="fas fa-file-invoice"></i> {% trans "注文請書印刷" %}
+            </a>
+            {% endif %}
             {% if order.status == 'DRAFT' and user.is_staff %}
             <form action="{% url 'orders:order_publish' order.order_id %}" method="post" style="margin: 0;">
                 {% csrf_token %}
@@ -84,8 +91,7 @@
 
     <!-- Order Details -->
     <div class="card">
-        <h3 style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-top: 0;">{% trans "注文内容"
-            %}</h3>
+        <h3 style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-top: 0;">{% trans "注文内容" %}</h3>
         <table style="width: 100%; border-collapse: collapse;">
             <tr style="border-bottom: 1px solid var(--glass-border);">
                 <th style="text-align: left; padding: 1rem; color: var(--text-dim); width: 200px;">{% trans "対象案件" %}
@@ -96,17 +102,7 @@
                 <th style="text-align: left; padding: 1rem; color: var(--text-dim);">{% trans "作業期間" %}</th>
                 <td style="padding: 1rem;">{{ order.work_start }} ～ {{ order.work_end }}</td>
             </tr>
-            <tr style="border-bottom: 1px solid var(--glass-border);">
-                <th style="text-align: left; padding: 1rem; color: var(--text-dim);">{% trans "基本料金" %}</th>
-                <td style="padding: 1rem; font-weight: 600;">￥{{ order.base_fee|intcomma }} (税抜)</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--glass-border);">
-                <th style="text-align: left; padding: 1rem; color: var(--text-dim);">{% trans "精算条件" %}</th>
-                <td style="padding: 1rem;">
-                    基準時間: {{ order.time_lower_limit }}h ～ {{ order.time_upper_limit }}h / 月<br>
-                    超過単価: ￥{{ order.excess_fee|intcomma }}/h | 不足単価: ￥{{ order.shortage_fee|intcomma }}/h
-                </td>
-            </tr>
+
             <tr style="border-bottom: 1px solid var(--glass-border);">
                 <th style="text-align: left; padding: 1rem; color: var(--text-dim);">{% trans "支払条件" %}</th>
                 <td style="padding: 1rem;">{{ order.payment_condition|linebreaksbr }}</td>

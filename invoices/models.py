@@ -8,7 +8,7 @@ class Invoice(models.Model):
         ('DRAFT', _('下書き')),
         ('ISSUED', _('発行済')),
         ('SENT', _('送付済')),
-        ('CONFIRMED', _('パートナー確定済')),
+        ('CONFIRMED', _('パートナー承認済')),
         ('PAID', _('支払済')),
     ]
 

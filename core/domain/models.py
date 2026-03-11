@@ -172,12 +172,20 @@ class MasterContractProgress(models.Model):
         ('INVITED', '招待済み'),
         ('INFO_DONE', '基本情報登録済み'),
         ('CONTRACT_SENT', '基本契約送信済み'),
+        ('PENDING_APPROVAL', '承認待ち'),
         ('COMPLETED', '締結完了'),
     ]
 
     partner = models.OneToOneField(Partner, on_delete=models.CASCADE, verbose_name=_("パートナー"), related_name="contract_progress", unique=True)
     status = models.CharField(_("ステータス"), max_length=20, choices=STATUS_CHOICES, default='INVITED')
     updated_at = models.DateTimeField(_("更新日時"), auto_now=True)
+
+    # 基本契約書PDF関連
+    contract_pdf = models.FileField(_("契約書PDF"), upload_to='contracts/', blank=True, null=True)
+    pdf_hash = models.CharField(_("PDFハッシュ"), max_length=64, blank=True, help_text=_("SHA256ハッシュ値（電帳法対応）"))
+    sent_at = models.DateTimeField(_("契約書送信日時"), blank=True, null=True)
+    signed_at = models.DateTimeField(_("承認日時"), blank=True, null=True)
+    signed_by = models.ForeignKey(User, on_delete=models.SET_NULL, blank=True, null=True, verbose_name=_("承認者"))
 
     class Meta:
         verbose_name = _("基本契約進捗")

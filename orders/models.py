@@ -162,12 +162,6 @@ class Order(models.Model):
     乙_担当者 = models.CharField(_("連絡窓口担当者（乙）"), max_length=64, blank=True)
     作業責任者 = models.CharField(_("作業責任者"), max_length=64, blank=True)
     
-    base_fee = models.IntegerField(_("基本料金"), default=0)
-    time_lower_limit = models.DecimalField(_("基準時間_下限"), max_digits=5, decimal_places=2, default=0.00, help_text="例: 140.00")
-    time_upper_limit = models.DecimalField(_("基準時間_上限"), max_digits=5, decimal_places=2, default=0.00, help_text="例: 180.00")
-    shortage_fee = models.IntegerField(_("不足単価"), default=0)
-    excess_fee = models.IntegerField(_("超過単価"), default=0)
-    
     remarks = models.TextField(_("備考"), blank=True, help_text="口座情報など")
 
     created_at = models.DateTimeField(auto_now_add=True)

@@ -173,6 +173,13 @@ PASSWORD_HASHERS = [
 
 # メール設定（テスト環境ではコンソール出力、本番では環境変数で切り替え）
 EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='y.yoshikawa@macplanning.com')
 
 # デフォルトのプライマリキーフィールド型
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+

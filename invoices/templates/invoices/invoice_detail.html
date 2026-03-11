@@ -75,7 +75,7 @@
 
     <div style="display: flex; gap: 1rem; justify-content: flex-end;">
         <a href="{% url 'invoices:partner_invoice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none;" target="_blank">{% trans "PDF表示" %}</a>
-        {% if invoice.status == 'ISSUED' or invoice.status == 'SENT' %}<form method="post" action="{% url 'invoices:invoice_confirm' invoice.pk %}" style="margin: 0;">{% csrf_token %}<button type="submit" class="btn" onclick="return confirm('この請求書を確定しますか？')">{% trans "確定する" %}</button></form>{% endif %}
+        {% if invoice.status == 'ISSUED' or invoice.status == 'SENT' %}<form method="post" action="{% url 'invoices:invoice_confirm' invoice.pk %}" style="margin: 0;">{% csrf_token %}<button type="submit" class="btn" onclick="return confirm('この請求書を承認しますか？')">{% trans "承認する" %}</button></form>{% endif %}
     </div>
 </div>
 {% endblock %}

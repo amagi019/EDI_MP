@@ -3,6 +3,8 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils.decorators import method_decorator
 from django.contrib import messages
+from django.core.mail import send_mail
+from django.conf import settings
 from django.views import View
 from django.views.generic import ListView, DetailView
 from .models import Invoice
@@ -40,11 +42,12 @@ class PartnerInvoicePDFView(View):
         invoice = get_object_or_404(Invoice, pk=invoice_id)
         
         user = request.user
-        if not hasattr(user, 'profile') or not user.profile.partner:
-             return HttpResponseForbidden("パートナー情報がありません。")
-        
-        if invoice.order.partner != user.profile.partner:
-             return HttpResponseForbidden("権限がありません。")
+        # スタッフは全ての請求書を閲覧可能
+        if not user.is_staff:
+            if not hasattr(user, 'profile') or not user.profile.partner:
+                return HttpResponseForbidden("パートナー情報がありません。")
+            if invoice.order.partner != user.profile.partner:
+                return HttpResponseForbidden("権限がありません。")
 
         buffer = generate_invoice_pdf(invoice)
         
@@ -98,7 +101,7 @@ class PartnerInvoiceDetailView(DetailView):
         return Invoice.objects.filter(order__partner=user.profile.partner)
 
 class PartnerInvoiceConfirmView(View):
-    """パートナー用 請求書確定"""
+    """パートナー用 請求書承認"""
 
     @method_decorator(login_required)
     def post(self, request, invoice_id):
@@ -111,11 +114,33 @@ class PartnerInvoiceConfirmView(View):
             return HttpResponseForbidden("権限がありません。")
         
         if invoice.status not in ('ISSUED', 'SENT'):
-            messages.error(request, "この請求書は確定できません。")
+            messages.error(request, "この請求書は承認できません。")
             return redirect('invoices:invoice_detail', invoice_id=invoice.pk)
         
         invoice.status = 'CONFIRMED'
         invoice.save()
         
-        messages.success(request, f"請求書 {invoice.invoice_no} を確定しました。")
+        # 管理者へ承認通知メール送信
+        partner_name = user.profile.partner.name if user.profile.partner else '不明'
+        subject = f"【請求書承認通知】請求番号：{invoice.invoice_no}"
+        message = f"""{partner_name} 様より、以下の請求書（支払通知書）が承認されました。
+
+■請求番号：{invoice.invoice_no}
+■対象年月：{invoice.target_month.strftime('%Y年%m月') if invoice.target_month else '未設定'}
+■税込合計：¥{invoice.total_amount:,}-
+
+システムにログインして詳細を確認してください。
+"""
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [settings.DEFAULT_FROM_EMAIL],  # 管理者のメールアドレス
+                fail_silently=False,
+            )
+            messages.success(request, f"請求書 {invoice.invoice_no} を承認しました。管理者へ通知されました。")
+        except Exception as e:
+            messages.warning(request, f"請求書 {invoice.invoice_no} を承認しましたが、メール通知に失敗しました。")
+
         return redirect('invoices:invoice_list')

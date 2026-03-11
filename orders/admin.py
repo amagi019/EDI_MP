@@ -41,8 +41,6 @@ class OrderAdmin(admin.ModelAdmin):
         ('契約・支払条件', {
             'fields': (
                 'workplace', 'deliverable', 'deliverable_text',
-                'base_fee', 'time_lower_limit', 'time_upper_limit',
-                'shortage_fee', 'excess_fee',
                 'payment_term', 'payment_condition',
                 'contract_term', 'contract_items'
             )
