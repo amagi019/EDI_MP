@@ -7,6 +7,9 @@
 <div class="card fade-in">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">{% trans "注文書一覧" %}</h2>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> {% trans "ダッシュボードに戻る" %}
+        </a>
     </div>
 
     {% if orders %}
@@ -16,6 +19,7 @@
                 <tr style="border-bottom: 1px solid var(--glass-border);">
                     <th style="text-align: left; padding: 0.75rem 1rem; color: var(--text-dim); font-size: 0.85rem; white-space: nowrap;">{% trans "注文日" %}</th>
                     <th style="text-align: left; padding: 0.75rem 1rem; color: var(--text-dim); font-size: 0.85rem; white-space: nowrap;">{% trans "注文番号" %}</th>
+                    <th style="text-align: left; padding: 0.75rem 1rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "パートナー" %}</th>
                     <th style="text-align: left; padding: 0.75rem 1rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "件名" %}</th>
                     <th style="text-align: left; padding: 0.75rem 1rem; color: var(--text-dim); font-size: 0.85rem; white-space: nowrap;">{% trans "期間" %}</th>
                     <th style="text-align: left; padding: 0.75rem 1rem; color: var(--text-dim); font-size: 0.85rem; white-space: nowrap;">{% trans "ステータス" %}</th>
@@ -27,6 +31,7 @@
                 <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: background 0.3s;">
                     <td style="padding: 0.75rem 1rem; white-space: nowrap;">{{ order.order_date|date:"Y年n月j日" }}</td>
                     <td style="padding: 0.75rem 1rem; font-family: monospace; white-space: nowrap;">{{ order.order_id }}</td>
+                    <td style="padding: 0.75rem 1rem;">{{ order.partner.name }}</td>
                     <td style="padding: 0.75rem 1rem; font-weight: 600;">{{ order.project.name }}</td>
                     <td style="padding: 0.75rem 1rem; font-size: 0.85rem; white-space: nowrap;">{{ order.work_start|date:"Y/n/j" }}～<br>{{ order.work_end|date:"Y/n/j" }}</td>
                     <td style="padding: 0.75rem 1rem; white-space: nowrap;">{% if order.status == 'UNCONFIRMED' %}<span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(239, 68, 68, 0.2); color: #fca5a5;">{{ order.get_status_display }}</span>{% elif order.status == 'APPROVED' %}<span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">{{ order.get_status_display }}</span>{% else %}<span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(234, 179, 8, 0.2); color: #fde047;">{{ order.get_status_display }}</span>{% endif %}</td>

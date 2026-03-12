@@ -18,6 +18,22 @@
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
+        {% if form.errors %}
+        <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 2rem; color: #991b1b;">
+            <p style="font-weight: bold; margin: 0 0 0.5rem 0;"><i class="fas fa-exclamation-triangle"></i> 入力内容にエラーがあります。以下をご確認ください。</p>
+            <ul style="margin: 0; padding-left: 1.5rem; font-size: 0.9rem;">
+            {% for field in form %}
+                {% for error in field.errors %}
+                <li>{{ field.label }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2.5rem;">
             <!-- 会社基本情報 -->
             <section>
@@ -184,10 +200,30 @@
         box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
     }
 
+    /* エラーメッセージ（Django標準の errorlist） */
+    .form-group .errorlist,
     .form-group .errors {
-        color: #ef4444;
+        color: #dc2626;
         font-size: 0.85rem;
-        margin-top: 0.25rem;
+        margin-top: 0.4rem;
+        list-style: none;
+        padding: 0;
+        font-weight: 500;
+    }
+
+    .form-group .errorlist li {
+        padding: 0.25rem 0;
+    }
+
+    .form-group .errorlist li::before {
+        content: '⚠ ';
+    }
+
+    /* エラーがあるフィールドの入力枠を赤くする */
+    .form-group .errorlist + input,
+    .form-group input.is-invalid {
+        border-color: #dc2626;
+        box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
     }
 </style>
 {% endblock %}

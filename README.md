@@ -70,10 +70,10 @@ python manage.py runserver
 
 | URL | 用途 |
 |-----|------|
-| http://127.0.0.1:8000/ | ローカル開発環境 |
-| http://127.0.0.1:8000/admin/ | ローカル管理者画面 (Django Admin) |
-| http://192.168.50.198:8090/ | NAS本番環境 (QNAP TS-462) |
-| http://192.168.50.198:8090/admin/ | NAS管理者画面 |
+| http://127.0.0.1:8090/ | ローカル開発環境 |
+| http://127.0.0.1:8090/admin/ | ローカル管理者画面 (Django Admin) |
+| https://edi.macplanning.com/ | 本番環境 (QNAP TS-462) |
+| https://edi.macplanning.com/admin/ | 本番管理者画面 |
 
 ---
 

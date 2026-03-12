@@ -6,6 +6,7 @@ import datetime
 class Invoice(models.Model):
     STATUS_CHOICES = [
         ('DRAFT', _('下書き')),
+        ('PENDING_REVIEW', _('確認待ち')),
         ('ISSUED', _('発行済')),
         ('SENT', _('送付済')),
         ('CONFIRMED', _('パートナー承認済')),
@@ -45,6 +46,10 @@ class Invoice(models.Model):
 
     def __str__(self):
         return f"{self.invoice_no} ({self.order.project.name})"
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('invoices:invoice_detail', kwargs={'invoice_id': self.pk})
 
     def save(self, *args, **kwargs):
         if not self.invoice_no:

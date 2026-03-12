@@ -1,18 +1,23 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.http import Http404, HttpResponse, HttpResponseForbidden
+from django.core.exceptions import PermissionDenied
+from django.http import Http404, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.contrib.auth.views import PasswordChangeView
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.contrib.auth import get_user_model
-from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import Count, Q
 
-from django.views.generic import CreateView, UpdateView, TemplateView, View
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.views.generic import CreateView, UpdateView, TemplateView, FormView, View
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .forms import AdminCreationForm, PartnerUserCreationForm, PartnerOnboardingForm, QuickPartnerRegistrationForm
 from .domain.models import Partner, MasterContractProgress, SentEmailLog
+from .permissions import (
+    Role, get_user_role, get_user_partner, is_owner_of_partner,
+    StaffRequiredMixin, PartnerRequiredMixin,
+)
 from orders.models import Order
 from invoices.models import Invoice
 
@@ -20,24 +25,21 @@ from invoices.models import Invoice
 def dashboard(request):
     """進捗管理ダッシュボード"""
     user = request.user
-    partner = None
-    if hasattr(user, 'profile') and user.profile.partner:
-        customer = user.profile.partner
+    role = get_user_role(user)
+    partner = get_user_partner(user)
 
     # フィルター条件の構築
     order_filter = Q()
     invoice_filter = Q()
 
-    if not user.is_staff:
-        if hasattr(user, 'profile') and user.profile.partner:
-            customer = user.profile.partner
+    if role != Role.STAFF:
+        if partner:
             order_filter &= Q(partner=partner)
             invoice_filter &= Q(order__partner=partner)
         else:
-            # パートナーが紐付いていないユーザーは何も表示しない
             order_filter = Q(pk__in=[])
             invoice_filter = Q(pk__in=[])
-    
+
     # 統計情報の取得
     unconfirmed_orders = Order.objects.filter(order_filter, status='UNCONFIRMED').select_related('partner', 'project')
     received_orders = Order.objects.filter(order_filter, status__in=['RECEIVED', 'APPROVED']).select_related('partner', 'project')
@@ -45,7 +47,7 @@ def dashboard(request):
 
     # スタッフ用：契約進捗リスト
     contract_progress_list = []
-    if user.is_staff:
+    if role == Role.STAFF:
         contract_progress_list = MasterContractProgress.objects.select_related('partner').all().order_by('-updated_at')
 
     context = {
@@ -55,7 +57,7 @@ def dashboard(request):
         'unconfirmed_orders': unconfirmed_orders,
         'received_orders': received_orders,
         'confirming_invoices': confirming_invoices,
-        'is_authorized': user.is_staff or (partner is not None),
+        'is_authorized': role == Role.STAFF or (partner is not None),
         'contract_progress_list': contract_progress_list,
     }
     return render(request, 'core/dashboard.html', context)
@@ -76,41 +78,72 @@ class CustomPasswordChangeView(PasswordChangeView):
             self.request.user.profile.save()
         return super().form_valid(form)
 
-class PartnerUserSignUpView(UserPassesTestMixin, CreateView):
+class PartnerUserSignUpView(StaffRequiredMixin, CreateView):
     template_name = 'core/partner_signup.html'
     form_class = PartnerUserCreationForm
-    success_url = reverse_lazy('core:dashboard') # またはユーザー一覧など
-
-    def test_func(self):
-        return self.request.user.is_staff
+    success_url = reverse_lazy('core:dashboard')
 
     def form_valid(self, form):
         messages.success(self.request, "パートナーユーザーを登録しました。")
         return super().form_valid(form)
 
 
-class PartnerOnboardingView(UpdateView):
+class PartnerOnboardingView(PartnerRequiredMixin, UpdateView):
     """パートナー自身による情報登録・更新（オンボーディング）"""
     model = Partner
     form_class = PartnerOnboardingForm
     template_name = 'core/partner_onboarding.html'
     success_url = reverse_lazy('core:dashboard')
 
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
-
     def get_object(self, queryset=None):
-        # ログインユーザーに紐付くCustomerを取得
-        if hasattr(self.request.user, 'profile') and self.request.user.profile.partner:
-            return self.request.user.profile.partner
-        raise Http404("パートナー情報が見つかりません。")
+        partner = get_user_partner(self.request.user)
+        if partner is None:
+            raise Http404("パートナー情報が見つかりません。")
+        return partner
 
     def form_valid(self, form):
         partner = form.save()
         # 進捗状況を更新
         MasterContractProgress.objects.filter(partner=partner).update(status='INFO_DONE')
         messages.success(self.request, "パートナー情報を更新しました。")
+
+        # スタッフ担当者へ通知メール送信
+        try:
+            from django.core.mail import send_mail
+            from django.conf import settings
+            subject = f"【基本情報登録完了】{partner.name}"
+            progress_url = self.request.build_absolute_uri(
+                reverse('core:contract_progress_list')
+            )
+            message = f"""{partner.name} 様のパートナー基本情報登録が完了しました。
+
+■ 登録内容の確認・承認を行ってください。
+
+登録された情報：
+・会社名: {partner.name}
+・住所: {partner.address or '未入力'}
+・代表者: {partner.representative_name or '未入力'}
+・登録番号: {partner.registration_no or '未入力'}
+
+■ 基本契約進捗の確認:
+{progress_url}
+"""
+            # スタッフ担当者のメールアドレス
+            if partner.staff_contact and partner.staff_contact.email:
+                notify_email = partner.staff_contact.email
+            else:
+                notify_email = settings.DEFAULT_FROM_EMAIL
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [notify_email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Staff notification failed for {partner.name}: {e}")
+
         return super().form_valid(form)
 
 
@@ -119,12 +152,7 @@ class PartnerManualView(LoginRequiredMixin, TemplateView):
     template_name = 'core/partner_manual.html'
 
 
-class StaffOnlyMixin(UserPassesTestMixin):
-    def test_func(self):
-        return self.request.user.is_staff
-from django.views.generic import TemplateView, FormView
-
-class QuickPartnerRegistrationView(LoginRequiredMixin, StaffOnlyMixin, FormView):
+class QuickPartnerRegistrationView(StaffRequiredMixin, FormView):
     """自社担当者によるクイック取引先登録"""
     form_class = QuickPartnerRegistrationForm
     template_name = 'core/quick_partner_registration.html'
@@ -150,7 +178,7 @@ class QuickPartnerRegistrationView(LoginRequiredMixin, StaffOnlyMixin, FormView)
         return super().get_success_url()
 
 
-class RegistrationSuccessView(LoginRequiredMixin, StaffOnlyMixin, TemplateView):
+class RegistrationSuccessView(StaffRequiredMixin, TemplateView):
     """登録完了後のガイド画面"""
     template_name = 'core/registration_success.html'
 
@@ -160,7 +188,7 @@ class RegistrationSuccessView(LoginRequiredMixin, StaffOnlyMixin, TemplateView):
         context['registered_password'] = self.request.session.get('last_registered_password', '')
         return context
 
-class PartnerEmailLogView(LoginRequiredMixin, StaffOnlyMixin, TemplateView):
+class PartnerEmailLogView(StaffRequiredMixin, TemplateView):
     """送信済みメールの閲覧"""
     template_name = 'core/partner_email_log.html'
 
@@ -179,25 +207,25 @@ class ContractProgressListView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        
-        # スタッフユーザーのみ全ての進捗を表示、非スタッフは自分の進捗のみ表示
-        if user.is_staff:
+        role = get_user_role(user)
+
+        if role == Role.STAFF:
             contract_progress_list = MasterContractProgress.objects.select_related('partner').all().order_by('-updated_at')
         else:
-            # 非スタッフの場合、自分の顧客情報の進捗のみ表示
-            if hasattr(user, 'profile') and user.profile.partner:
+            partner = get_user_partner(user)
+            if partner:
                 contract_progress_list = MasterContractProgress.objects.filter(
-                    partner=user.profile.partner
+                    partner=partner
                 ).select_related('partner')
             else:
                 contract_progress_list = MasterContractProgress.objects.none()
-        
+
         context['contract_progress_list'] = contract_progress_list
-        context['is_staff'] = user.is_staff
+        context['is_staff'] = (role == Role.STAFF)
         return context
 
 
-class ContractGenerateView(LoginRequiredMixin, StaffOnlyMixin, View):
+class ContractGenerateView(StaffRequiredMixin, View):
     """基本契約書PDFを生成し保存する"""
 
     def post(self, request, partner_id):
@@ -234,19 +262,18 @@ class ContractGenerateView(LoginRequiredMixin, StaffOnlyMixin, View):
 class ContractPreviewView(LoginRequiredMixin, View):
     """基本契約書PDFプレビュー"""
 
+    @method_decorator(xframe_options_exempt)
     def get(self, request, partner_id):
         from .services.contract_pdf_generator import generate_contract_pdf
 
         partner = get_object_or_404(Partner, partner_id=partner_id)
         progress = get_object_or_404(MasterContractProgress, partner=partner)
 
-        user = request.user
-        # パートナーの場合、自分のパートナーのみ閲覧可能
-        if not user.is_staff:
-            if not hasattr(user, 'profile') or not user.profile.partner:
-                return HttpResponseForbidden("パートナー情報がありません。")
-            if user.profile.partner != partner:
-                return HttpResponseForbidden("権限がありません。")
+        # スタッフは全パートナーの契約書を閲覧可、パートナーは自分のみ
+        role = get_user_role(request.user)
+        if role != Role.STAFF:
+            if not is_owner_of_partner(request.user, partner):
+                raise PermissionDenied("権限がありません。")
 
         # 保存済みPDFがあればそれを返す
         if progress.contract_pdf:
@@ -261,7 +288,7 @@ class ContractPreviewView(LoginRequiredMixin, View):
         return response
 
 
-class ContractSendView(LoginRequiredMixin, StaffOnlyMixin, View):
+class ContractSendView(StaffRequiredMixin, View):
     """契約書送付メール"""
 
     def post(self, request, partner_id):
@@ -278,11 +305,12 @@ class ContractSendView(LoginRequiredMixin, StaffOnlyMixin, View):
             return redirect('core:contract_progress_list')
 
         # メール送信
-        contract_url = request.build_absolute_uri(f'/contract/{partner_id}/preview/')
+        contract_url = request.build_absolute_uri(
+            reverse('core:contract_approve', kwargs={'partner_id': partner_id})
+        )
         subject = f"【基本契約書のご確認】{partner.name} 様"
         body = (
             f"{partner.name} 御中\n\n"
-            f"有限会社マックプランニングです。\n\n"
             f"基本契約書を作成いたしましたので、以下のURLよりご確認ください。\n\n"
             f"■ 契約書確認URL:\n{contract_url}\n\n"
             f"内容をご確認のうえ、「承認」ボタンを押してください。\n\n"
@@ -299,7 +327,7 @@ class ContractSendView(LoginRequiredMixin, StaffOnlyMixin, View):
                 fail_silently=False,
             )
             # ログ保存
-            SentEmailLog.objects.create(partner=partner, subject=subject, body=body)
+            SentEmailLog.objects.create(partner=partner, subject=subject, body=body, recipient=partner.email)
             progress.sent_at = timezone.now()
             progress.status = 'PENDING_APPROVAL'
             progress.save()
@@ -311,19 +339,17 @@ class ContractSendView(LoginRequiredMixin, StaffOnlyMixin, View):
 
 
 class ContractApproveView(LoginRequiredMixin, View):
-    """パートナーによる契約書承認"""
+    """パートナーによる契約書承認（GET:スタッフ+パートナー閲覧可 / POST:パートナー本人のみ）"""
 
     def get(self, request, partner_id):
-        """承認画面を表示"""
+        """承認画面を表示（スタッフまたは対象パートナーが閲覧可）"""
         partner = get_object_or_404(Partner, partner_id=partner_id)
         progress = get_object_or_404(MasterContractProgress, partner=partner)
 
-        user = request.user
-        if not user.is_staff:
-            if not hasattr(user, 'profile') or not user.profile.partner:
-                return HttpResponseForbidden("パートナー情報がありません。")
-            if user.profile.partner != partner:
-                return HttpResponseForbidden("権限がありません。")
+        role = get_user_role(request.user)
+        if role != Role.STAFF:
+            if not is_owner_of_partner(request.user, partner):
+                raise PermissionDenied("権限がありません。")
 
         context = {
             'partner': partner,
@@ -332,7 +358,7 @@ class ContractApproveView(LoginRequiredMixin, View):
         return render(request, 'core/contract_approve.html', context)
 
     def post(self, request, partner_id):
-        """承認処理"""
+        """承認処理（パートナー本人のみ実行可能）"""
         import hashlib
         from django.utils import timezone
         from django.core.files.base import ContentFile
@@ -341,12 +367,9 @@ class ContractApproveView(LoginRequiredMixin, View):
         partner = get_object_or_404(Partner, partner_id=partner_id)
         progress = get_object_or_404(MasterContractProgress, partner=partner)
 
-        user = request.user
-        if not user.is_staff:
-            if not hasattr(user, 'profile') or not user.profile.partner:
-                return HttpResponseForbidden("パートナー情報がありません。")
-            if user.profile.partner != partner:
-                return HttpResponseForbidden("権限がありません。")
+        # 承認操作はパートナー本人のみ（スタッフは閲覧のみ可）
+        if not is_owner_of_partner(request.user, partner):
+            raise PermissionDenied("承認はパートナーご自身で行ってください。")
 
         if progress.status == 'COMPLETED':
             messages.info(request, "この契約書は既に締結済みです。")
@@ -355,7 +378,7 @@ class ContractApproveView(LoginRequiredMixin, View):
         # 承認処理
         now = timezone.now()
         progress.signed_at = now
-        progress.signed_by = user
+        progress.signed_by = request.user
         progress.status = 'COMPLETED'
 
         # 承認日時入りのPDFを再生成
@@ -373,22 +396,46 @@ class ContractApproveView(LoginRequiredMixin, View):
         progress.pdf_hash = pdf_hash
         progress.save()
 
-        # 管理者に承認通知メール
+        # 自社担当者に承認通知メール
         try:
             from django.core.mail import send_mail
             from django.conf import settings as django_settings
             from .domain.models import SentEmailLog
 
-            admin_email = django_settings.DEFAULT_FROM_EMAIL
+            # 自社担当者のメールアドレス（未設定の場合はDEFAULT_FROM_EMAIL）
+            if partner.staff_contact and partner.staff_contact.email:
+                notify_email = partner.staff_contact.email
+            else:
+                notify_email = django_settings.DEFAULT_FROM_EMAIL
             subject = f"【基本契約承認通知】{partner.name}"
+            contract_url = request.build_absolute_uri(
+                reverse('core:contract_approve', kwargs={'partner_id': partner_id})
+            )
+            local_now = timezone.localtime(now)
             body = (
                 f"{partner.name} が基本契約書を承認しました。\n\n"
-                f"承認日時: {now.strftime('%Y年%m月%d日 %H:%M')}\n"
-                f"承認者: {user.get_full_name() or user.username}\n"
+                f"承認日時: {local_now.strftime('%Y年%m月%d日 %H:%M')}\n"
+                f"承認者: {request.user.get_full_name() or request.user.username}\n\n"
+                f"■ 契約書確認URL:\n{contract_url}\n"
             )
-            send_mail(subject, body, admin_email, [admin_email], fail_silently=True)
-        except:
-            pass
+            print(f"[通知メール] 宛先: {notify_email}, 件名: {subject}")
+            send_mail(subject, body, django_settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
+            print(f"[通知メール] 送信成功")
+            SentEmailLog.objects.create(
+                partner=partner,
+                subject=subject,
+                body=body,
+                recipient=notify_email,
+            )
+        except Exception as e:
+            print(f"[通知メール] 送信エラー: {e}")
+
+        # Google Driveに承認済みPDFをアップロード（オプション）
+        try:
+            from .services.google_drive_service import upload_contract_pdf as drive_upload
+            drive_upload(partner, pdf_content, now)
+        except Exception as e:
+            print(f"[Google Drive] アップロードスキップ: {e}")
 
         messages.success(request, "基本契約書を承認しました。契約が締結されました。")
         return redirect('core:dashboard')

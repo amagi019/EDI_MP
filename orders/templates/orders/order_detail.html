@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="fade-in">
-    <!-- Header with Buttons -->
+    {# ===== ヘッダー: 注文番号・ステータス・アクションボタン ===== #}
     <div class="card"
         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding: 1.5rem 2rem;">
         <div>
@@ -54,69 +54,144 @@
     </div>
 
     <style>
-        .form-group .errors {
-            color: #ef4444;
-            font-size: 0.85rem;
-            margin-top: 0.25rem;
-        }
-
-        /* Status Badges */
-        .status-badge {
-            padding: 0.2rem 0.6rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-        }
-
-        .status-draft {
-            background: rgba(156, 163, 175, 0.2);
-            color: #d1d5db;
-        }
-
-        .status-unconfirmed {
-            background: rgba(239, 68, 68, 0.2);
-            color: #fca5a5;
-        }
-
-        .status-approved {
-            background: rgba(34, 197, 94, 0.2);
-            color: #86efac;
-        }
-
-        .status-confirming,
-        .status-received {
-            background: rgba(234, 179, 8, 0.2);
-            color: #fde047;
-        }
+        .detail-table { width: 100%; border-collapse: collapse; }
+        .detail-table th { text-align: left; padding: 0.75rem 1rem; color: var(--text-dim); width: 180px; font-weight: 500; font-size: 0.9rem; white-space: nowrap; }
+        .detail-table td { padding: 0.75rem 1rem; }
+        .detail-table tr { border-bottom: 1px solid var(--glass-border); }
+        .detail-table tr:last-child { border-bottom: none; }
+        .status-badge { padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; }
+        .status-draft { background: rgba(156, 163, 175, 0.2); color: #d1d5db; }
+        .status-unconfirmed { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .status-approved { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+        .status-confirming, .status-received { background: rgba(234, 179, 8, 0.2); color: #fde047; }
+        .item-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+        .item-card .item-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; }
+        .item-card .item-label { font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.2rem; }
+        .item-card .item-value { font-size: 0.95rem; font-weight: 500; }
     </style>
 
-    <!-- Order Details -->
-    <div class="card">
-        <h3 style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-top: 0;">{% trans "注文内容" %}</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-            <tr style="border-bottom: 1px solid var(--glass-border);">
-                <th style="text-align: left; padding: 1rem; color: var(--text-dim); width: 200px;">{% trans "対象案件" %}
-                </th>
-                <td style="padding: 1rem; font-weight: 600;">{{ order.project.name }}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--glass-border);">
-                <th style="text-align: left; padding: 1rem; color: var(--text-dim);">{% trans "作業期間" %}</th>
-                <td style="padding: 1rem;">{{ order.work_start }} ～ {{ order.work_end }}</td>
-            </tr>
-
-            <tr style="border-bottom: 1px solid var(--glass-border);">
-                <th style="text-align: left; padding: 1rem; color: var(--text-dim);">{% trans "支払条件" %}</th>
-                <td style="padding: 1rem;">{{ order.payment_condition|linebreaksbr }}</td>
+    {# ===== 基本情報 ===== #}
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h3 style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-top: 0;">{% trans "基本情報" %}</h3>
+        <table class="detail-table">
+            <tr>
+                <th>{% trans "注文日" %}</th>
+                <td>{{ order.order_date|date:"Y年n月j日" }}</td>
             </tr>
             <tr>
-                <th style="text-align: left; padding: 1rem; color: var(--text-dim);">{% trans "備考" %}</th>
-                <td style="padding: 1rem;">{{ order.remarks|default:_("なし")|linebreaksbr }}</td>
+                <th>{% trans "パートナー（乙）" %}</th>
+                <td>{{ order.partner.name }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "業務名称" %}</th>
+                <td style="font-weight: 600;">{{ order.project.name }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "作業期間" %}</th>
+                <td>{{ order.work_start|date:"Y年n月j日" }} ～ {{ order.work_end|date:"Y年n月j日" }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "作業場所" %}</th>
+                <td>{{ order.workplace.name|default:"―" }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "納入物件" %}</th>
+                <td>{{ order.deliverable_text|default:"―" }}</td>
             </tr>
         </table>
     </div>
 
-    <div style="margin-top: 2rem;">
+    {# ===== 担当者・責任者 ===== #}
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h3 style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-top: 0;">{% trans "担当者・責任者" %}</h3>
+        <table class="detail-table">
+            <tr>
+                <th>{% trans "委託業務責任者（甲）" %}</th>
+                <td>{{ order.甲_責任者|default:"―" }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "連絡窓口担当者（甲）" %}</th>
+                <td>{{ order.甲_担当者|default:"―" }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "委託業務責任者（乙）" %}</th>
+                <td>{{ order.乙_責任者|default:"―" }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "連絡窓口担当者（乙）" %}</th>
+                <td>{{ order.乙_担当者|default:"―" }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "作業責任者" %}</th>
+                <td>{{ order.作業責任者|default:"―" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {# ===== 業務委託料金（明細行） ===== #}
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h3 style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-top: 0;">{% trans "業務委託料金" %}</h3>
+        {% for item in order.items.all %}
+        <div class="item-card">
+            <div style="font-weight: 600; margin-bottom: 0.75rem; font-size: 1rem;">
+                <i class="fas fa-user" style="color: var(--primary-color); margin-right: 0.3rem;"></i>
+                {{ item.person_name|default:"作業担当者" }}
+            </div>
+            <div class="item-grid">
+                <div>
+                    <div class="item-label">{% trans "月額基本料金" %}</div>
+                    <div class="item-value">￥{{ item.base_fee|intcomma }}円/月</div>
+                </div>
+                <div>
+                    <div class="item-label">{% trans "工数" %}</div>
+                    <div class="item-value">{{ item.effort }}</div>
+                </div>
+                <div>
+                    <div class="item-label">{% trans "基準時間（下限）" %}</div>
+                    <div class="item-value">{{ item.time_lower_limit }}h</div>
+                </div>
+                <div>
+                    <div class="item-label">{% trans "基準時間（上限）" %}</div>
+                    <div class="item-value">{{ item.time_upper_limit }}h</div>
+                </div>
+                <div>
+                    <div class="item-label">{% trans "不足単価" %}</div>
+                    <div class="item-value">￥{{ item.shortage_rate|intcomma }}/h</div>
+                </div>
+                <div>
+                    <div class="item-label">{% trans "超過単価" %}</div>
+                    <div class="item-value">￥{{ item.excess_rate|intcomma }}/h</div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p style="color: var(--text-dim); text-align: center; padding: 2rem;">{% trans "明細行が登録されていません。" %}</p>
+        {% endfor %}
+    </div>
+
+    {# ===== 支払条件・契約条項 ===== #}
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h3 style="border-bottom: 1px solid var(--glass-border); padding-bottom: 1rem; margin-top: 0;">{% trans "支払条件・契約条項" %}</h3>
+        <table class="detail-table">
+            <tr>
+                <th>{% trans "支払条件" %}</th>
+                <td>{{ order.payment_condition|default:"―" }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "契約条項" %}</th>
+                <td style="white-space: pre-wrap;">{{ order.contract_items|default:"―" }}</td>
+            </tr>
+            <tr>
+                <th>{% trans "備考" %}</th>
+                <td>{{ order.remarks|default:"―"|linebreaksbr }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {# ===== フッター: 戻るボタン ===== #}
+    <div style="display: flex; gap: 1rem;">
         <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">
-            {% trans "一覧に戻る" %}
+            <i class="fas fa-arrow-left"></i> {% trans "一覧に戻る" %}
         </a>
     </div>
 </div>

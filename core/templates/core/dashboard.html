@@ -15,10 +15,10 @@
         <a href="{% url 'core:quick_partner_registration' %}" class="btn btn-secondary">
             <i class="fas fa-user-plus"></i> {% trans "パートナー新規登録" %}
         </a>
+        <a href="{% url 'core:contract_progress_list' %}" class="btn btn-secondary">{% trans "基本契約進捗" %}</a>
         {% endif %}
         <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">{% trans "注文書一覧" %}</a>
         <a href="{% url 'invoices:invoice_list' %}" class="btn btn-secondary">{% trans "請求書（支払通知）一覧" %}</a>
-        <a href="{% url 'core:contract_progress_list' %}" class="btn btn-secondary">{% trans "基本契約進捗" %}</a>
     </div>
     {% endif %}
 

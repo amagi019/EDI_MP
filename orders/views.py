@@ -1,26 +1,30 @@
 import hashlib
 from django.shortcuts import render, get_object_or_404, redirect
+from django.core.exceptions import PermissionDenied
 from django.core.files.base import ContentFile
-from django.http import HttpResponse,  HttpResponseForbidden
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from django.urls import reverse
+from core.permissions import (
+    Role, get_user_role, get_user_partner, is_owner_of_partner,
+    StaffRequiredMixin,
+)
 from .models import Order
 from .forms import OrderCreateForm, OrderItemFormSet
 from .services.pdf_generator import generate_order_pdf, generate_acceptance_pdf
 from .services.signature_service import SignatureService
 
-class AdminOrderPDFView(View):
+class AdminOrderPDFView(StaffRequiredMixin, View):
     """管理者用PDFプレビュー・ダウンロード"""
-    
-    @method_decorator(user_passes_test(lambda u: u.is_staff))
+
     def get(self, request, order_id):
         order = get_object_or_404(Order, order_id=order_id)
         
@@ -42,20 +46,17 @@ class AdminOrderPDFView(View):
         response['Content-Disposition'] = f'inline; filename="order_{order_id}.pdf"'
         return response
 
-class CustomerOrderPDFView(View):
+class CustomerOrderPDFView(LoginRequiredMixin, View):
     """パートナー用PDFダウンロード"""
 
-    @method_decorator(login_required)
     def get(self, request, order_id):
         order = get_object_or_404(Order, order_id=order_id)
-        
-        # 権限チェック：自分の会社の注文書のみ閲覧可能
-        # Profile -> Customer の紐付けを確認
-        if not hasattr(request.user, 'profile') or not request.user.profile.partner:
-            return HttpResponseForbidden("パートナー情報が紐付いていません。")
-            
-        if order.partner != request.user.profile.partner:
-             return HttpResponseForbidden("この注文書を閲覧する権限がありません。")
+
+        # 権限チェック：スタッフは全閲覧可、パートナーは自分のリソースのみ
+        role = get_user_role(request.user)
+        if role != Role.STAFF:
+            if not is_owner_of_partner(request.user, order.partner):
+                raise PermissionDenied("この注文書を閲覧する権限がありません。")
 
         # 既に保存されたPDFがあればそれを返す（電帳法対応：原本の保持）
         if order.order_pdf:
@@ -83,10 +84,9 @@ class CustomerOrderPDFView(View):
         response['Content-Disposition'] = f'attachment; filename="order_{order_id}.pdf"'
         return response
 
-class AdminAcceptancePDFView(View):
+class AdminAcceptancePDFView(StaffRequiredMixin, View):
     """管理者用注文請書PDFプレビュー"""
-    
-    @method_decorator(user_passes_test(lambda u: u.is_staff))
+
     def get(self, request, order_id):
         order = get_object_or_404(Order, order_id=order_id)
         buffer = generate_acceptance_pdf(order)
@@ -95,18 +95,16 @@ class AdminAcceptancePDFView(View):
         response['Content-Disposition'] = f'inline; filename="acceptance_{order_id}.pdf"'
         return response
 
-class CustomerAcceptancePDFView(View):
+class CustomerAcceptancePDFView(LoginRequiredMixin, View):
     """パートナー用注文請書PDFダウンロード"""
 
-    @method_decorator(login_required)
     def get(self, request, order_id):
         order = get_object_or_404(Order, order_id=order_id)
-        
-        if not hasattr(request.user, 'profile') or not request.user.profile.partner:
-            return HttpResponseForbidden("パートナー情報が紐付いていません。")
-            
-        if order.partner != request.user.profile.partner:
-             return HttpResponseForbidden("権限がありません。")
+
+        role = get_user_role(request.user)
+        if role != Role.STAFF:
+            if not is_owner_of_partner(request.user, order.partner):
+                raise PermissionDenied("権限がありません。")
 
         if order.acceptance_pdf:
             response = HttpResponse(order.acceptance_pdf.read(), content_type='application/pdf')
@@ -119,60 +117,52 @@ class CustomerAcceptancePDFView(View):
         response['Content-Disposition'] = f'attachment; filename="acceptance_{order_id}.pdf"'
         return response
 
-class OrderListView(ListView):
+class OrderListView(LoginRequiredMixin, ListView):
     """パートナー用：自分宛ての注文書一覧"""
     model = Order
     template_name = 'orders/order_list.html'
     context_object_name = 'orders'
     ordering = ['-order_date']
 
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
-
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
+        role = get_user_role(user)
+        if role == Role.STAFF:
             return Order.objects.all().order_by('-order_date')
 
-        if not hasattr(user, 'profile') or not user.profile.partner:
-             # パートナーが紐付いていない場合は空リスト
-             return Order.objects.none()
-        
-        # 自分のCustomerの注文のみ ＆ 下書き（DRAFT）は非表示
-        return Order.objects.filter(partner=user.profile.partner).exclude(status='DRAFT').order_by('-order_date')
+        partner = get_user_partner(user)
+        if not partner:
+            return Order.objects.none()
 
-class OrderDetailView(DetailView):
+        return Order.objects.filter(partner=partner).exclude(status='DRAFT').order_by('-order_date')
+
+class OrderDetailView(LoginRequiredMixin, DetailView):
     """パートナー用：注文書詳細"""
     model = Order
     template_name = 'orders/order_detail.html'
     context_object_name = 'order'
     pk_url_kwarg = 'order_id'
 
-    @method_decorator(login_required)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
-
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff:
+        role = get_user_role(user)
+        if role == Role.STAFF:
             return Order.objects.all()
-            
-        if not hasattr(user, 'profile') or not user.profile.partner:
-            return Order.objects.none()
-        # パートナー用にはDRAFTを非表示に
-        return Order.objects.filter(partner=user.profile.partner).exclude(status='DRAFT')
 
-class OrderApproveView(View):
+        partner = get_user_partner(user)
+        if not partner:
+            return Order.objects.none()
+        return Order.objects.filter(partner=partner).exclude(status='DRAFT')
+
+class OrderApproveView(LoginRequiredMixin, View):
     """パートナー用：注文承認処理"""
-    
-    @method_decorator(login_required)
+
     def post(self, request, order_id):
         order = get_object_or_404(Order, order_id=order_id)
-        
-        # 権限チェック
-        if not hasattr(request.user, 'profile') or order.partner != request.user.profile.partner:
-             return HttpResponseForbidden("権限がありません。")
+
+        # パートナー本人のみ承認可能
+        if not is_owner_of_partner(request.user, order.partner):
+            raise PermissionDenied("権限がありません。")
         
         if order.status == 'APPROVED':
              messages.info(request, "この注文書は既に承認されています。")
@@ -200,35 +190,46 @@ class OrderApproveView(View):
             
         order.save()
 
-        # 管理者へメール送信
+        # 自社担当者へメール送信
         subject = f"【承認通知】注文番号：{order.order_id}"
+        order_url = request.build_absolute_uri(
+            reverse('orders:order_detail', kwargs={'order_id': order.order_id})
+        )
         message = f"""{order.partner.name} 様より、以下の注文書が承認されました。
 
 ■注文番号：{order.order_id}
 ■プロジェクト：{order.project.name}
 ■注文日：{order.order_date}
 
-システムにログインして詳細を確認してください。
+■ 注文書確認URL:
+{order_url}
 """
+        # 自社担当者のメールアドレス（未設定の場合はDEFAULT_FROM_EMAIL）
+        if order.partner.staff_contact and order.partner.staff_contact.email:
+            notify_email = order.partner.staff_contact.email
+        else:
+            notify_email = settings.DEFAULT_FROM_EMAIL
         try:
+            print(f"[注文承認通知] 宛先: {notify_email}, 件名: {subject}")
             send_mail(
                 subject,
                 message,
                 settings.DEFAULT_FROM_EMAIL,
-                ['y.yoshikawa@macplanning.com'],
+                [notify_email],
                 fail_silently=False,
             )
+            print(f"[注文承認通知] 送信成功")
             messages.success(request, "注文書を承認しました。管理者へ通知されました。")
         except Exception as e:
+            print(f"[注文承認通知] 送信エラー: {e}")
             messages.warning(request, "承認ステータスを更新しましたが、メール通知に失敗しました。")
 
         return redirect('orders:order_detail', order_id=order_id)
 
 
-class OrderPublishView(View):
+class OrderPublishView(StaffRequiredMixin, View):
     """管理者用：注文書の正式発行（DRAFT -> UNCONFIRMED）"""
-    
-    @method_decorator(user_passes_test(lambda u: u.is_staff))
+
     def post(self, request, order_id):
         order = get_object_or_404(Order, order_id=order_id)
         if order.status != 'DRAFT':
@@ -256,16 +257,22 @@ class OrderPublishView(View):
         email_sent = False
         if order.partner and order.partner.email:
             subject = f"【注文書送付】注文番号：{order.order_id}"
-            login_url = f"{settings.CSRF_TRUSTED_ORIGINS[0].rstrip('/')}/accounts/login/" if settings.CSRF_TRUSTED_ORIGINS else "http://localhost:8000/accounts/login/"
+            login_url = request.build_absolute_uri(reverse('login'))
+            order_detail_url = request.build_absolute_uri(
+                reverse('orders:order_detail', kwargs={'order_id': order.order_id})
+            )
             message = f"""{order.partner.name} 様
 
 以下の注文書を送付いたします。
-システムにログインして内容をご確認の上、承認をお願いいたします。
+内容をご確認の上、承認をお願いいたします。
 
 ■注文番号：{order.order_id}
 ■プロジェクト：{order.project.name}
 ■注文日：{order.order_date}
 ■期間：{order.work_start} 〜 {order.work_end}
+
+■ 注文書確認URL:
+{order_detail_url}
 
 ▼ログインURL
 {login_url}
@@ -287,14 +294,11 @@ class OrderPublishView(View):
         return redirect('orders:order_detail', order_id=order_id)
 
 
-class OrderCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+class OrderCreateView(StaffRequiredMixin, CreateView):
     """スタッフ用：発注書新規作成"""
     model = Order
     form_class = OrderCreateForm
     template_name = 'orders/order_create.html'
-
-    def test_func(self):
-        return self.request.user.is_staff
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

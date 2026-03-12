@@ -75,6 +75,17 @@ class QuickPartnerRegistrationForm(forms.Form):
     """自社担当者がパートナーとユーザーを同時に登録するフォーム"""
     company_name = forms.CharField(max_length=128, label="パートナー企業名", help_text="正式名称を入力してください。")
     email = forms.EmailField(required=True, label="担当者メールアドレス", help_text="ログインIDとして使用されます。")
+    staff_contact = forms.ModelChoiceField(
+        queryset=None,
+        label="自社担当者",
+        required=True,
+        help_text="契約承認時の通知メール送信先となるスタッフを選択してください。",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from django.contrib.auth.models import User
+        self.fields['staff_contact'].queryset = User.objects.filter(is_staff=True).order_by('username')
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -103,9 +114,11 @@ class QuickPartnerRegistrationForm(forms.Form):
                 password=password
             )
             
+            staff_contact = self.cleaned_data['staff_contact']
             partner = Partner.objects.create(
                 name=company_name,
-                email=email
+                email=email,
+                staff_contact=staff_contact,
             )
             
             profile, created = Profile.objects.get_or_create(user=user)

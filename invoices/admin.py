@@ -37,6 +37,15 @@ class InvoiceAdmin(admin.ModelAdmin):
         }),
     )
 
+    # 有効なステータス遷移の定義
+    VALID_TRANSITIONS = {
+        'DRAFT': ['PENDING_REVIEW'],
+        'PENDING_REVIEW': ['ISSUED', 'DRAFT'],  # 承認 or 差戻し（確認画面から）
+        'ISSUED': ['SENT'],
+        'SENT': ['CONFIRMED'],
+        'CONFIRMED': ['PAID'],
+    }
+
     def save_model(self, request, obj, form, change):
         old_status = None
         if change and obj.pk:
@@ -44,11 +53,75 @@ class InvoiceAdmin(admin.ModelAdmin):
                 old_status = Invoice.objects.get(pk=obj.pk).status
             except Invoice.DoesNotExist:
                 pass
+
+        # ステータス遷移の検証
+        if old_status and old_status != obj.status:
+            valid_next = self.VALID_TRANSITIONS.get(old_status, [])
+            if obj.status not in valid_next:
+                from django.contrib import messages as admin_messages
+                valid_str = ' → '.join(valid_next) if valid_next else 'なし'
+                admin_messages.error(
+                    request,
+                    f"ステータスを「{dict(Invoice.STATUS_CHOICES).get(old_status)}」から"
+                    f"「{dict(Invoice.STATUS_CHOICES).get(obj.status)}」に変更できません。"
+                    f"（許可される遷移先: {valid_str}）"
+                )
+                obj.status = old_status  # 元に戻す
+                super().save_model(request, obj, form, change)
+                return
+
         super().save_model(request, obj, form, change)
 
-        # ステータスが「発行済」に変更された場合、パートナーへ送付メールを送信
-        if old_status and old_status != 'ISSUED' and obj.status == 'ISSUED':
-            self._send_invoice_notification(request, obj)
+        # ステータス遷移に応じたメール通知
+        if old_status and old_status != obj.status:
+            if old_status == 'DRAFT' and obj.status == 'PENDING_REVIEW':
+                self._send_review_request(request, obj)
+            elif old_status == 'PENDING_REVIEW' and obj.status == 'ISSUED':
+                self._send_invoice_notification(request, obj)
+
+    def _send_review_request(self, request, invoice):
+        """自社担当者に確認依頼メールを送信"""
+        partner = invoice.order.partner if invoice.order else None
+        if not partner:
+            self.message_user(request, "パートナー情報が設定されていません。", level='warning')
+            return
+
+        # 自社担当者のメールアドレス
+        if partner.staff_contact and partner.staff_contact.email:
+            notify_email = partner.staff_contact.email
+        else:
+            notify_email = settings.DEFAULT_FROM_EMAIL
+
+        review_url = request.build_absolute_uri(
+            reverse('invoices:staff_invoice_review', kwargs={'invoice_id': invoice.pk})
+        )
+        invoice_pdf_url = request.build_absolute_uri(
+            reverse('invoices:admin_invoice_pdf', kwargs={'invoice_id': invoice.pk})
+        )
+
+        subject = f"【請求書確認依頼】請求番号：{invoice.invoice_no}"
+        message = f"""以下の請求書（支払通知書）の内容確認をお願いします。
+
+■請求番号：{invoice.invoice_no}
+■パートナー：{partner.name}
+■対象年月：{invoice.target_month.strftime('%Y年%m月') if invoice.target_month else '未設定'}
+■税込合計：¥{invoice.total_amount:,}-
+
+▼確認・承認画面
+{review_url}
+
+▼請求書PDFプレビュー
+{invoice_pdf_url}
+
+内容に問題がなければ「承認」、修正が必要な場合は「差戻し」をお願いします。
+"""
+        try:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
+            self.message_user(request, f"自社担当者 ({notify_email}) へ確認依頼メールを送信しました。")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Review request email failed for {invoice.invoice_no}: {e}")
+            self.message_user(request, f"確認依頼メール送信に失敗しました: {e}", level='error')
 
     def _send_invoice_notification(self, request, invoice):
         """請求書（支払通知書）送付メールをパートナーへ送信"""
@@ -57,7 +130,7 @@ class InvoiceAdmin(admin.ModelAdmin):
             self.message_user(request, "パートナーのメールアドレスが設定されていないため、メール通知は送信されませんでした。", level='warning')
             return
 
-        login_url = f"{settings.CSRF_TRUSTED_ORIGINS[0].rstrip('/')}/accounts/login/" if settings.CSRF_TRUSTED_ORIGINS else "http://localhost:8000/accounts/login/"
+        login_url = request.build_absolute_uri(reverse('login'))
         subject = f"【支払通知書送付】請求番号：{invoice.invoice_no}"
         message = f"""{partner.name} 様
 

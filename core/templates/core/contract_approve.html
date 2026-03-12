@@ -4,72 +4,52 @@
 {% block title %}{% trans "基本契約書の確認" %} | {% trans "EDIシステム" %}{% endblock %}
 
 {% block content %}
-<div class="card fade-in" style="max-width: 800px; margin: 0 auto;">
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <i class="fas fa-file-contract" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
-        <h1 style="margin: 0; font-family: 'Outfit', sans-serif;">{% trans "基本契約書の確認" %}</h1>
-        <p style="color: var(--text-dim); margin-top: 0.5rem;">{{ partner.name }} {% trans "様" %}</p>
-    </div>
+<div class="fade-in">
+    {# ===== ヘッダー: ステータスとアクションボタン ===== #}
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.5rem;">
+                    <i class="fas fa-file-contract" style="color: var(--primary-color);"></i>
+                    {% trans "基本契約書の確認" %}
+                </h1>
+                <p style="color: var(--text-dim); margin: 0.3rem 0 0;">{{ partner.name }} {% trans "様" %}</p>
+            </div>
 
-    <div style="background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
-        <h3 style="margin-top: 0; font-family: 'Outfit', sans-serif;">
-            <i class="fas fa-info-circle" style="color: var(--secondary-color);"></i>
-            {% trans "契約書の内容をご確認ください" %}
-        </h3>
-        <p style="color: var(--text-dim); line-height: 1.8;">
-            {% trans "以下のPDFリンクより基本契約書の内容をご確認ください。内容に問題がなければ「承認する」ボタンをクリックしてください。" %}
-        </p>
-        <p style="color: var(--text-dim); font-size: 0.9rem;">
-            <i class="fas fa-shield-alt" style="color: #10B981;"></i>
-            {% trans "承認すると、承認日時とお客様の情報が電子的に記録されます。" %}
-        </p>
-    </div>
-
-    <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
-        <a href="{% url 'core:contract_preview' partner.partner_id %}" id="pdf-link" class="btn btn-secondary" style="text-align: center; padding: 1rem; font-size: 1.1rem; text-decoration: none;" target="_blank" onclick="enableApproveButton()">
-            <i class="fas fa-file-pdf"></i> {% trans "契約書PDFを表示する" %}
-        </a>
-    </div>
-
-    <p id="pdf-notice" style="text-align: center; color: #FB923C; font-size: 0.9rem; margin-bottom: 1rem;">
-        <i class="fas fa-exclamation-triangle"></i> {% trans "承認するには、まず契約書PDFを表示してください。" %}
-    </p>
-
-    {% if progress.status != 'COMPLETED' %}
-    <form method="post" action="{% url 'core:contract_approve' partner.partner_id %}">
-        {% csrf_token %}
-        <div style="display: flex; justify-content: center; gap: 1.5rem;">
-            <a href="{% url 'core:dashboard' %}" class="btn btn-secondary" style="padding: 0.8rem 2rem;">
-                {% trans "後で確認する" %}
-            </a>
-            <button type="submit" id="approve-btn" class="btn" style="padding: 0.8rem 3rem; font-size: 1.1rem; opacity: 0.4; cursor: not-allowed;" disabled onclick="return confirm('この基本契約書を承認しますか？\n承認すると契約が締結されます。')">
-                <i class="fas fa-check-circle"></i> {% trans "承認する" %}
-            </button>
+            {% if progress.status != 'COMPLETED' %}
+            {% if not user.is_staff %}
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <a href="{% url 'core:dashboard' %}" class="btn btn-secondary" style="padding: 0.7rem 1.5rem;">
+                    <i class="fas fa-times"></i> {% trans "キャンセル" %}
+                </a>
+                <form method="post" action="{% url 'core:contract_approve' partner.partner_id %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" id="approve-btn" class="btn" style="padding: 0.7rem 2rem; font-size: 1rem;" onclick="return confirm('この基本契約書を承認しますか？\n承認すると契約が締結されます。')">
+                        <i class="fas fa-check-circle"></i> {% trans "承認する" %}
+                    </button>
+                </form>
+            </div>
+            {% else %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.5rem; background: rgba(245, 158, 11, 0.1); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                <i class="fas fa-info-circle" style="color: #F59E0B;"></i>
+                <span style="color: #F59E0B; font-size: 0.9rem;">{% trans "承認待ち（パートナーによる承認が必要です）" %}</span>
+            </div>
+            {% endif %}
+            {% else %}
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.5rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                <i class="fas fa-check-circle" style="color: #10B981;"></i>
+                <span style="color: #10B981; font-weight: 600;">{% trans "承認済み" %}</span>
+                {% if progress.signed_at %}
+                <span style="color: var(--text-dim); font-size: 0.85rem; margin-left: 0.5rem;">{{ progress.signed_at|date:"Y/m/d H:i" }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
-    </form>
-    {% else %}
-    <div style="text-align: center; padding: 1.5rem; background: rgba(16, 185, 129, 0.05); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
-        <i class="fas fa-check-circle" style="font-size: 2rem; color: #10B981; margin-bottom: 0.5rem;"></i>
-        <p style="margin: 0; color: #10B981; font-weight: 600;">{% trans "この契約書は承認済みです" %}</p>
-        {% if progress.signed_at %}
-        <p style="margin: 0.5rem 0 0; color: var(--text-dim); font-size: 0.9rem;">{% trans "承認日時" %}: {{ progress.signed_at|date:"Y/m/d H:i" }}</p>
-        {% endif %}
     </div>
-    {% endif %}
-</div>
 
-<script>
-function enableApproveButton() {
-    var btn = document.getElementById('approve-btn');
-    var notice = document.getElementById('pdf-notice');
-    if (btn) {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
-    }
-    if (notice) {
-        notice.style.display = 'none';
-    }
-}
-</script>
+    {# ===== ボディー: 契約書PDFの埋め込み表示 ===== #}
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <iframe src="{% url 'core:contract_preview' partner.partner_id %}" style="width: 100%; height: calc(100vh - 220px); border: none; min-height: 600px;"></iframe>
+    </div>
+</div>
 {% endblock %}

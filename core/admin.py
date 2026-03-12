@@ -12,13 +12,13 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.register(Partner)
 class PartnerAdmin(admin.ModelAdmin):
-    list_display = ('partner_id', 'name', 'tel', 'email', 'registration_no')
+    list_display = ('partner_id', 'name', 'tel', 'email', 'staff_contact', 'registration_no')
     search_fields = ('name', 'email', 'registration_no')
     readonly_fields = ('partner_id',)
     actions = ['prepare_invitation_email']
     fieldsets = (
         (None, {
-            'fields': ('partner_id', 'name', 'name_kana', 'registration_no', 'postal_code', 'address', 'tel', 'fax', 'email', 'cc', 'bcc')
+            'fields': ('partner_id', 'name', 'name_kana', 'registration_no', 'postal_code', 'address', 'tel', 'fax', 'email', 'cc', 'bcc', 'staff_contact')
         }),
         (_('代表者・担当者情報'), {
             'fields': ('representative_name', 'representative_name_kana', 'representative_position', 'responsible_person', 'contact_person')
@@ -130,6 +130,7 @@ class PartnerAdmin(admin.ModelAdmin):
                     partner=partner,
                     subject=item['subject'],
                     body=item['body'],
+                    recipient=item['email'],
                 )
 
                 django_send_mail(

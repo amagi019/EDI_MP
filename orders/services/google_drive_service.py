@@ -1,11 +1,13 @@
 """
-Google Drive APIサービス
+Google Drive APIサービス（注文書）
 注文書PDFをGoogleドライブの共有フォルダにアップロードする。
+共有ドライブ対応。
 
 フォルダ構成:
-  共有フォルダ/注文書/パートナー会社名/order_XXXXX.pdf
+  注文書フォルダ/パートナー会社名/order_XXXXX.pdf
 """
 import io
+import os
 import logging
 from django.conf import settings
 
@@ -13,24 +15,26 @@ logger = logging.getLogger(__name__)
 
 
 def _get_drive_service():
-    """Google Drive APIサービスを構築する"""
-    from google.auth import default, impersonated_credentials
+    """Google Drive APIサービスを構築する（サービスアカウントキーファイル使用）"""
     from googleapiclient.discovery import build
 
-    sa_email = getattr(settings, 'GOOGLE_DRIVE_SERVICE_ACCOUNT', None)
+    cred_path = getattr(settings, 'GOOGLE_DRIVE_CREDENTIALS_FILE', '')
+    if not cred_path:
+        cred_path = os.path.join(
+            settings.BASE_DIR, 'credentials', 'drive-service-account.json'
+        )
 
-    # サービスアカウント偽装（組織ポリシーでJSON鍵作成が禁止されている場合）
-    if sa_email:
-        source_credentials, _ = default()
-        target_scopes = ['https://www.googleapis.com/auth/drive']
-        credentials = impersonated_credentials.Credentials(
-            source_credentials=source_credentials,
-            target_principal=sa_email,
-            target_scopes=target_scopes,
+    SCOPES = ['https://www.googleapis.com/auth/drive']
+
+    if os.path.exists(cred_path) and os.path.getsize(cred_path) > 0:
+        from google.oauth2 import service_account
+        credentials = service_account.Credentials.from_service_account_file(
+            cred_path, scopes=SCOPES
         )
     else:
-        # ADC（Application Default Credentials）を直接使用
-        credentials, _ = default(scopes=['https://www.googleapis.com/auth/drive'])
+        # フォールバック: ADC
+        import google.auth
+        credentials, _ = google.auth.default(scopes=SCOPES)
 
     return build('drive', 'v3', credentials=credentials)
 
@@ -67,7 +71,7 @@ def upload_order_pdf(order):
     """
     注文書PDFをGoogleドライブにアップロードする。
 
-    フォルダ構成: 共有フォルダ/注文書/パートナー会社名/order_XXXXX.pdf
+    フォルダ構成: 注文書フォルダ/パートナー会社名/order_XXXXX.pdf
     既存ファイルがあれば上書き（更新）する。
 
     Returns:
@@ -77,9 +81,10 @@ def upload_order_pdf(order):
     """
     from googleapiclient.http import MediaIoBaseUpload
 
-    root_folder_id = getattr(settings, 'GOOGLE_DRIVE_ROOT_FOLDER_ID', None)
+    root_folder_id = getattr(settings, 'GOOGLE_DRIVE_ORDER_FOLDER_ID', None) or \
+                     getattr(settings, 'GOOGLE_DRIVE_ROOT_FOLDER_ID', None)
     if not root_folder_id:
-        raise ValueError("GOOGLE_DRIVE_ROOT_FOLDER_ID が設定されていません。settings.py を確認してください。")
+        raise ValueError("GOOGLE_DRIVE_ORDER_FOLDER_ID が設定されていません。settings.py を確認してください。")
 
     service = _get_drive_service()
 
@@ -87,10 +92,10 @@ def upload_order_pdf(order):
     partner_name = order.partner.name
     partner_folder_id = _find_or_create_folder(service, partner_name, root_folder_id)
 
-    # 3. PDFファイル名
+    # 2. PDFファイル名
     filename = f"order_{order.order_id}.pdf"
 
-    # 4. 既存ファイルを検索（上書き用）
+    # 3. 既存ファイルを検索（上書き用）
     query = (
         f"name='{filename}' and "
         f"'{partner_folder_id}' in parents and "
@@ -102,7 +107,7 @@ def upload_order_pdf(order):
     ).execute()
     existing_files = results.get('files', [])
 
-    # 5. PDFデータを取得
+    # 4. PDFデータを取得
     if order.order_pdf:
         order.order_pdf.seek(0)
         pdf_data = order.order_pdf.read()
@@ -117,7 +122,7 @@ def upload_order_pdf(order):
         resumable=True
     )
 
-    # 6. アップロード or 更新
+    # 5. アップロード or 更新
     if existing_files:
         file_id = existing_files[0]['id']
         file = service.files().update(

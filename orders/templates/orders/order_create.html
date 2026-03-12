@@ -25,12 +25,12 @@
             <h3 style="border-left: 4px solid var(--primary); padding-left: 1rem; margin-bottom: 1.5rem;">{% trans "基本情報" %}</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                 <div class="form-group">
-                    <label>{{ form.partner.label }}</label>
+                    <label>{{ form.partner.label }} <span class="required">*</span></label>
                     {{ form.partner }}
                     {{ form.partner.errors }}
                 </div>
                 <div class="form-group">
-                    <label>{{ form.project.label }}</label>
+                    <label>{{ form.project.label }} <span class="required">*</span></label>
                     {{ form.project }}
                     {{ form.project.errors }}
                 </div>
@@ -95,7 +95,7 @@
             </div>
             <div style="margin-top: 1.5rem;">
                 <div class="form-group">
-                    <label>{{ form.payment_condition.label }}</label>
+                    <label>{{ form.payment_condition.label }} <span class="required">*</span></label>
                     {{ form.payment_condition }}
                 </div>
                 <div class="form-group">
@@ -114,7 +114,7 @@
             <div id="item-formset-container">
                 {% for item_form in item_formset %}
                 <div class="item-row" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
-                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr auto; gap: 0.75rem; align-items: end;">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr auto; gap: 0.75rem; align-items: start;">
                         <div class="form-group" style="margin-bottom: 0;">
                             <label style="font-size: 0.8rem;">{% trans "作業者名" %}</label>
                             {{ item_form.person_name }}
@@ -124,30 +124,31 @@
                             {{ item_form.effort }}
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label style="font-size: 0.8rem;">{% trans "月額（円）" %}</label>
+                            <label style="font-size: 0.8rem;">{% trans "月額（円）" %} <span class="required">*</span></label>
                             {{ item_form.base_fee }}
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label style="font-size: 0.8rem;">{% trans "下限(h)" %}</label>
+                            <label style="font-size: 0.8rem;">{% trans "下限(h)" %} <span class="required">*</span></label>
                             {{ item_form.time_lower_limit }}
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label style="font-size: 0.8rem;">{% trans "上限(h)" %}</label>
+                            <label style="font-size: 0.8rem;">{% trans "上限(h)" %} <span class="required">*</span></label>
                             {{ item_form.time_upper_limit }}
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label style="font-size: 0.8rem;">{% trans "不足(円/h)" %}</label>
+                            <label style="font-size: 0.8rem;">{% trans "不足(円/h)" %} <span class="required">*</span></label>
                             {{ item_form.shortage_rate }}
                         </div>
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label style="font-size: 0.8rem;">{% trans "超過(円/h)" %}</label>
+                            <label style="font-size: 0.8rem;">{% trans "超過(円/h)" %} <span class="required">*</span></label>
                             {{ item_form.excess_rate }}
                         </div>
-                        <div style="margin-bottom: 0;">
+                        <div style="margin-bottom: 0; display: flex; align-items: center;">
                             {% if item_form.DELETE %}
-                            <label style="font-size: 0.8rem; cursor: pointer; color: #ef4444;" title="削除">
-                                {{ item_form.DELETE }} <i class="fas fa-trash"></i>
-                            </label>
+                            <span style="display:none;">{{ item_form.DELETE }}</span>
+                            <button type="button" class="delete-btn" onclick="toggleDelete(this)" title="削除" style="background: none; border: 1px solid #ef4444; border-radius: 6px; color: #ef4444; cursor: pointer; padding: 0.4rem 0.6rem; font-size: 1rem; transition: all 0.2s;">
+                                <i class="fas fa-trash"></i>
+                            </button>
                             {% endif %}
                         </div>
                     </div>
@@ -189,9 +190,27 @@
         outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
     }
     .item-row input { font-size: 0.85rem; padding: 0.5rem; }
+    .required { color: #ef4444; font-weight: bold; margin-left: 2px; }
 </style>
 
 <script>
+function toggleDelete(btn) {
+    var row = btn.closest('.item-row');
+    var checkbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        if (checkbox.checked) {
+            row.style.opacity = '0.4';
+            btn.style.background = '#ef4444';
+            btn.style.color = '#fff';
+        } else {
+            row.style.opacity = '1';
+            btn.style.background = 'none';
+            btn.style.color = '#ef4444';
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     var container = document.getElementById('item-formset-container');
     var addBtn = document.getElementById('add-item-btn');
@@ -205,12 +224,12 @@ document.addEventListener('DOMContentLoaded', function() {
         var shortageInput = row.querySelector('[name$="-shortage_rate"]');
         var excessInput = row.querySelector('[name$="-excess_rate"]');
 
-        // 手動変更されていない場合のみ自動計算
+        // 手動変更されていない場合のみ自動計算（10円未満切り捨て）
         if (!shortageInput.dataset.manual && lower > 0 && baseFee > 0) {
-            shortageInput.value = Math.floor(baseFee / lower);
+            shortageInput.value = Math.floor(baseFee / lower / 10) * 10;
         }
         if (!excessInput.dataset.manual && upper > 0 && baseFee > 0) {
-            excessInput.value = Math.floor(baseFee / upper);
+            excessInput.value = Math.floor(baseFee / upper / 10) * 10;
         }
     }
 
@@ -231,10 +250,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 既存行にリスナー付与
+    // 既存行にリスナー付与＆初期計算
     var existingRows = container.querySelectorAll('.item-row');
     for (var k = 0; k < existingRows.length; k++) {
         attachListeners(existingRows[k]);
+        calcRates(existingRows[k]);
     }
 
     // 行追加

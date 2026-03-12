@@ -9,6 +9,7 @@ import io
 import os
 from django.conf import settings
 from core.domain.models import CompanyInfo
+from core.services.contract_pdf_generator import _get_stamp_path
 
 def _setup_fonts(p):
     # フォント登録（日本語対応）
@@ -48,33 +49,50 @@ def _draw_company_info(p, x, y, font_name, side="甲"):
     
     return name, rep
 
-def _get_fee_text(order):
+def _build_fee_table(order, font_name):
+    """業務委託料金のサブテーブルを生成（フル幅版）"""
     items = order.items.all()
-    if items.exists():
-        fee_text = ""
-        for item in items:
-            name = item.person_name or "作業担当者"
-            calc_text = f"￥{item.base_fee:,} × {item.effort}"
-            
-            adjustment = 0
-            adj_detail = ""
-            if item.actual_hours > 0:
-                if item.actual_hours < item.time_lower_limit:
-                    shortage = item.time_lower_limit - item.actual_hours
-                    adjustment = -int(shortage * item.shortage_rate)
-                    adj_detail = f" － 調整金(不足):￥{-adjustment:,}円"
-                elif item.actual_hours > item.time_upper_limit:
-                    excess = item.actual_hours - item.time_upper_limit
-                    adjustment = int(excess * item.excess_rate)
-                    adj_detail = f" ＋ 調整金(超過):￥{adjustment:,}円"
-            
-            fee_text += f"【{name}】\n"
-            fee_text += f"金額：￥{item.price:,}円 (内訳: {calc_text}{adj_detail})\n"
-            fee_text += f"※基準時間：{item.time_lower_limit}h～{item.time_upper_limit}h/月 (実績:{item.actual_hours}h)\n\n"
-        fee_text += "消費税抜き。作業報告書に基づく稼動実費精算とする。"
-        return fee_text
-    else:
+    if not items.exists():
         return "（明細行が登録されていません）"
+
+    # ヘッダー行（単位は括弧内に記載）
+    header = ["氏名", "基本料金（円/月）", "不足単価（円/h）", "超過単価（円/h）", "基準時間（h/月）"]
+    sub_data = [header]
+
+    for item in items:
+        name = item.person_name or "作業担当者"
+        sub_data.append([
+            name,
+            f"¥{item.base_fee:,}",
+            f"¥{item.shortage_rate:,}",
+            f"¥{item.excess_rate:,}",
+            f"{item.time_lower_limit}～{item.time_upper_limit}",
+        ])
+
+    # フッター行
+    sub_data.append(["※作業報告書に基づく稼動実費精算とする。", "", "", "", ""])
+
+    # フル幅: メインテーブル全幅(180mm)からパディング分を引いた幅を使用
+    sub_table = Table(sub_data, colWidths=[38*mm, 38*mm, 30*mm, 30*mm, 38*mm])
+    sub_table.setStyle(TableStyle([
+        ('FONT', (0, 0), (-1, -1), font_name, 9),
+        ('FONT', (0, 0), (-1, 0), font_name, 8),
+        ('GRID', (0, 0), (-1, -2), 0.3, colors.grey),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.92, 0.92, 0.92)),
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        # フッター行はスパン＆罫線なし
+        ('SPAN', (0, -1), (-1, -1)),
+        ('ALIGN', (0, -1), (0, -1), 'LEFT'),
+        ('FONT', (0, -1), (0, -1), font_name, 8),
+        ('GRID', (0, -1), (-1, -1), 0, colors.white),
+    ]))
+    return sub_table
 
 def generate_order_pdf(order, watermark=None):
     """注文書PDFの生成"""
@@ -110,30 +128,16 @@ def generate_order_pdf(order, watermark=None):
     # 4. 発行人 (甲)
     _draw_company_info(p, 110*mm, height - 55*mm, font_name, "甲")
 
-    # 6. 角印（印影）表示 - 社名の右端に被せて配置
-    stamp_path = None
+    # 6. 角印（印影）表示 - 社名の右端に被せて配置（画像がない場合はエラー）
     company = CompanyInfo.objects.first()
-    if company and company.stamp_image:
-        try:
-            stamp_path = company.stamp_image.path
-        except:
-            pass
-    if not stamp_path:
-        fallback = os.path.join(settings.MEDIA_ROOT, 'stamps', 'company_seal.png')
-        if os.path.exists(fallback):
-            stamp_path = fallback
-    if stamp_path:
-        try:
-            # 社名テキストの幅を計算して右端に被せる
-            p.setFont(font_name, 11)
-            name = company.name if company else "有限会社 マックプランニング"
-            name_width = p.stringWidth(name, font_name, 11)
-            stamp_size = 22 * mm
-            stamp_x = 110 * mm + name_width - stamp_size * 0.35  # 社名右端に35%被せる
-            stamp_y = height - 55*mm - 5*mm - stamp_size * 0.65  # 社名の縦位置に合わせる
-            p.drawImage(stamp_path, stamp_x, stamp_y, width=stamp_size, height=stamp_size, mask='auto', preserveAspectRatio=True)
-        except:
-            pass
+    stamp_path = _get_stamp_path(company)
+    p.setFont(font_name, 11)
+    name = company.name if company else "有限会社 マックプランニング"
+    name_width = p.stringWidth(name, font_name, 11)
+    stamp_size = 22 * mm
+    stamp_x = 110 * mm + name_width - stamp_size * 0.35  # 社名右端に35%被せる
+    stamp_y = height - 55*mm - 5*mm - stamp_size * 0.65  # 社名の縦位置に合わせる
+    p.drawImage(stamp_path, stamp_x, stamp_y, width=stamp_size, height=stamp_size, mask='auto', preserveAspectRatio=True)
 
     # 7. 本文
     p.setFont(font_name, 10)
@@ -145,13 +149,16 @@ def generate_order_pdf(order, watermark=None):
     otsu_res = order.乙_責任者 or order.partner.responsible_person
     otsu_cnt = order.乙_担当者 or order.partner.contact_person
 
+    fee_table = _build_fee_table(order, font_name)
+
     data = [
         ["業務名称", order.project.name if order.project else ""],
         ["作業期間", f"{order.work_start.strftime('%Y年%m月%d日')} ～ {order.work_end.strftime('%Y年%m月%d日')}"],
         ["委託業務責任者（甲）", kou_res, "連絡窓口担当者（甲）", kou_cnt],
         ["委託業務責任者（乙）", otsu_res, "連絡窓口担当者（乙）", otsu_cnt],
         ["作業責任者", order.作業責任者, "", ""],
-        ["業務委託料金", _get_fee_text(order)],
+        ["業務委託料金", "", "", ""],
+        [fee_table, "", "", ""],
         ["作業場所", order.workplace.name if order.workplace else ""],
         ["納入物件", order.deliverable_text],
         ["支払条件", order.payment_condition],
@@ -165,10 +172,20 @@ def generate_order_pdf(order, watermark=None):
         ('SPAN', (1, 0), (3, 0)),
         ('SPAN', (1, 1), (3, 1)),
         ('SPAN', (1, 4), (3, 4)),
-        ('SPAN', (1, 5), (3, 5)),
-        ('SPAN', (1, 6), (3, 6)),
+        # 業務委託料金: ラベル行は全列スパン・左上配置
+        ('SPAN', (0, 5), (3, 5)),
+        ('VALIGN', (0, 5), (0, 5), 'TOP'),
+        ('ALIGN', (0, 5), (0, 5), 'LEFT'),
+        # 料金テーブル行も全列スパン
+        ('SPAN', (0, 6), (3, 6)),
+        ('TOPPADDING', (0, 6), (0, 6), 0),
+        ('BOTTOMPADDING', (0, 6), (0, 6), 0),
+        ('LEFTPADDING', (0, 6), (0, 6), 0),
+        ('RIGHTPADDING', (0, 6), (0, 6), 0),
+        # 作業場所以降
         ('SPAN', (1, 7), (3, 7)),
         ('SPAN', (1, 8), (3, 8)),
+        ('SPAN', (1, 9), (3, 9)),
     ]))
 
     w, h = table.wrapOn(p, width, height)
@@ -231,13 +248,16 @@ def generate_acceptance_pdf(order):
     otsu_res = order.乙_責任者 or order.partner.responsible_person
     otsu_cnt = order.乙_担当者 or order.partner.contact_person
 
+    fee_table = _build_fee_table(order, font_name)
+
     data = [
         ["業務名称", order.project.name if order.project else ""],
         ["作業期間", f"{order.work_start.strftime('%Y年%m月%d日')} ～ {order.work_end.strftime('%Y年%m月%d日')}"],
         ["委託業務責任者（甲）", kou_res, "連絡窓口担当者（甲）", kou_cnt],
         ["委託業務責任者（乙）", otsu_res, "連絡窓口担当者（乙）", otsu_cnt],
         ["作業責任者", order.作業責任者, "", ""],
-        ["業務委託料金", _get_fee_text(order)],
+        ["業務委託料金", "", "", ""],
+        [fee_table, "", "", ""],
         ["作業場所", order.workplace.name if order.workplace else ""],
         ["納入物件", order.deliverable_text],
         ["支払条件", order.payment_condition],
@@ -251,10 +271,20 @@ def generate_acceptance_pdf(order):
         ('SPAN', (1, 0), (3, 0)),
         ('SPAN', (1, 1), (3, 1)),
         ('SPAN', (1, 4), (3, 4)),
-        ('SPAN', (1, 5), (3, 5)),
-        ('SPAN', (1, 6), (3, 6)),
+        # 業務委託料金: ラベル行は全列スパン・左上配置
+        ('SPAN', (0, 5), (3, 5)),
+        ('VALIGN', (0, 5), (0, 5), 'TOP'),
+        ('ALIGN', (0, 5), (0, 5), 'LEFT'),
+        # 料金テーブル行も全列スパン
+        ('SPAN', (0, 6), (3, 6)),
+        ('TOPPADDING', (0, 6), (0, 6), 0),
+        ('BOTTOMPADDING', (0, 6), (0, 6), 0),
+        ('LEFTPADDING', (0, 6), (0, 6), 0),
+        ('RIGHTPADDING', (0, 6), (0, 6), 0),
+        # 作業場所以降
         ('SPAN', (1, 7), (3, 7)),
         ('SPAN', (1, 8), (3, 8)),
+        ('SPAN', (1, 9), (3, 9)),
     ]))
 
     w, h = table.wrapOn(p, width, height)

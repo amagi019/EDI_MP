@@ -1,0 +1,22 @@
+# ローカル開発用 docker-compose
+# PostgreSQLのみ起動（アプリは直接実行）
+services:
+  db:
+    image: postgres:16
+    container_name: edi-mp-dev-db
+    environment:
+      POSTGRES_DB: edi_mp_dev
+      POSTGRES_USER: edi_user
+      POSTGRES_PASSWORD: edi_dev_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - edi_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edi_user -d edi_mp_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  edi_dev_pgdata:

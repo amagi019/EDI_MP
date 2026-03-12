@@ -9,6 +9,16 @@ ENV/
 media/
 static/
 .env
+.env.nas
+
+# Credentials（機密情報）
+credentials/
+
+# collectstatic出力
+staticfiles/
+
+# データダンプ
+data_dump.json
 
 # MacOS
 .DS_Store

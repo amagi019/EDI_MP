@@ -151,9 +151,17 @@ class Order(models.Model):
     deliverable_text = models.CharField(_("納入物件（テキスト）"), max_length=255, default="月別作業報告書")
     
     payment_term = models.ForeignKey(PaymentTerm, on_delete=models.PROTECT, verbose_name=_("支払条件"), blank=True, null=True)
-    payment_condition = models.TextField(_("詳細支払条件"), blank=True, help_text="PDFの支払条件欄に表示される詳細テキスト")
+    payment_condition = models.TextField(
+        _("詳細支払条件"), blank=True,
+        default="毎月末日締め翌月末日払い（税別）",
+        help_text="PDFの支払条件欄に表示される詳細テキスト",
+    )
     contract_term = models.ForeignKey(ContractTerm, on_delete=models.PROTECT, verbose_name=_("契約条件"), blank=True, null=True)
-    contract_items = models.TextField(_("契約条項"), blank=True, help_text="PDF下部の契約条項")
+    contract_items = models.TextField(
+        _("契約条項"), blank=True,
+        default="１．本作業に関わる著作権は、甲に一切帰属するものとする。\n２．乙は、本作業にて知り得た知識・企業秘密・ノウハウその他の情報（本作業自体を含め）、一切乙以外の外部に漏洩しないものとする。\n３．顧客の都合によりこの注文書の業務が中断もしくは終了した場合は、その時点で、当該注文は解除され発注の効力を失う。",
+        help_text="PDF下部の契約条項",
+    )
 
     # 担当者・責任者情報
     甲_責任者 = models.CharField(_("委託業務責任者（甲）"), max_length=64, blank=True)
@@ -220,6 +228,10 @@ class Order(models.Model):
 
     def __str__(self):
         return f"{self.order_id} - {self.partner}"
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('orders:order_detail', kwargs={'order_id': self.order_id})
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')

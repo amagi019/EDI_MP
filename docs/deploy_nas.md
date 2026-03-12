@@ -32,8 +32,8 @@ $DOCKER exec -it edi-mp-web python manage.py createsuperuser
 
 ### 4. アクセス確認
 
-- **アプリ**: http://192.168.50.198:8090
-- **管理画面**: http://192.168.50.198:8090/admin/
+- **アプリ**: https://edi.macplanning.com
+- **管理画面**: https://edi.macplanning.com/admin/
 
 ## SQLiteからのデータ移行（任意）
 

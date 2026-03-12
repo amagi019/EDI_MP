@@ -3,7 +3,7 @@ billing プレゼンテーション層 - ビュー定義
 """
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, JsonResponse
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.contrib import messages
@@ -27,17 +27,14 @@ from billing.application.services.mail_service import (
     send_invoice_email, parse_email_list,
 )
 from core.domain.models import CompanyInfo
-
-
-staff_required = user_passes_test(lambda u: u.is_staff)
+from core.permissions import StaffRequiredMixin
 
 
 # ============================================================
 # ダッシュボード
 # ============================================================
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class DashboardView(TemplateView):
+class DashboardView(StaffRequiredMixin, TemplateView):
     """請求書ダッシュボード"""
     template_name = 'billing/dashboard.html'
 
@@ -58,15 +55,13 @@ class DashboardView(TemplateView):
 # 請求先（BillingCustomer）
 # ============================================================
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class CustomerListView(ListView):
+class CustomerListView(StaffRequiredMixin, ListView):
     model = BillingCustomer
     template_name = 'billing/customer_list.html'
     context_object_name = 'customers'
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class CustomerCreateView(CreateView):
+class CustomerCreateView(StaffRequiredMixin, CreateView):
     model = BillingCustomer
     form_class = BillingCustomerForm
     template_name = 'billing/customer_form.html'
@@ -77,8 +72,7 @@ class CustomerCreateView(CreateView):
         return super().form_valid(form)
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class CustomerUpdateView(UpdateView):
+class CustomerUpdateView(StaffRequiredMixin, UpdateView):
     model = BillingCustomer
     form_class = BillingCustomerForm
     template_name = 'billing/customer_form.html'
@@ -89,8 +83,7 @@ class CustomerUpdateView(UpdateView):
         return super().form_valid(form)
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class CustomerDeleteView(DeleteView):
+class CustomerDeleteView(StaffRequiredMixin, DeleteView):
     model = BillingCustomer
     template_name = 'billing/customer_confirm_delete.html'
     success_url = reverse_lazy('billing:customer_list')
@@ -104,15 +97,13 @@ class CustomerDeleteView(DeleteView):
 # 商品（BillingProduct）
 # ============================================================
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class ProductListView(ListView):
+class ProductListView(StaffRequiredMixin, ListView):
     model = BillingProduct
     template_name = 'billing/product_list.html'
     context_object_name = 'products'
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class ProductCreateView(CreateView):
+class ProductCreateView(StaffRequiredMixin, CreateView):
     model = BillingProduct
     form_class = BillingProductForm
     template_name = 'billing/product_form.html'
@@ -123,8 +114,7 @@ class ProductCreateView(CreateView):
         return super().form_valid(form)
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class ProductUpdateView(UpdateView):
+class ProductUpdateView(StaffRequiredMixin, UpdateView):
     model = BillingProduct
     form_class = BillingProductForm
     template_name = 'billing/product_form.html'
@@ -135,8 +125,7 @@ class ProductUpdateView(UpdateView):
         return super().form_valid(form)
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class ProductDeleteView(DeleteView):
+class ProductDeleteView(StaffRequiredMixin, DeleteView):
     model = BillingProduct
     template_name = 'billing/product_confirm_delete.html'
     success_url = reverse_lazy('billing:product_list')
@@ -146,8 +135,7 @@ class ProductDeleteView(DeleteView):
         return super().form_valid(form)
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class ProductAPIView(View):
+class ProductAPIView(StaffRequiredMixin, View):
     """商品情報API（JSON）"""
     def get(self, request, pk):
         product = get_object_or_404(BillingProduct, pk=pk)
@@ -163,8 +151,7 @@ class ProductAPIView(View):
 # 請求書（BillingInvoice）
 # ============================================================
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class InvoiceListView(ListView):
+class InvoiceListView(StaffRequiredMixin, ListView):
     model = BillingInvoice
     template_name = 'billing/invoice_list.html'
     context_object_name = 'invoices'
@@ -195,8 +182,7 @@ class InvoiceListView(ListView):
         return context
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class InvoiceCreateView(CreateView):
+class InvoiceCreateView(StaffRequiredMixin, CreateView):
     model = BillingInvoice
     form_class = BillingInvoiceForm
     template_name = 'billing/invoice_form.html'
@@ -230,8 +216,7 @@ class InvoiceCreateView(CreateView):
             return self.render_to_response(context)
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class InvoiceUpdateView(UpdateView):
+class InvoiceUpdateView(StaffRequiredMixin, UpdateView):
     model = BillingInvoice
     form_class = BillingInvoiceForm
     template_name = 'billing/invoice_form.html'
@@ -267,8 +252,7 @@ class InvoiceUpdateView(UpdateView):
             return self.render_to_response(context)
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class InvoiceDetailView(DetailView):
+class InvoiceDetailView(StaffRequiredMixin, DetailView):
     model = BillingInvoice
     template_name = 'billing/invoice_detail.html'
     context_object_name = 'invoice'
@@ -286,8 +270,7 @@ class InvoiceDetailView(DetailView):
         return context
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class InvoiceDeleteView(DeleteView):
+class InvoiceDeleteView(StaffRequiredMixin, DeleteView):
     model = BillingInvoice
     template_name = 'billing/invoice_confirm_delete.html'
     success_url = reverse_lazy('billing:invoice_list')
@@ -301,9 +284,8 @@ class InvoiceDeleteView(DeleteView):
 # PDF
 # ============================================================
 
-@method_decorator([login_required, staff_required], name='dispatch')
 @method_decorator(xframe_options_sameorigin, name='dispatch')
-class InvoicePDFView(View):
+class InvoicePDFView(StaffRequiredMixin, View):
     """PDF生成・プレビュー"""
     def get(self, request, pk):
         invoice = get_object_or_404(BillingInvoice, pk=pk)
@@ -313,8 +295,7 @@ class InvoicePDFView(View):
         return response
 
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class InvoicePDFDownloadView(View):
+class InvoicePDFDownloadView(StaffRequiredMixin, View):
     """PDFダウンロード"""
     def get(self, request, pk):
         invoice = get_object_or_404(BillingInvoice, pk=pk)
@@ -328,8 +309,7 @@ class InvoicePDFDownloadView(View):
 # Googleドライブ保存
 # ============================================================
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class InvoiceDriveUploadView(View):
+class InvoiceDriveUploadView(StaffRequiredMixin, View):
     """Googleドライブに保存"""
     def post(self, request, pk):
         invoice = get_object_or_404(BillingInvoice, pk=pk)
@@ -376,8 +356,7 @@ class InvoiceDriveUploadView(View):
 # メール送信
 # ============================================================
 
-@method_decorator([login_required, staff_required], name='dispatch')
-class InvoiceMailView(View):
+class InvoiceMailView(StaffRequiredMixin, View):
     """メール送信"""
     def get(self, request, pk):
         invoice = get_object_or_404(BillingInvoice, pk=pk)

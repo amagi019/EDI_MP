@@ -42,6 +42,7 @@ services:
       - "8090:8090"
     volumes:
       - edi-media:/app/media
+      - ./credentials:/app/credentials:ro
     env_file:
       - .env.nas
     depends_on:
@@ -49,7 +50,7 @@ services:
         condition: service_healthy
     command: >
       sh -c "python scripts/create_tables.py &&
-             python manage.py migrate --fake --noinput &&
+             python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput &&
              gunicorn EDI_MP.wsgi:application --bind 0.0.0.0:8090 --workers 2 --timeout 120"
     networks:

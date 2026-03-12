@@ -56,6 +56,15 @@ class Partner(models.Model):
     # インボイス制度対応
     registration_no = models.CharField(_("登録番号"), max_length=20, blank=True, help_text=_("T13桁の番号"))
 
+    # 自社担当者（契約承認時の通知先）
+    staff_contact = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name=_("自社担当者"),
+        related_name='managed_partners',
+        help_text=_("契約承認時の通知メール送信先となるスタッフ"),
+        limit_choices_to={'is_staff': True},
+    )
+
     # 添付書類
     attachment_file = models.FileField(_("添付書類（決算報告書等）"), upload_to='customers/attachments/', blank=True, null=True)
 
@@ -78,6 +87,10 @@ class Partner(models.Model):
 
     def __str__(self):
         return f"[{self.partner_id}] {self.name}"
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('core:contract_approve', kwargs={'partner_id': self.partner_id})
 
 class Profile(models.Model):
     """ユーザープロフィール（初回ログインフラグ管理）"""
@@ -155,6 +168,7 @@ class SentEmailLog(models.Model):
     partner = models.ForeignKey(Partner, on_delete=models.CASCADE, verbose_name=_("パートナー"), related_name="email_logs")
     subject = models.CharField(_("件名"), max_length=255)
     body = models.TextField(_("本文"))
+    recipient = models.EmailField(_("送信先"), blank=True, help_text=_("送信先メールアドレス"))
     sent_at = models.DateTimeField(_("送信日時"), auto_now_add=True)
 
     class Meta:
@@ -193,6 +207,10 @@ class MasterContractProgress(models.Model):
 
     def __str__(self):
         return f"{self.partner.name}: {self.get_status_display()}"
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('core:contract_progress_list')
 
 
 class EmailTemplate(models.Model):

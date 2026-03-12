@@ -32,7 +32,7 @@ ssh ${NAS_USER}@${NAS_HOST} "mkdir -p ${NAS_DIR}"
 
 # 2. ファイル転送（rsync）
 echo -e "\n${YELLOW}[2/4] プロジェクトファイルをNASに転送中...${NC}"
-rsync -avz --progress \
+rsync -avz --progress --delete \
     --exclude='.git' \
     --exclude='.venv' \
     --exclude='__pycache__' \
@@ -59,11 +59,32 @@ ssh ${NAS_USER}@${NAS_HOST} "
 "
 
 # 4. Docker Compose でビルド＆起動
-echo -e "\n${YELLOW}[4/4] Dockerコンテナをビルド・起動中...${NC}"
+echo -e "\n${YELLOW}[4/5] Dockerコンテナをビルド・起動中...${NC}"
 ssh ${NAS_USER}@${NAS_HOST} "
     cd ${NAS_DIR}
     ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d --build
 "
+
+# 5. 角印画像をコンテナのmediaボリューム（/app/media/stamps/）にコピー
+echo -e "\n${YELLOW}[5/5] 角印画像をmediaボリュームに転送中...${NC}"
+if [ -d "media/stamps" ]; then
+    # コンテナ内にstampsディレクトリを作成
+    ssh ${NAS_USER}@${NAS_HOST} "${DOCKER_BIN} exec edi-mp-web mkdir -p /app/media/stamps"
+    # ローカルの角印画像をコンテナのmediaボリュームにコピー
+    for f in media/stamps/*; do
+        if [ -f "$f" ]; then
+            filename=$(basename "$f")
+            # ファイルをNASの一時ディレクトリにコピー
+            scp "$f" ${NAS_USER}@${NAS_HOST}:/tmp/"${filename}"
+            # docker cpでコンテナのmediaボリューム内にコピー
+            ssh ${NAS_USER}@${NAS_HOST} "${DOCKER_BIN} cp /tmp/${filename} edi-mp-web:/app/media/stamps/${filename} && rm /tmp/${filename}"
+            echo "  → ${filename} コピー完了"
+        fi
+    done
+    echo -e "${GREEN}✓ 角印画像のコピー完了（mediaボリュームに永続化済み）${NC}"
+else
+    echo -e "${YELLOW}⚠️  media/stamps/ が見つかりません。角印画像を手動で配置してください。${NC}"
+fi
 
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN} デプロイ完了！${NC}"

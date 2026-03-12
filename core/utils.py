@@ -97,6 +97,7 @@ def send_invitation_email(partner, email, password):
         partner=partner,
         subject=subject,
         body=body,
+        recipient=email,
     )
 
     try:

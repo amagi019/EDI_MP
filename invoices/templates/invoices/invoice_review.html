@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "請求書確認" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">{% trans "請求書確認・承認" %}</h2>
+        <div style="display: flex; gap: 0.5rem;">
+            {% if invoice.status == 'PENDING_REVIEW' %}
+            <span style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(234, 179, 8, 0.2); color: #fde047;">{% trans "確認待ち" %}</span>
+            {% elif invoice.status == 'ISSUED' %}
+            <span style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">{% trans "承認済・発行済" %}</span>
+            {% elif invoice.status == 'DRAFT' %}
+            <span style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(156, 163, 175, 0.2); color: #d1d5db;">{% trans "差戻し済" %}</span>
+            {% else %}
+            <span style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(59, 130, 246, 0.2); color: #93c5fd;">{{ invoice.get_status_display }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "請求番号" %}</p>
+            <p style="font-family: monospace; font-size: 1.1rem;">{{ invoice.invoice_no }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "パートナー" %}</p>
+            <p>{{ invoice.order.partner.name }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "対象年月" %}</p>
+            <p>{{ invoice.target_month }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "プロジェクト" %}</p>
+            <p>{{ invoice.order.project.name }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "注文番号" %}</p>
+            <p style="font-family: monospace;">{{ invoice.order.order_id }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "作成日" %}</p>
+            <p>{{ invoice.issue_date }}</p>
+        </div>
+    </div>
+
+    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-dim);">{% trans "請求明細" %}</h3>
+    <div style="overflow-x: auto; margin-bottom: 2rem;">
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-main);">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--glass-border);">
+                    <th style="text-align: left; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "作業者" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "実稼働時間" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "基本料金" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "精算幅" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "超過/控除" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "金額" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <td style="padding: 0.8rem;">{{ item.person_name }}</td>
+                    <td style="padding: 0.8rem; text-align: right;">{{ item.work_time }}h</td>
+                    <td style="padding: 0.8rem; text-align: right;">¥{{ item.base_fee|floatformat:0 }}</td>
+                    <td style="padding: 0.8rem; text-align: right;">{{ item.time_lower_limit }}～{{ item.time_upper_limit }}h</td>
+                    <td style="padding: 0.8rem; text-align: right;">{% if item.excess_amount > 0 %}<span style="color: #fca5a5;">+¥{{ item.excess_amount|floatformat:0 }}</span>{% elif item.shortage_amount > 0 %}<span style="color: #93c5fd;">-¥{{ item.shortage_amount|floatformat:0 }}</span>{% else %}-{% endif %}</td>
+                    <td style="padding: 0.8rem; text-align: right; font-weight: 600;">¥{{ item.item_subtotal|floatformat:0 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" style="padding: 1rem; text-align: center; color: var(--text-dim);">{% trans "明細がありません" %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 2rem;">
+        <div style="min-width: 280px; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: var(--text-dim);">{% trans "税抜合計" %}</span><span>¥{{ invoice.subtotal_amount|floatformat:0 }}</span></div>
+            <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: var(--text-dim);">{% trans "消費税(10%)" %}</span><span>¥{{ invoice.tax_amount|floatformat:0 }}</span></div>
+            <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; font-size: 1.3rem; font-weight: 700;"><span>{% trans "税込合計" %}</span><span style="color: #86efac;">¥{{ invoice.total_amount|floatformat:0 }}</span></div>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
+        <a href="{% url 'invoices:admin_invoice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none;" target="_blank">{% trans "請求書PDF" %}</a>
+        <a href="{% url 'invoices:admin_payment_notice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none; background: rgba(75, 85, 99, 0.5);" target="_blank">{% trans "支払通知書PDF" %}</a>
+
+        {% if invoice.status == 'PENDING_REVIEW' %}
+        <form method="post" style="margin: 0;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="approve">
+            <button type="submit" class="btn" onclick="return confirm('この請求書を承認し、パートナーへ送付しますか？')" style="background: linear-gradient(135deg, #22c55e, #16a34a);">{% trans "承認してパートナーへ送付" %}</button>
+        </form>
+        <button type="button" class="btn" onclick="document.getElementById('reject-form').style.display='block'" style="background: linear-gradient(135deg, #ef4444, #dc2626);">{% trans "差戻し" %}</button>
+        {% endif %}
+    </div>
+
+    {% if invoice.status == 'PENDING_REVIEW' %}
+    <div id="reject-form" style="display: none; margin-top: 1.5rem; padding: 1.5rem; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
+        <h4 style="margin: 0 0 1rem; color: #fca5a5;">{% trans "差戻し理由" %}</h4>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reject">
+            <textarea name="reject_reason" rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: var(--text-main); padding: 0.75rem; font-size: 0.95rem; resize: vertical;" placeholder="修正が必要な点を記入してください..."></textarea>
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('reject-form').style.display='none'">{% trans "キャンセル" %}</button>
+                <button type="submit" class="btn" onclick="return confirm('この請求書を差し戻しますか？')" style="background: linear-gradient(135deg, #ef4444, #dc2626);">{% trans "差戻しを実行" %}</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

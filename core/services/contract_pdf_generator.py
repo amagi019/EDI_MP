@@ -20,28 +20,33 @@ def _setup_fonts(p):
     return font_name
 
 
-def _draw_stamp(p, font_name, company, name_x, name_y, name_font_size=11):
-    """角印を社名の右端に被せて描画する"""
-    stamp_path = None
+def _get_stamp_path(company):
+    """角印画像のパスを取得する。見つからない場合はFileNotFoundErrorを発生させる。"""
     if company and company.stamp_image:
         try:
-            stamp_path = company.stamp_image.path
-        except:
+            path = company.stamp_image.path
+            if os.path.exists(path):
+                return path
+        except Exception:
             pass
-    if not stamp_path:
-        fallback = os.path.join(settings.MEDIA_ROOT, 'stamps', 'company_seal.png')
-        if os.path.exists(fallback):
-            stamp_path = fallback
-    if stamp_path:
-        try:
-            name = company.name if company else "有限会社 マックプランニング"
-            name_width = p.stringWidth(name, font_name, name_font_size)
-            stamp_size = 22 * mm
-            stamp_x = name_x + name_width - stamp_size * 0.35
-            stamp_y = name_y - stamp_size * 0.65
-            p.drawImage(stamp_path, stamp_x, stamp_y, width=stamp_size, height=stamp_size, mask='auto', preserveAspectRatio=True)
-        except:
-            pass
+    fallback = os.path.join(settings.MEDIA_ROOT, 'stamps', 'company_seal.png')
+    if os.path.exists(fallback):
+        return fallback
+    raise FileNotFoundError(
+        "角印画像が見つかりません。media/stamps/company_seal.png を配置するか、"
+        "管理画面の会社情報で角印画像をアップロードしてください。"
+    )
+
+
+def _draw_stamp(p, font_name, company, name_x, name_y, name_font_size=11):
+    """角印を社名の右端に被せて描画する。角印画像がない場合はエラー。"""
+    stamp_path = _get_stamp_path(company)
+    name = company.name if company else "有限会社 マックプランニング"
+    name_width = p.stringWidth(name, font_name, name_font_size)
+    stamp_size = 22 * mm
+    stamp_x = name_x + name_width - stamp_size * 0.35
+    stamp_y = name_y - stamp_size * 0.65
+    p.drawImage(stamp_path, stamp_x, stamp_y, width=stamp_size, height=stamp_size, mask='auto', preserveAspectRatio=True)
 
 
 # 契約条項テンプレート
@@ -183,7 +188,9 @@ def generate_contract_pdf(partner, signed_at=None, created_date=None):
 
     # 締結日
     if signed_at:
-        date_str = signed_at.strftime("%Y年%m月%d日")
+        from django.utils import timezone as tz
+        local_signed = tz.localtime(signed_at)
+        date_str = local_signed.strftime("%Y年%m月%d日")
     else:
         date_str = "　　　　年　　月　　日（乙の電子承認時に自動記入）"
     p.setFont(font_name, 10)
@@ -220,7 +227,7 @@ def generate_contract_pdf(partner, signed_at=None, created_date=None):
         p.setFillColor(colors.HexColor('#10B981'))
         p.drawString(110 * mm, y_pos - 22 * mm, "【電子承認済】")
         p.setFillColor(colors.black)
-        p.drawString(110 * mm, y_pos - 27 * mm, f"承認日時: {signed_at.strftime('%Y年%m月%d日 %H:%M')}")
+        p.drawString(110 * mm, y_pos - 27 * mm, f"承認日時: {local_signed.strftime('%Y年%m月%d日 %H:%M')}")
     else:
         # 未承認の場合
         p.setFont(font_name, 8)

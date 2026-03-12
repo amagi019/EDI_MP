@@ -5,31 +5,38 @@
 
 {% block content %}
 <div class="card fade-in">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h1 style="margin: 0; font-family: 'Outfit', sans-serif;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <h1 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.5rem;">
             <i class="fas fa-envelope-open-text" style="color: var(--primary-color);"></i>
             {% trans "送信メール履歴" %}: {{ customer.name }}
         </h1>
-        <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> {% trans "ダッシュボードに戻る" %}
+        <a href="{% url 'core:contract_progress_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> {% trans "基本契約進捗一覧に戻る" %}
         </a>
     </div>
 
     {% if email_logs %}
-    <div style="display: grid; gap: 2rem;">
+    <div style="margin-bottom: 1.5rem; color: var(--text-dim); font-size: 0.9rem;">
+        <i class="fas fa-info-circle" style="margin-right: 0.5rem; color: var(--secondary);"></i>
+        {% blocktrans with total=email_logs|length %}{{ total }} 件のメール送信履歴{% endblocktrans %}
+    </div>
+
+    <div style="display: grid; gap: 1rem;">
         {% for log in email_logs %}
-        <div
-            style="background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
-            <div
-                style="background: rgba(var(--primary-rgb), 0.05); padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-                <strong style="font-size: 1.1rem; color: var(--text-main);">{{ log.subject }}</strong>
-                <span style="color: var(--text-dim); font-size: 0.9rem;">
-                    <i class="far fa-clock"></i> {{ log.sent_at|date:"Y/m/d H:i" }}
-                </span>
+        <div style="background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden;">
+            <div style="background: rgba(var(--primary-rgb), 0.05); padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border-color); cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 1rem;" onclick="this.parentElement.querySelector('.email-body').classList.toggle('collapsed'); this.querySelector('.toggle-icon').classList.toggle('fa-chevron-down'); this.querySelector('.toggle-icon').classList.toggle('fa-chevron-up');">
+                <div style="flex: 1; min-width: 0;">
+                    <strong style="font-size: 1rem; color: var(--text-main); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ log.subject }}</strong>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.35rem; font-size: 0.8rem; color: var(--text-dim);">
+                        <span><i class="far fa-clock" style="margin-right: 0.25rem;"></i>{{ log.sent_at|date:"Y/m/d H:i" }}</span>
+                        {% if log.recipient %}
+                        <span><i class="fas fa-paper-plane" style="margin-right: 0.25rem;"></i>{{ log.recipient }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <i class="fas fa-chevron-down toggle-icon" style="color: var(--text-dim); font-size: 0.8rem; flex-shrink: 0;"></i>
             </div>
-            <div
-                style="padding: 1.5rem; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; color: var(--text-main); line-height: 1.6; background: var(--bg-card);">
-                {{ log.body }}</div>
+            <div class="email-body collapsed" style="padding: 1.25rem 1.5rem; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; color: var(--text-main); line-height: 1.6; background: var(--bg-card); font-size: 0.9rem; max-height: 500px; overflow-y: auto;">{{ log.body }}</div>
         </div>
         {% endfor %}
     </div>
@@ -40,4 +47,10 @@
     </div>
     {% endif %}
 </div>
+
+<style>
+    .email-body.collapsed {
+        display: none;
+    }
+</style>
 {% endblock %}
