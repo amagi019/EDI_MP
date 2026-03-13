@@ -33,8 +33,7 @@
    - **ログインURL**: https://edi.macplanning.com/accounts/login/
    - **管理画面URL**: https://edi.macplanning.com/admin/
 2. 管理者IDとパスワードを入力し、ログインしてください。
-   - **管理者ID**: `admin`
-   - **パスワード**: `a0000000`
+   - 管理者IDとパスワードはシステム管理者にお問い合わせください。
 
 ### 3.2 取引先・プロジェクト登録
 注文書を作成する前に、マスタデータの登録が必要です。

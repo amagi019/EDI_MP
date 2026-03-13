@@ -135,19 +135,24 @@ orders = Order.objects.select_related('partner', 'project').all()
 
 ```
 EDI_MP/
-├── EDI_MP/          # プロジェクト設定
-│   └── settings.py
-├── core/            # コアドメイン（認証・パートナー・契約）
+├── EDI_MP/              # プロジェクト設定
+│   └── settings/        # 環境別設定（base.py, dev.py, prod.py）
+├── core/                # コアドメイン（認証・パートナー・契約）
 │   ├── domain/models.py
-│   ├── permissions.py     # 権限管理（一元化）
-│   ├── services/          # ビジネスロジック
-│   └── views.py
-├── orders/          # 発注管理
-├── invoices/        # 請求管理
-├── billing/         # 請求書発行（旧システム）
-└── docs/            # ドキュメント
+│   ├── permissions.py   # 権限管理（一元化）
+│   ├── services/        # ビジネスロジック（Google Drive統合含む）
+│   └── views/           # ビューパッケージ（責務別に分割）
+│       ├── auth_views.py
+│       ├── partner_views.py
+│       ├── contract_views.py
+│       └── dashboard_views.py
+├── orders/              # 発注管理
+├── invoices/            # 請求管理
+├── billing/             # 請求書発行・支払通知
+└── docs/                # ドキュメント
 ```
 
 ### App分割の指針
 - ドメインごとにAppを分離（認証、発注、請求）
 - App間の依存は最小限に（循環参照を避ける）
+- Google Driveサービスは `core/services/` に統合し、各Appからはラッパー経由で利用
