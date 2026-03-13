@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.contrib.auth import views as auth_views
 from core import views as core_views
 from django.conf import settings
 from django.conf.urls.static import static
@@ -32,6 +33,7 @@ urlpatterns = [
     path('invoices/', include('invoices.urls')),
     path('billing/', include('billing.presentation.urls')),
     path('accounts/password_change/', core_views.CustomPasswordChangeView.as_view(), name='password_change'),
+    path('accounts/logout/', auth_views.LogoutView.as_view(http_method_names=['get', 'post', 'options']), name='logout'),
     path('accounts/', include('django.contrib.auth.urls')),
 ]
 
