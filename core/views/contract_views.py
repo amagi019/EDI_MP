@@ -115,15 +115,9 @@ class ContractSendView(StaffRequiredMixin, View):
         contract_url = request.build_absolute_uri(
             reverse('core:contract_approve', kwargs={'partner_id': partner_id})
         )
-        subject = f"【基本契約書のご確認】{partner.name} 様"
-        body = (
-            f"{partner.name} 御中\n\n"
-            f"基本契約書を作成いたしましたので、以下のURLよりご確認ください。\n\n"
-            f"■ 契約書確認URL:\n{contract_url}\n\n"
-            f"内容をご確認のうえ、「承認」ボタンを押してください。\n\n"
-            f"ご不明な点がございましたら、お気軽にお問い合わせください。\n\n"
-            f"有限会社 マックプランニング"
-        )
+
+        from core.utils import compose_contract_send_email
+        subject, body = compose_contract_send_email(partner, contract_url)
 
         try:
             send_mail(
@@ -207,17 +201,19 @@ class ContractApproveView(LoginRequiredMixin, View):
                 notify_email = partner.staff_contact.email
             else:
                 notify_email = django_settings.DEFAULT_FROM_EMAIL
-            subject = f"【基本契約承認通知】{partner.name}"
+
             contract_url = request.build_absolute_uri(
                 reverse('core:contract_approve', kwargs={'partner_id': partner_id})
             )
             local_now = timezone.localtime(now)
-            body = (
-                f"{partner.name} が基本契約書を承認しました。\n\n"
-                f"承認日時: {local_now.strftime('%Y年%m月%d日 %H:%M')}\n"
-                f"承認者: {request.user.get_full_name() or request.user.username}\n\n"
-                f"■ 契約書確認URL:\n{contract_url}\n"
+
+            from core.utils import compose_contract_approve_email
+            subject, body = compose_contract_approve_email(
+                partner, contract_url,
+                signed_at=local_now.strftime('%Y年%m月%d日 %H:%M'),
+                signed_by=request.user.get_full_name() or request.user.username,
             )
+
             print(f"[通知メール] 宛先: {notify_email}, 件名: {subject}")
             send_mail(subject, body, django_settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
             print(f"[通知メール] 送信成功")

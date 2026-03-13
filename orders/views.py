@@ -11,6 +11,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.conf import settings
+from core.utils import compose_order_publish_email, compose_order_approve_email
 from django.utils import timezone
 from django.urls import reverse
 from core.permissions import (
@@ -191,19 +192,10 @@ class OrderApproveView(LoginRequiredMixin, View):
         order.save()
 
         # 自社担当者へメール送信
-        subject = f"【承認通知】注文番号：{order.order_id}"
         order_url = request.build_absolute_uri(
             reverse('orders:order_detail', kwargs={'order_id': order.order_id})
         )
-        message = f"""{order.partner.name} 様より、以下の注文書が承認されました。
-
-■注文番号：{order.order_id}
-■プロジェクト：{order.project.name}
-■注文日：{order.order_date}
-
-■ 注文書確認URL:
-{order_url}
-"""
+        subject, message = compose_order_approve_email(order, order_url)
         # 自社担当者のメールアドレス（未設定の場合はDEFAULT_FROM_EMAIL）
         if order.partner.staff_contact and order.partner.staff_contact.email:
             notify_email = order.partner.staff_contact.email
@@ -256,29 +248,11 @@ class OrderPublishView(StaffRequiredMixin, View):
         # パートナーへ注文書送付メール
         email_sent = False
         if order.partner and order.partner.email:
-            subject = f"【注文書送付】注文番号：{order.order_id}"
             login_url = request.build_absolute_uri(reverse('login'))
             order_detail_url = request.build_absolute_uri(
                 reverse('orders:order_detail', kwargs={'order_id': order.order_id})
             )
-            message = f"""{order.partner.name} 様
-
-以下の注文書を送付いたします。
-内容をご確認の上、承認をお願いいたします。
-
-■注文番号：{order.order_id}
-■プロジェクト：{order.project.name}
-■注文日：{order.order_date}
-■期間：{order.work_start} 〜 {order.work_end}
-
-■ 注文書確認URL:
-{order_detail_url}
-
-▼ログインURL
-{login_url}
-
-ご不明な点がございましたら、担当者までお問い合わせください。
-"""
+            subject, message = compose_order_publish_email(order, order_detail_url, login_url)
             try:
                 send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [order.partner.email], fail_silently=False)
                 email_sent = True

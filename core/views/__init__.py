@@ -23,3 +23,4 @@ from .contract_views import (  # noqa: F401
     ContractSendView,
     ContractApproveView,
 )
+from .bank_api import bank_search, branch_search  # noqa: F401

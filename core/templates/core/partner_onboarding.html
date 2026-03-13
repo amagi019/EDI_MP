@@ -135,13 +135,16 @@
             style="margin-top: 3rem; background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow-sm);">
             <h3 style="margin-top: 0; border-left: 4px solid #10b981; padding-left: 1rem; margin-bottom: 1.5rem;">{% trans "振込先情報" %}</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
-                <div class="form-group">
+                <div class="form-group ac-wrap">
                     <label>{{ form.bank_name.label }}</label>
                     {{ form.bank_name }}
+                    <div class="ac-dropdown" id="bank-dropdown"></div>
+                    <input type="hidden" id="selected-bank-code" value="">
                 </div>
-                <div class="form-group">
+                <div class="form-group ac-wrap">
                     <label>{{ form.bank_branch.label }}</label>
                     {{ form.bank_branch }}
+                    <div class="ac-dropdown" id="branch-dropdown"></div>
                 </div>
                 <div class="form-group">
                     <label>{{ form.account_type.label }}</label>
@@ -157,7 +160,7 @@
                 </div>
             </div>
             <p style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-dim);">
-                <i class="fas fa-info-circle"></i> {% trans "正確な振込データの作成のため、正式名称での入力をお願いいたします。" %}
+                <i class="fas fa-info-circle"></i> {% trans "銀行名・支店名は入力すると候補が表示されます。候補にない場合はそのまま手入力できます。" %}
             </p>
         </div>
 
@@ -225,5 +228,156 @@
         border-color: #dc2626;
         box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
     }
+
+    /* 銀行マスタ自動補完 */
+    .ac-wrap {
+        position: relative;
+    }
+
+    .ac-dropdown {
+        display: none;
+        position: absolute;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: #fff;
+        border: 1px solid #d1d5db;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .ac-dropdown.show {
+        display: block;
+    }
+
+    .ac-item {
+        padding: 0.6rem 0.75rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #f3f4f6;
+        transition: background 0.15s;
+    }
+
+    .ac-item:last-child {
+        border-bottom: none;
+    }
+
+    .ac-item:hover,
+    .ac-item.active {
+        background: rgba(var(--primary-rgb, 99, 102, 241), 0.08);
+    }
+
+    .ac-item .ac-code {
+        color: #9ca3af;
+        font-size: 0.8rem;
+        margin-left: 0.5rem;
+    }
 </style>
+
+<script>
+(function() {
+    var bankInput = document.getElementById('id_bank_name');
+    var branchInput = document.getElementById('id_bank_branch');
+    var bankDropdown = document.getElementById('bank-dropdown');
+    var branchDropdown = document.getElementById('branch-dropdown');
+    var bankCodeHidden = document.getElementById('selected-bank-code');
+
+    if (!bankInput || !branchInput) return;
+
+    var debounceTimer = null;
+
+    function debounce(fn, delay) {
+        return function() {
+            var args = arguments;
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() { fn.apply(null, args); }, delay);
+        };
+    }
+
+    function closeAllDropdowns() {
+        bankDropdown.classList.remove('show');
+        branchDropdown.classList.remove('show');
+    }
+
+    function renderDropdown(dropdown, items, onSelect) {
+        dropdown.innerHTML = '';
+        if (items.length === 0) {
+            dropdown.classList.remove('show');
+            return;
+        }
+        items.forEach(function(item, idx) {
+            var div = document.createElement('div');
+            div.className = 'ac-item';
+            div.setAttribute('data-index', idx);
+            div.innerHTML = item.label + '<span class="ac-code">' + item.code + '</span>';
+            div.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                onSelect(item);
+            });
+            dropdown.appendChild(div);
+        });
+        dropdown.classList.add('show');
+    }
+
+    function fetchBanks(query) {
+        if (query.length < 1) { bankDropdown.classList.remove('show'); return; }
+        fetch('{% url "core:api_bank_search" %}?q=' + encodeURIComponent(query))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var items = data.map(function(b) {
+                    return { label: b.bank_name, code: b.bank_code, raw: b };
+                });
+                renderDropdown(bankDropdown, items, function(item) {
+                    bankInput.value = item.label;
+                    bankCodeHidden.value = item.code;
+                    bankDropdown.classList.remove('show');
+                    branchInput.value = '';
+                    branchInput.focus();
+                });
+            });
+    }
+
+    function fetchBranches(query) {
+        var bankCode = bankCodeHidden.value;
+        if (!bankCode) { branchDropdown.classList.remove('show'); return; }
+        var url = '{% url "core:api_branch_search" bank_code="__BANK_CODE__" %}'.replace('__BANK_CODE__', bankCode);
+        url += '?q=' + encodeURIComponent(query);
+        fetch(url)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var items = data.map(function(b) {
+                    return { label: b.branch_name, code: b.branch_code, raw: b };
+                });
+                renderDropdown(branchDropdown, items, function(item) {
+                    branchInput.value = item.label;
+                    branchDropdown.classList.remove('show');
+                });
+            });
+    }
+
+    bankInput.addEventListener('input', debounce(function() {
+        bankCodeHidden.value = '';
+        fetchBanks(bankInput.value.trim());
+    }, 300));
+
+    branchInput.addEventListener('input', debounce(function() {
+        fetchBranches(branchInput.value.trim());
+    }, 300));
+
+    branchInput.addEventListener('focus', function() {
+        if (bankCodeHidden.value && branchInput.value.length === 0) {
+            fetchBranches('');
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.ac-wrap')) {
+            closeAllDropdowns();
+        }
+    });
+})();
+</script>
 {% endblock %}

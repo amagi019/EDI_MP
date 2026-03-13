@@ -18,4 +18,7 @@ urlpatterns = [
     path('contract/<str:partner_id>/preview/', views.ContractPreviewView.as_view(), name='contract_preview'),
     path('contract/<str:partner_id>/send/', views.ContractSendView.as_view(), name='contract_send'),
     path('contract/<str:partner_id>/approve/', views.ContractApproveView.as_view(), name='contract_approve'),
+    # 銀行マスタ検索API
+    path('api/banks/', views.bank_search, name='api_bank_search'),
+    path('api/banks/<str:bank_code>/branches/', views.branch_search, name='api_branch_search'),
 ]

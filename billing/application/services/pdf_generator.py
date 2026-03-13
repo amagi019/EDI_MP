@@ -3,7 +3,6 @@ PDF生成サービス（WeasyPrint）
 """
 import io
 from django.template.loader import render_to_string
-from weasyprint import HTML
 from core.domain.models import CompanyInfo
 
 
@@ -32,6 +31,7 @@ def generate_billing_pdf(invoice):
     }
 
     html_string = render_to_string('billing/invoice_pdf.html', context)
+    from weasyprint import HTML
     html = HTML(string=html_string)
     pdf_bytes = html.write_pdf()
 

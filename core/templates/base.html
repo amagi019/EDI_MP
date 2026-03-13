@@ -305,6 +305,13 @@
                 class="sidebar-link {% if 'partner_onboarding' in request.path %}active{% endif %}">
                 <i class="fas fa-building"></i> {% trans "会社情報登録・更新" %}
             </a>
+            {% load core_tags %}{% get_partner_id user as my_partner_id %}
+            {% if my_partner_id %}
+            <a href="{% url 'core:contract_approve' my_partner_id %}"
+                class="sidebar-link {% if 'contract' in request.path %}active{% endif %}">
+                <i class="fas fa-file-contract"></i> {% trans "基本契約書" %}
+            </a>
+            {% endif %}
             <a href="{% url 'core:partner_manual' %}"
                 class="sidebar-link {% if 'partner_manual' in request.path %}active{% endif %}">
                 <i class="fas fa-book-open"></i> {% trans "操作マニュアル" %}

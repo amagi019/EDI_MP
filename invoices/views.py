@@ -118,19 +118,13 @@ class PartnerInvoiceConfirmView(LoginRequiredMixin, View):
         # 自社担当者へ承認通知メール送信
         partner = get_user_partner(request.user)
         partner_name = partner.name if partner else '不明'
-        subject = f"【請求書承認通知】請求番号：{invoice.invoice_no}"
         invoice_url = request.build_absolute_uri(
             reverse('invoices:invoice_detail', kwargs={'invoice_id': invoice.pk})
         )
-        message = f"""{partner_name} 様より、以下の請求書（支払通知書）が承認されました。
 
-■請求番号：{invoice.invoice_no}
-■対象年月：{invoice.target_month.strftime('%Y年%m月') if invoice.target_month else '未設定'}
-■税込合計：¥{invoice.total_amount:,}-
+        from core.utils import compose_invoice_approve_email
+        subject, message = compose_invoice_approve_email(invoice, partner, invoice_url)
 
-■ 請求書確認URL:
-{invoice_url}
-"""
         # 自社担当者のメールアドレス（未設定の場合はDEFAULT_FROM_EMAIL）
         if partner and partner.staff_contact and partner.staff_contact.email:
             notify_email = partner.staff_contact.email
@@ -180,21 +174,13 @@ class StaffInvoiceReviewView(StaffRequiredMixin, View):
             partner = invoice.order.partner if invoice.order else None
             if partner and partner.email:
                 login_url = request.build_absolute_uri(reverse('login'))
-                subject = f"【支払通知書送付】請求番号：{invoice.invoice_no}"
-                message = f"""{partner.name} 様
+                invoice_url = request.build_absolute_uri(
+                    reverse('invoices:invoice_detail', kwargs={'invoice_id': invoice.pk})
+                )
 
-以下の支払通知書を送付いたします。
-システムにログインして内容をご確認の上、承認をお願いいたします。
+                from core.utils import compose_invoice_send_email
+                subject, message = compose_invoice_send_email(invoice, partner, login_url, invoice_url)
 
-■請求番号：{invoice.invoice_no}
-■対象年月：{invoice.target_month.strftime('%Y年%m月') if invoice.target_month else '未設定'}
-■税込合計：¥{invoice.total_amount:,}-
-
-▼ログインURL
-{login_url}
-
-ご不明な点がございましたら、担当者までお問い合わせください。
-"""
                 try:
                     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [partner.email], fail_silently=False)
                     messages.success(request, f"請求書 {invoice.invoice_no} を承認し、パートナー ({partner.email}) へ送付メールを送信しました。")

@@ -36,23 +36,15 @@ class PartnerOnboardingView(PartnerRequiredMixin, UpdateView):
 
         # スタッフ担当者へ通知メール送信
         try:
-            subject = f"【基本情報登録完了】{partner.name}"
+            from django.core.mail import send_mail
+            from django.conf import settings
+            from core.utils import compose_partner_info_registered_email
+
             progress_url = self.request.build_absolute_uri(
                 reverse('core:contract_progress_list')
             )
-            message = f"""{partner.name} 様のパートナー基本情報登録が完了しました。
+            subject, message = compose_partner_info_registered_email(partner, progress_url)
 
-■ 登録内容の確認・承認を行ってください。
-
-登録された情報：
-・会社名: {partner.name}
-・住所: {partner.address or '未入力'}
-・代表者: {partner.representative_name or '未入力'}
-・登録番号: {partner.registration_no or '未入力'}
-
-■ 基本契約進捗の確認:
-{progress_url}
-"""
             if partner.staff_contact and partner.staff_contact.email:
                 notify_email = partner.staff_contact.email
             else:

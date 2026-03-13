@@ -31,6 +31,9 @@ class PartnerAdmin(admin.ModelAdmin):
         }),
     )
 
+    class Media:
+        js = ('core/js/bank_autocomplete.js',)
+
     def get_urls(self):
         custom_urls = [
             path('invitation-preview/', self.admin_site.admin_view(self.invitation_preview_view), name='partner_invitation_preview'),
@@ -171,6 +174,9 @@ class CompanyInfoAdmin(admin.ModelAdmin):
             'fields': ('stamp_image', 'logo_image')
         }),
     )
+
+    class Media:
+        js = ('core/js/bank_autocomplete.js',)
 @admin.register(BankMaster)
 class BankMasterAdmin(admin.ModelAdmin):
     list_display = ('bank_code', 'bank_name', 'branch_code', 'branch_name')
