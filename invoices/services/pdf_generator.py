@@ -24,13 +24,13 @@ def _draw_company_info(p, x, y, font_name, side="自社"):
     p.setFont(font_name, 10)
     company = CompanyInfo.objects.first()
     if not company:
-        name = "有限会社 マックプランニング"
-        post = "〒116-0012"
-        addr = "東京都荒川区東尾久8-9-14"
-        tel = "090-3043-0477"
-        fax = ""
-        rep = "代表取締役 吉川 裕"
-        reg_no = "TXXXXXXXXXXXXX"
+        name = ''
+        post = ''
+        addr = ''
+        tel = ''
+        fax = ''
+        rep = ''
+        reg_no = ''
     else:
         name = company.name
         post = f"〒{company.postal_code}"
@@ -189,7 +189,7 @@ def generate_payment_notice_pdf(invoice):
     if stamp_path:
         try:
             p.setFont(font_name, 10)
-            name = company.name if company else "有限会社 マックプランニング"
+            name = company.name if company else ''
             name_width = p.stringWidth(name, font_name, 10)
             stamp_size = 22 * mm
             stamp_x = 120 * mm + name_width - stamp_size * 0.35

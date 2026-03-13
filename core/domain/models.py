@@ -117,17 +117,17 @@ def delete_user_on_profile_delete(sender, instance, **kwargs):
 
 class CompanyInfo(models.Model):
     """自社登録情報（PDF等で使用）"""
-    name = models.CharField(_("社名"), max_length=128, default="有限会社 マックプランニング")
-    postal_code = models.CharField(_("郵便番号"), max_length=10, default="116-0012")
-    address = models.CharField(_("住所"), max_length=255, default="東京都荒川区東尾久8-9-14")
-    tel = models.CharField(_("電話番号"), max_length=20, default="090-3043-0477")
+    name = models.CharField(_("社名"), max_length=128, default="")
+    postal_code = models.CharField(_("郵便番号"), max_length=10, default="")
+    address = models.CharField(_("住所"), max_length=255, default="")
+    tel = models.CharField(_("電話番号"), max_length=20, default="")
     fax = models.CharField(_("FAX番号"), max_length=20, blank=True)
     representative_title = models.CharField(_("代表者役職"), max_length=64, default="代表取締役")
-    representative_name = models.CharField(_("代表者名"), max_length=64, default="吉川 裕")
-    registration_no = models.CharField(_("登録番号"), max_length=20, default="TXXXXXXXXXXXXX")
+    representative_name = models.CharField(_("代表者名"), max_length=64, default="")
+    registration_no = models.CharField(_("登録番号"), max_length=20, default="")
     
-    responsible_person = models.CharField(_("委託業務責任者"), max_length=64, default="吉川 裕")
-    contact_person = models.CharField(_("連絡窓口担当者"), max_length=64, default="吉川 裕")
+    responsible_person = models.CharField(_("委託業務責任者"), max_length=64, default="")
+    contact_person = models.CharField(_("連絡窓口担当者"), max_length=64, default="")
     
     # 銀行口座情報
     bank_name = models.CharField(_("銀行名"), max_length=64, blank=True)

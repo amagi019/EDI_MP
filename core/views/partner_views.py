@@ -34,6 +34,11 @@ class PartnerOnboardingView(PartnerRequiredMixin, UpdateView):
         MasterContractProgress.objects.filter(partner=partner).update(status='INFO_DONE')
         messages.success(self.request, "パートナー情報を更新しました。")
 
+        # 重複通知防止：同一リクエスト中の二重送信を抑制
+        session_key = f'onboarding_notified_{partner.partner_id}'
+        if self.request.session.get(session_key):
+            return super().form_valid(form)
+
         # スタッフ担当者へ通知メール送信
         try:
             from django.core.mail import send_mail
@@ -53,6 +58,8 @@ class PartnerOnboardingView(PartnerRequiredMixin, UpdateView):
                 subject, message, settings.DEFAULT_FROM_EMAIL,
                 [notify_email], fail_silently=False,
             )
+            # 送信成功後にフラグを設定（10秒後にリセットされるのでセッションの肥大化は気にしない）
+            self.request.session[session_key] = True
         except Exception as e:
             import logging
             logging.getLogger(__name__).warning(f"Staff notification failed for {partner.name}: {e}")

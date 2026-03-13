@@ -112,6 +112,11 @@ class ContractSendView(StaffRequiredMixin, View):
             messages.error(request, "契約書PDFが生成されていません。先に契約書を作成してください。")
             return redirect('core:contract_progress_list')
 
+        # 冪等性チェック：既に送信済みなら重複送信を防止
+        if progress.status in ('PENDING_APPROVAL', 'COMPLETED'):
+            messages.info(request, "この契約書は既に送信済みです。")
+            return redirect('core:contract_progress_list')
+
         contract_url = request.build_absolute_uri(
             reverse('core:contract_approve', kwargs={'partner_id': partner_id})
         )

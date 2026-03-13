@@ -127,7 +127,7 @@ LOGIN_REDIRECT_URL = 'core:dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
 # Google Drive連携
-GOOGLE_DRIVE_SERVICE_ACCOUNT = 'edi-drive-uploader@edi-sophia-test.iam.gserviceaccount.com'
+GOOGLE_DRIVE_SERVICE_ACCOUNT = env('GOOGLE_DRIVE_SERVICE_ACCOUNT', default='')
 GOOGLE_DRIVE_CREDENTIALS_FILE = os.path.join(BASE_DIR, 'credentials', 'drive-service-account.json')
 # ドキュメントタイプ別フォルダID
 GOOGLE_DRIVE_CONTRACT_FOLDER_ID = env('GOOGLE_DRIVE_CONTRACT_FOLDER_ID', default='')
@@ -152,7 +152,7 @@ EMAIL_PORT = env.int('EMAIL_PORT', default=587)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='y.yoshikawa@macplanning.com')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='noreply@example.com')
 
 # デフォルトのプライマリキーフィールド型
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

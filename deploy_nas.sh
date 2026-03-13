@@ -5,10 +5,10 @@
 # ============================================================
 set -e
 
-# 設定
-NAS_HOST="192.168.50.198"
-NAS_USER="yutaka"
-NAS_DIR="/share/Container/EDI_MP"
+# 設定（環境変数 or デフォルト値）
+NAS_HOST="${NAS_HOST:-192.168.50.198}"
+NAS_USER="${NAS_USER:-yutaka}"
+NAS_DIR="${NAS_DIR:-/share/Container/EDI_MP}"
 COMPOSE_FILE="docker-compose.nas.yml"
 DOCKER_BIN="/share/CACHEDEV1_DATA/.qpkg/container-station/bin/docker"
 # docker-compose は個別コンポーネントを呼び出す
@@ -59,34 +59,14 @@ ssh ${NAS_USER}@${NAS_HOST} "
 "
 
 # 4. Docker Compose でビルド＆起動
-echo -e "\n${YELLOW}[4/5] Dockerコンテナをビルド・起動中...${NC}"
+echo -e "\n${YELLOW}[4/4] Dockerコンテナをビルド・起動中...${NC}"
 ssh ${NAS_USER}@${NAS_HOST} "
     cd ${NAS_DIR}
     ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d --build
 "
 
-# 5. 角印画像をコンテナのmediaボリューム（/app/media/stamps/）にコピー
-echo -e "\n${YELLOW}[5/5] 角印画像をmediaボリュームに転送中...${NC}"
-if [ -d "media/stamps" ]; then
-    # コンテナ内にstampsディレクトリを作成
-    ssh ${NAS_USER}@${NAS_HOST} "${DOCKER_BIN} exec edi-mp-web mkdir -p /app/media/stamps"
-    # ローカルの角印画像をコンテナのmediaボリュームにコピー
-    for f in media/stamps/*; do
-        if [ -f "$f" ]; then
-            filename=$(basename "$f")
-            # ファイルをNASの一時ディレクトリにコピー
-            scp "$f" ${NAS_USER}@${NAS_HOST}:/tmp/"${filename}"
-            # docker cpでコンテナのmediaボリューム内にコピー
-            ssh ${NAS_USER}@${NAS_HOST} "${DOCKER_BIN} cp /tmp/${filename} edi-mp-web:/app/media/stamps/${filename} && rm /tmp/${filename}"
-            echo "  → ${filename} コピー完了"
-        fi
-    done
-    echo -e "${GREEN}✓ 角印画像のコピー完了（mediaボリュームに永続化済み）${NC}"
-else
-    echo -e "${YELLOW}⚠️  media/stamps/ が見つかりません。角印画像を手動で配置してください。${NC}"
-fi
-
 echo -e "\n${GREEN}========================================${NC}"
 echo -e "${GREEN} デプロイ完了！${NC}"
 echo -e "${GREEN} アクセスURL: http://${NAS_HOST}:8090${NC}"
 echo -e "${GREEN}========================================${NC}"
+echo -e "${YELLOW}※ 印影画像は管理画面の「会社情報」から登録してください。${NC}"

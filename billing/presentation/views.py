@@ -368,10 +368,13 @@ class InvoiceMailView(StaffRequiredMixin, View):
         if contact:
             greeting += f'\n{contact}様'
 
+        company = CompanyInfo.objects.first()
+        sender_name = f'{company.name}　{company.contact_person}' if company else ''
+
         body_text = (
             f'{greeting}\n\n'
             f'いつもお世話になっております。\n'
-            f'有限会社マックプランニング　吉川です。\n\n'
+            f'{sender_name}です。\n\n'
             f'下記の件、ご請求書を送りします。\n'
             f'ご査収のほどお願い致します。\n\n'
             f'請求日：{invoice.issue_date}\n'

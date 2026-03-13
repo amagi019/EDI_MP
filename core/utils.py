@@ -121,7 +121,7 @@ def compose_order_publish_email(order, order_url, login_url):
     Returns: (subject, body)
     """
     company = CompanyInfo.objects.first()
-    company_name = company.name if company else '有限会社 マックプランニング'
+    company_name = company.name if company else ''
     company_tel = company.tel if company else ''
 
     context = {
@@ -202,7 +202,7 @@ def compose_order_approve_email(order, order_url):
     Returns: (subject, body)
     """
     company = CompanyInfo.objects.first()
-    company_name = company.name if company else '有限会社 マックプランニング'
+    company_name = company.name if company else ''
 
     context = {
         'company_name': company_name,
@@ -296,7 +296,7 @@ def compose_partner_info_registered_email(partner, progress_url):
 def compose_contract_send_email(partner, contract_url):
     """③ 契約書承認依頼メール（自社→パートナー）"""
     company = CompanyInfo.objects.first()
-    company_name = company.name if company else '有限会社 マックプランニング'
+    company_name = company.name if company else ''
     company_tel = company.tel if company else ''
 
     return _render_email_template(
@@ -379,7 +379,7 @@ def compose_contract_approve_email(partner, contract_url, signed_at, signed_by):
 def compose_invoice_send_email(invoice, partner, login_url, invoice_url=''):
     """⑦ 支払通知・請求書送付メール（自社→パートナー）"""
     company = CompanyInfo.objects.first()
-    company_name = company.name if company else '有限会社 マックプランニング'
+    company_name = company.name if company else ''
     company_tel = company.tel if company else ''
 
     return _render_email_template(

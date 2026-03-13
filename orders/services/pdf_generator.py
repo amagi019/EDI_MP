@@ -24,12 +24,12 @@ def _draw_company_info(p, x, y, font_name, side="甲"):
     p.setFont(font_name, 10)
     company = CompanyInfo.objects.first()
     if not company:
-        name = "有限会社 マックプランニング"
-        post = "〒116-0012"
-        addr = "東京都荒川区東尾久8-9-14"
-        tel = "090-3043-0477"
-        fax = ""
-        rep = "代表取締役 吉川 裕"
+        name = ''
+        post = ''
+        addr = ''
+        tel = ''
+        fax = ''
+        rep = ''
     else:
         name = company.name
         post = f"〒{company.postal_code}"
@@ -132,7 +132,7 @@ def generate_order_pdf(order, watermark=None):
     company = CompanyInfo.objects.first()
     stamp_path = _get_stamp_path(company)
     p.setFont(font_name, 11)
-    name = company.name if company else "有限会社 マックプランニング"
+    name = company.name if company else ''
     name_width = p.stringWidth(name, font_name, 11)
     stamp_size = 22 * mm
     stamp_x = 110 * mm + name_width - stamp_size * 0.35  # 社名右端に35%被せる
@@ -231,7 +231,7 @@ def generate_acceptance_pdf(order):
     p.setFont(font_name, 12)
     p.drawString(20*mm, height - 50*mm, "（甲）")
     company = CompanyInfo.objects.first()
-    p.drawString(20*mm, height - 56*mm, f"{company.name if company else '有限会社 マックプランニング'}  御中")
+    p.drawString(20*mm, height - 56*mm, f"{company.name if company else ''}  御中")
 
     # 5. 発行人 (乙)
     p.setFont(font_name, 10)

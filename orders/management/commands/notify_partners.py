@@ -15,7 +15,7 @@ class Command(BaseCommand):
         # ここでは、ステータスが UNCONFIRMED の最近の注文を対象とする簡易実装とする
         
         company = CompanyInfo.objects.first()
-        company_name = company.name if company else "有限会社 マックプランニング"
+        company_name = company.name if company else ''
         
         # サイトのURL（環境に合わせて設定が必要）
         site_url = getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000')

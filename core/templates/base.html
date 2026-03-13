@@ -386,6 +386,57 @@
     <footer>
         &copy; {% now "Y" %} {% trans "EDIシステム" %}. All rights reserved.
     </footer>
+
+    <!-- フォーム多重送信防止（グローバル） -->
+    <script>
+    (function() {
+        document.addEventListener('submit', function(e) {
+            var form = e.target;
+            // GET フォーム（検索等）やdata-no-guard付きは除外
+            if (form.method.toUpperCase() === 'GET') return;
+            if (form.hasAttribute('data-no-guard')) return;
+
+            // 既に送信済みなら二重送信を防止
+            if (form.dataset.submitted === 'true') {
+                e.preventDefault();
+                return;
+            }
+            form.dataset.submitted = 'true';
+
+            // confirm() でキャンセルされた場合はリセット
+            // (onclickでconfirmしているボタンに対応)
+            setTimeout(function() {
+                if (form.dataset.submitted !== 'true') return;
+                // 送信ボタンを無効化＋スピナー表示
+                var btns = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+                btns.forEach(function(btn) {
+                    btn.disabled = true;
+                    if (btn.tagName === 'BUTTON') {
+                        btn.dataset.originalText = btn.innerHTML;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...';
+                    }
+                });
+            }, 50);
+        }, true);  // capture phase で先に処理
+
+        // confirm() がキャンセルされた場合のリセット
+        document.addEventListener('click', function(e) {
+            var btn = e.target.closest('button[type="submit"]');
+            if (!btn) return;
+            var form = btn.closest('form');
+            if (!form) return;
+            var onclick = btn.getAttribute('onclick');
+            if (onclick && onclick.indexOf('confirm') !== -1) {
+                // confirmのreturn falseでsubmitされなかった場合に備えてリセット
+                setTimeout(function() {
+                    if (form.dataset.submitted === 'true' && !btn.disabled) {
+                        form.dataset.submitted = '';
+                    }
+                }, 100);
+            }
+        }, true);
+    })();
+    </script>
 </body>
 
 </html>
