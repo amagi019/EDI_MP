@@ -94,9 +94,9 @@
                         <a href="{% url 'core:contract_preview' progress.partner.partner_id %}" class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;" target="_blank">
                             <i class="fas fa-file-pdf"></i> {% trans "契約書PDF" %}
                         </a>
-                        <form method="post" action="{% url 'core:contract_send' progress.partner.partner_id %}" style="display: inline;">
+                        <form method="post" action="{% url 'core:contract_send' progress.partner.partner_id %}" style="display: inline;" onsubmit="return confirm('契約書をパートナーに送信しますか？');">
                             {% csrf_token %}
-                            <button type="submit" class="btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;" onclick="return confirm('契約書をパートナーに送信しますか？')">
+                            <button type="submit" class="btn" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
                                 <i class="fas fa-paper-plane"></i> {% trans "送信" %}
                             </button>
                         </form>
