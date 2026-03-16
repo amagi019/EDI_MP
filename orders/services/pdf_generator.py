@@ -20,34 +20,97 @@ def _setup_fonts(p):
         pdfmetrics.registerFont(UnicodeCIDFont("HeiseiMin-W3"))
     return font_name
 
-def _draw_company_info(p, x, y, font_name, side="甲"):
-    p.setFont(font_name, 10)
+def _draw_company_info(p, x, y, font_name, side="甲", name_font_size=10):
+    """甲（自社情報）を描画し、描画に使った高さ(mm)を返す。"""
+    label_font_size = name_font_size - 1  # ラベルは社名より1pt小さく
+    detail_font_size = 9
+
     company = CompanyInfo.objects.first()
     if not company:
-        name = ''
-        post = ''
-        addr = ''
-        tel = ''
-        fax = ''
-        rep = ''
+        name, post, addr, tel, fax = '', '', '', '', ''
     else:
         name = company.name
         post = f"〒{company.postal_code}"
         addr = company.address
         tel = company.tel
         fax = company.fax
-        rep = f"{company.representative_title} {company.representative_name}"
 
+    p.setFont(font_name, label_font_size)
     p.drawString(x, y, f"（{side}）")
-    p.setFont(font_name, 11)
+    p.setFont(font_name, name_font_size)
     p.drawString(x, y - 5*mm, name)
-    p.setFont(font_name, 9)
+    p.setFont(font_name, detail_font_size)
     p.drawString(x, y - 10*mm, post)
     p.drawString(x, y - 14*mm, addr)
     p.drawString(x, y - 18*mm, f"TEL:{tel}  FAX:{fax}")
-    # 登録番号は設計書PDFにないため非表示
-    
-    return name, rep
+
+    # 描画した合計高さ = ラベルからTEL行の下端まで ≒ 18mm + フォント分
+    total_height = 20*mm
+    return name, total_height
+
+
+def _draw_header_section(p, width, height, font_name, order):
+    """乙（宛先）と甲（発行者）を自動バランスで配置し、次セクションのY座標を返す。
+
+    レイアウトルール:
+      1. 乙の社名フォントは甲の社名フォントより大きい
+      2. 甲の記載欄と乙の記載欄が重ならない
+      3. 甲の記載位置（印影含む）が右寄せ
+      4. 甲と乙の間に2行分（≒8mm）の間隔
+      5. 甲の下端（印影含む）と次セクションの間に2行分（≒8mm）の間隔
+    """
+    LINE_GAP = 8 * mm       # 2行分の間隔
+    OTSU_NAME_FONT = 12     # ルール①: 乙の社名フォント（大きい方）
+    KOU_NAME_FONT = 10      # ルール①: 甲の社名フォント（小さい方）
+    RIGHT_MARGIN = 20 * mm
+    STAMP_SIZE = 22 * mm
+    STAMP_OVERLAP = 0.35    # 社名への被せ率
+
+    # --- 乙セクション描画 ---
+    otsu_label_y = height - 50*mm
+    p.setFont(font_name, OTSU_NAME_FONT)
+    p.drawString(20*mm, otsu_label_y, "（乙）")
+    p.setFont(font_name, OTSU_NAME_FONT)
+    otsu_name_y = otsu_label_y - 6*mm
+    p.drawString(20*mm, otsu_name_y, f"{order.partner.name}  御中")
+    otsu_bottom = otsu_name_y  # 乙セクションの最下部
+
+    # --- 甲セクション: X座標の自動右寄せ計算（ルール③） ---
+    company = CompanyInfo.objects.first()
+    kou_name = company.name if company else ''
+
+    # 甲セクション内で最も幅が広い要素を計算
+    p.setFont(font_name, KOU_NAME_FONT)
+    name_width = p.stringWidth(kou_name, font_name, KOU_NAME_FONT)
+    stamp_protrusion = STAMP_SIZE * (1 - STAMP_OVERLAP)  # 社名からはみ出す印影の幅
+
+    tel_fax_text = f"TEL:{company.tel}  FAX:{company.fax}" if company else ""
+    tel_width = p.stringWidth(tel_fax_text, font_name, 9)
+
+    max_content_width = max(name_width + stamp_protrusion, tel_width)
+    kou_x = width - RIGHT_MARGIN - max_content_width  # 右端揃え
+
+    # --- 甲セクション: Y座標の自動計算（ルール②④） ---
+    kou_y = otsu_bottom - LINE_GAP  # ルール④: 乙の下端から2行分下
+
+    # 甲セクション描画
+    _, kou_height = _draw_company_info(p, kou_x, kou_y, font_name, "甲",
+                                       name_font_size=KOU_NAME_FONT)
+
+    # --- 角印描画 ---
+    stamp_path = _get_stamp_path(company)
+    stamp_x = kou_x + name_width - STAMP_SIZE * STAMP_OVERLAP
+    stamp_y = kou_y - 5*mm - STAMP_SIZE * 0.65
+    p.drawImage(stamp_path, stamp_x, stamp_y, width=STAMP_SIZE, height=STAMP_SIZE,
+                mask='auto', preserveAspectRatio=True)
+
+    # --- 次セクション開始Y座標の計算（ルール⑤） ---
+    kou_text_bottom = kou_y - kou_height
+    stamp_bottom = stamp_y
+    actual_bottom = min(kou_text_bottom, stamp_bottom)
+    next_section_y = actual_bottom - LINE_GAP
+
+    return next_section_y
 
 def _build_fee_table(order, font_name):
     """業務委託料金のサブテーブルを生成（フル幅版）"""
@@ -120,28 +183,13 @@ def generate_order_pdf(order, watermark=None):
         p.drawCentredString(width / 2 + 50*mm, height / 2 - 100*mm, watermark)
         p.restoreState()
 
-    # 3. 宛先 (乙)
-    p.setFont(font_name, 12)
-    p.drawString(20*mm, height - 50*mm, "（乙）")
-    p.drawString(20*mm, height - 56*mm, f"{order.partner.name}  御中")
+    # 3-6. 乙（宛先）＋甲（発行者）＋角印の自動バランス配置
+    next_y = _draw_header_section(p, width, height, font_name, order)
 
-    # 4. 発行人 (甲)
-    _draw_company_info(p, 110*mm, height - 55*mm, font_name, "甲")
-
-    # 6. 角印（印影）表示 - 社名の右端に被せて配置（画像がない場合はエラー）
+    # 7. 本文（甲セクションの下端から自動計算された位置に配置）
     company = CompanyInfo.objects.first()
-    stamp_path = _get_stamp_path(company)
-    p.setFont(font_name, 11)
-    name = company.name if company else ''
-    name_width = p.stringWidth(name, font_name, 11)
-    stamp_size = 22 * mm
-    stamp_x = 110 * mm + name_width - stamp_size * 0.35  # 社名右端に35%被せる
-    stamp_y = height - 55*mm - 5*mm - stamp_size * 0.65  # 社名の縦位置に合わせる
-    p.drawImage(stamp_path, stamp_x, stamp_y, width=stamp_size, height=stamp_size, mask='auto', preserveAspectRatio=True)
-
-    # 7. 本文
     p.setFont(font_name, 10)
-    p.drawString(20*mm, height - 105*mm, "下記の通り注文致しますので、ご了承の上、折り返し注文請書をご送付下さい。")
+    p.drawString(20*mm, next_y, "下記の通り注文致しますので、ご了承の上、折り返し注文請書をご送付下さい。")
 
     # 8. 詳細テーブル
     kou_res = order.甲_責任者 or (company.responsible_person if company else "")
@@ -189,7 +237,7 @@ def generate_order_pdf(order, watermark=None):
     ]))
 
     w, h = table.wrapOn(p, width, height)
-    table_y = height - 110*mm - h
+    table_y = next_y - 5*mm - h  # 本文の直下に配置
     table.drawOn(p, 20*mm, table_y)
 
     # 9. 契約条項
