@@ -49,65 +49,100 @@ def _draw_company_info(p, x, y, font_name, side="甲", name_font_size=10):
     return name, total_height
 
 
-def _draw_header_section(p, width, height, font_name, order):
-    """乙（宛先）と甲（発行者）を自動バランスで配置し、次セクションのY座標を返す。
+def _draw_header_section(p, width, height, font_name, order=None,
+                          addressee_label="（乙）", addressee_name=None,
+                          addressee_suffix="御中",
+                          issuer_label="（甲）", issuer_info=None,
+                          show_stamp=True):
+    """宛先（左側）と発行者（右側）を自動バランスで配置し、次セクションのY座標を返す。
 
     レイアウトルール:
-      1. 乙の社名フォントは甲の社名フォントより大きい
-      2. 甲の記載欄と乙の記載欄が重ならない
-      3. 甲の記載位置（印影含む）が右寄せ
-      4. 甲と乙の間に2行分（≒8mm）の間隔
-      5. 甲の下端（印影含む）と次セクションの間に2行分（≒8mm）の間隔
+      1. 宛先の社名フォントは発行者の社名フォントより大きい
+      2. 発行者の記載欄と宛先の記載欄が重ならない
+      3. 発行者の記載位置（印影含む）が右寄せ
+      4. 発行者と宛先の間に2行分（≒8mm）の間隔
+      5. 発行者の下端（印影含む）と次セクションの間に2行分（≒8mm）の間隔
+
+    Args:
+        addressee_name: 宛先の社名（Noneの場合order.partner.nameを使用）
+        issuer_info: dict(name, postal_code, address, tel, fax) 発行者情報。Noneの場合CompanyInfoを使用
+        show_stamp: 角印を表示するか
     """
-    LINE_GAP = 8 * mm       # 2行分の間隔
-    OTSU_NAME_FONT = 12     # ルール①: 乙の社名フォント（大きい方）
-    KOU_NAME_FONT = 10      # ルール①: 甲の社名フォント（小さい方）
+    LINE_GAP = 8 * mm
+    ADDR_NAME_FONT = 12     # 宛先の社名フォント（大きい方）
+    ISSUER_NAME_FONT = 10   # 発行者の社名フォント（小さい方）
     RIGHT_MARGIN = 20 * mm
     STAMP_SIZE = 22 * mm
-    STAMP_OVERLAP = 0.35    # 社名への被せ率
+    STAMP_OVERLAP = 0.35
 
-    # --- 乙セクション描画 ---
-    otsu_label_y = height - 50*mm
-    p.setFont(font_name, OTSU_NAME_FONT)
-    p.drawString(20*mm, otsu_label_y, "（乙）")
-    p.setFont(font_name, OTSU_NAME_FONT)
-    otsu_name_y = otsu_label_y - 6*mm
-    p.drawString(20*mm, otsu_name_y, f"{order.partner.name}  御中")
-    otsu_bottom = otsu_name_y  # 乙セクションの最下部
+    # --- 宛先名の決定 ---
+    if addressee_name is None:
+        addressee_name = order.partner.name if order else ''
 
-    # --- 甲セクション: X座標の自動右寄せ計算（ルール③） ---
+    # --- 発行者情報の決定 ---
     company = CompanyInfo.objects.first()
-    kou_name = company.name if company else ''
+    if issuer_info is None:
+        issuer_info = {
+            'name': company.name if company else '',
+            'postal_code': company.postal_code if company else '',
+            'address': company.address if company else '',
+            'tel': company.tel if company else '',
+            'fax': company.fax if company else '',
+        }
 
-    # 甲セクション内で最も幅が広い要素を計算
-    p.setFont(font_name, KOU_NAME_FONT)
-    name_width = p.stringWidth(kou_name, font_name, KOU_NAME_FONT)
-    stamp_protrusion = STAMP_SIZE * (1 - STAMP_OVERLAP)  # 社名からはみ出す印影の幅
+    # --- 宛先セクション描画（左側・大フォント） ---
+    addr_label_y = height - 50*mm
+    p.setFont(font_name, ADDR_NAME_FONT)
+    p.drawString(20*mm, addr_label_y, addressee_label)
+    p.setFont(font_name, ADDR_NAME_FONT)
+    addr_name_y = addr_label_y - 6*mm
+    p.drawString(20*mm, addr_name_y, f"{addressee_name}  {addressee_suffix}")
+    addr_bottom = addr_name_y
 
-    tel_fax_text = f"TEL:{company.tel}  FAX:{company.fax}" if company else ""
+    # --- 発行者セクション: X座標の自動右寄せ計算 ---
+    issuer_name = issuer_info['name']
+    p.setFont(font_name, ISSUER_NAME_FONT)
+    name_width = p.stringWidth(issuer_name, font_name, ISSUER_NAME_FONT)
+
+    if show_stamp:
+        stamp_protrusion = STAMP_SIZE * (1 - STAMP_OVERLAP)
+    else:
+        stamp_protrusion = 0
+
+    tel_fax_text = f"TEL:{issuer_info['tel']}  FAX:{issuer_info['fax']}"
     tel_width = p.stringWidth(tel_fax_text, font_name, 9)
 
     max_content_width = max(name_width + stamp_protrusion, tel_width)
-    kou_x = width - RIGHT_MARGIN - max_content_width  # 右端揃え
+    issuer_x = width - RIGHT_MARGIN - max_content_width
 
-    # --- 甲セクション: Y座標の自動計算（ルール②④） ---
-    kou_y = otsu_bottom - LINE_GAP  # ルール④: 乙の下端から2行分下
+    # --- 発行者セクション: Y座標の自動計算 ---
+    issuer_y = addr_bottom - LINE_GAP
 
-    # 甲セクション描画
-    _, kou_height = _draw_company_info(p, kou_x, kou_y, font_name, "甲",
-                                       name_font_size=KOU_NAME_FONT)
+    # --- 発行者セクション描画 ---
+    label_font_size = ISSUER_NAME_FONT - 1
+    p.setFont(font_name, label_font_size)
+    p.drawString(issuer_x, issuer_y, issuer_label)
+    p.setFont(font_name, ISSUER_NAME_FONT)
+    p.drawString(issuer_x, issuer_y - 5*mm, issuer_name)
+    p.setFont(font_name, 9)
+    p.drawString(issuer_x, issuer_y - 10*mm, f"〒{issuer_info['postal_code']}")
+    p.drawString(issuer_x, issuer_y - 14*mm, issuer_info['address'])
+    p.drawString(issuer_x, issuer_y - 18*mm, tel_fax_text)
+    issuer_height = 20*mm
 
     # --- 角印描画 ---
-    stamp_path = _get_stamp_path(company)
-    stamp_x = kou_x + name_width - STAMP_SIZE * STAMP_OVERLAP
-    stamp_y = kou_y - 5*mm - STAMP_SIZE * 0.65
-    p.drawImage(stamp_path, stamp_x, stamp_y, width=STAMP_SIZE, height=STAMP_SIZE,
-                mask='auto', preserveAspectRatio=True)
+    stamp_bottom = issuer_y - issuer_height  # デフォルト（角印なしの場合）
+    if show_stamp:
+        stamp_path = _get_stamp_path(company)
+        stamp_x = issuer_x + name_width - STAMP_SIZE * STAMP_OVERLAP
+        stamp_y = issuer_y - 5*mm - STAMP_SIZE * 0.65
+        p.drawImage(stamp_path, stamp_x, stamp_y, width=STAMP_SIZE, height=STAMP_SIZE,
+                    mask='auto', preserveAspectRatio=True)
+        stamp_bottom = stamp_y
 
-    # --- 次セクション開始Y座標の計算（ルール⑤） ---
-    kou_text_bottom = kou_y - kou_height
-    stamp_bottom = stamp_y
-    actual_bottom = min(kou_text_bottom, stamp_bottom)
+    # --- 次セクション開始Y座標の計算 ---
+    issuer_text_bottom = issuer_y - issuer_height
+    actual_bottom = min(issuer_text_bottom, stamp_bottom)
     next_section_y = actual_bottom - LINE_GAP
 
     return next_section_y
@@ -275,20 +310,23 @@ def generate_acceptance_pdf(order):
     p.setFont(font_name, 8)
     p.drawCentredString(30*mm, height - 28*mm, "印紙")
 
-    # 4. 宛先 (甲)
-    p.setFont(font_name, 12)
-    p.drawString(20*mm, height - 50*mm, "（甲）")
+    # 4-5. 甲（宛先＝自社）＋乙（発行者＝パートナー）の自動バランス配置
     company = CompanyInfo.objects.first()
-    p.drawString(20*mm, height - 56*mm, f"{company.name if company else ''}  御中")
-
-    # 5. 発行人 (乙)
-    p.setFont(font_name, 10)
-    p.drawString(110*mm, height - 50*mm, "（乙）")
-    p.setFont(font_name, 11)
-    p.drawString(110*mm, height - 55*mm, f"〒{order.partner.postal_code}")
-    p.drawString(110*mm, height - 60*mm, order.partner.address)
-    p.drawString(110*mm, height - 65*mm, order.partner.name)
-    p.drawString(110*mm, height - 70*mm, f"TEL:{order.partner.tel}")
+    next_y = _draw_header_section(
+        p, width, height, font_name, order,
+        addressee_label="（甲）",
+        addressee_name=company.name if company else '',
+        addressee_suffix="御中",
+        issuer_label="（乙）",
+        issuer_info={
+            'name': order.partner.name,
+            'postal_code': order.partner.postal_code,
+            'address': order.partner.address,
+            'tel': order.partner.tel,
+            'fax': getattr(order.partner, 'fax', ''),
+        },
+        show_stamp=False,  # 注文請書はパートナー発行のため角印なし
+    )
 
     # 6. テーブル
     kou_res = order.甲_責任者 or (company.responsible_person if company else "")
@@ -336,7 +374,7 @@ def generate_acceptance_pdf(order):
     ]))
 
     w, h = table.wrapOn(p, width, height)
-    table_y = height - 100*mm - h
+    table_y = next_y - 5*mm - h  # 動的Y座標
     table.drawOn(p, 20*mm, table_y)
 
     # 7. お客様サイン欄 (底部)

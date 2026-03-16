@@ -10,45 +10,14 @@ import os
 import datetime
 from django.conf import settings
 from core.domain.models import CompanyInfo
+from orders.services.pdf_generator import (
+    _setup_fonts as _setup_fonts_shared,
+    _draw_header_section,
+    _get_stamp_path,
+)
 
 def _setup_fonts(p):
-    # フォント登録（日本語対応）
-    font_name = "HeiseiMin-W3"
-    try:
-        pdfmetrics.getFont(font_name)
-    except:
-        pdfmetrics.registerFont(UnicodeCIDFont("HeiseiMin-W3"))
-    return font_name
-
-def _draw_company_info(p, x, y, font_name, side="自社"):
-    p.setFont(font_name, 10)
-    company = CompanyInfo.objects.first()
-    if not company:
-        name = ''
-        post = ''
-        addr = ''
-        tel = ''
-        fax = ''
-        rep = ''
-        reg_no = ''
-    else:
-        name = company.name
-        post = f"〒{company.postal_code}"
-        addr = company.address
-        tel = company.tel
-        fax = company.fax
-        rep = f"{company.representative_title} {company.representative_name}"
-        reg_no = company.registration_no
-
-    p.drawString(x, y, name)
-    p.setFont(font_name, 9)
-    p.drawString(x, y - 5*mm, post)
-    p.drawString(x, y - 9*mm, addr)
-    p.drawString(x, y - 13*mm, f"TEL:{tel}  FAX:{fax}")
-    if reg_no:
-        p.drawString(x, y - 17*mm, f"登録番号: {reg_no}")
-    
-    return name, rep
+    return _setup_fonts_shared(p)
 
 def generate_invoice_pdf(invoice):
     """請求書PDFの生成 (11列構成)"""
@@ -66,28 +35,25 @@ def generate_invoice_pdf(invoice):
     p.setFont(font_name, 20)
     p.drawCentredString(width / 2, height - 35*mm, "御 請 求 書")
 
-    # 3. 宛先 (取引先)
+    # 3-4. 宛先（取引先）＋発行者（自社）の自動バランス配置
     customer = invoice.order.partner
-    p.setFont(font_name, 12)
-    p.drawString(20*mm, height - 55*mm, f"{customer.name}  御中")
-    if invoice.department:
-        p.setFont(font_name, 10)
-        p.drawString(20*mm, height - 61*mm, f"{invoice.department}")
-
-    # 4. 発行人 (自社)
-    _draw_company_info(p, 120*mm, height - 55*mm, font_name)
-
-    # 注: 請求書はパートナーが作成元のため角印は不要
+    next_y = _draw_header_section(
+        p, width, height, font_name,
+        addressee_label="",
+        addressee_name=customer.name,
+        addressee_suffix="御中",
+        issuer_label="",
+        show_stamp=False,  # 請求書はパートナーが作成元のため角印不要
+    )
 
     # 6. ご請求額サマリ
     p.setFont(font_name, 12)
-    p.drawString(20*mm, height - 90*mm, "御請求額")
+    p.drawString(20*mm, next_y, "御請求額")
     p.setFont(font_name, 16)
-    p.drawString(45*mm, height - 90*mm, f"￥ {invoice.total_amount:,}-")
-    p.line(40*mm, height - 92*mm, 100*mm, height - 92*mm)
+    p.drawString(45*mm, next_y, f"￥ {invoice.total_amount:,}-")
+    p.line(40*mm, next_y - 2*mm, 100*mm, next_y - 2*mm)
 
     # 7. 請求テーブル (11列)
-    # 番号, 項目, 単価, 作業H, 率, Min/MaxH, 減, 増, その他, 金額, 備考
     header = ["番号", "項目", "単価", "作業H", "率", "Min/MaxH", "減", "増", "他", "金額", "備考"]
     data = [header]
     
@@ -117,13 +83,13 @@ def generate_invoice_pdf(invoice):
     table = Table(data, colWidths=col_widths)
     table.setStyle(TableStyle([
         ('FONT', (0, 0), (-1, -1), font_name, 7),
-        ('GRID', (0, 0), (-1, -2), 0.5, colors.black), # 明細部分のグリッド
+        ('GRID', (0, 0), (-1, -2), 0.5, colors.black),
         ('BACKGROUND', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('SPAN', (1, -3), (8, -3)), # 小計ラベル
-        ('SPAN', (1, -2), (8, -2)), # 消費税ラベル
-        ('SPAN', (1, -1), (8, -1)), # 合計ラベル
+        ('SPAN', (1, -3), (8, -3)),
+        ('SPAN', (1, -2), (8, -2)),
+        ('SPAN', (1, -1), (8, -1)),
         ('LINEBELOW', (1, -3), (-1, -1), 0.5, colors.black),
         ('LINEAFTER', (0, -3), (0, -1), 0.5, colors.black),
         ('LINEAFTER', (8, -3), (8, -1), 0.5, colors.black),
@@ -131,7 +97,7 @@ def generate_invoice_pdf(invoice):
     ]))
 
     w, h = table.wrapOn(p, width, height)
-    table_y = height - 105*mm - h
+    table_y = next_y - 10*mm - h  # 請求額サマリの下に動的配置
     table.drawOn(p, 15*mm, table_y)
 
     # 8. 振込先
@@ -166,54 +132,32 @@ def generate_payment_notice_pdf(invoice):
     ym_str = invoice.target_month.strftime('%Y年%m月度')
     p.drawCentredString(width / 2, height - 35*mm, f"{ym_str} 検収兼お支払通知書")
 
-    # 3. 宛先 (自社 -> 取引先殿)
+    # 3-4. 宛先（取引先）＋発行者（自社）の自動バランス配置（角印あり）
     customer = invoice.order.partner
-    p.setFont(font_name, 12)
-    p.drawString(20*mm, height - 55*mm, f"{customer.name}  殿")
-
-    # 4. 発行人 (取引先 -> 自社名義)
-    _draw_company_info(p, 120*mm, height - 55*mm, font_name)
-
-    # 4.5 角印（印影）表示 - 社名の右端に被せて配置
-    stamp_path = None
-    company = CompanyInfo.objects.first()
-    if company and company.stamp_image:
-        try:
-            stamp_path = company.stamp_image.path
-        except:
-            pass
-    if not stamp_path:
-        fallback = os.path.join(settings.MEDIA_ROOT, 'stamps', 'company_seal.png')
-        if os.path.exists(fallback):
-            stamp_path = fallback
-    if stamp_path:
-        try:
-            p.setFont(font_name, 10)
-            name = company.name if company else ''
-            name_width = p.stringWidth(name, font_name, 10)
-            stamp_size = 22 * mm
-            stamp_x = 120 * mm + name_width - stamp_size * 0.35
-            stamp_y = height - 55*mm - stamp_size * 0.65
-            p.drawImage(stamp_path, stamp_x, stamp_y, width=stamp_size, height=stamp_size, mask='auto', preserveAspectRatio=True)
-        except:
-            pass
+    next_y = _draw_header_section(
+        p, width, height, font_name,
+        addressee_label="",
+        addressee_name=customer.name,
+        addressee_suffix="殿",
+        issuer_label="",
+        show_stamp=True,  # 支払通知書は自社発行のため角印あり
+    )
 
     # 5. メッセージ
     p.setFont(font_name, 10)
-    p.drawString(20*mm, height - 85*mm, "下記の通り、検収ならびにお支払い金額を通知いたします。")
+    p.drawString(20*mm, next_y, "下記の通り、検収ならびにお支払い金額を通知いたします。")
 
     # 6. 合計金額 (枠付き)
     p.setFont(font_name, 14)
-    p.rect(110*mm, height - 105*mm, 80*mm, 12*mm)
-    p.drawString(115*mm, height - 102*mm, f"合計金額: ￥{invoice.total_amount:,}-")
+    amount_y = next_y - 15*mm
+    p.rect(110*mm, amount_y - 4*mm, 80*mm, 12*mm)
+    p.drawString(115*mm, amount_y, f"合計金額: ￥{invoice.total_amount:,}-")
 
     # 7. 検収テーブル (8列)
-    # 番号, 名前, 数量, 単位, 単価, 金額, 諸経費, 合計
     header = ["番号", "名前 / 業務内容", "数量", "単位", "単価", "金額", "諸経費", "合計"]
     data = [header]
     
     for i, item in enumerate(invoice.items.all(), 1):
-        # 明細行
         data.append([
             str(i),
             f"{item.person_name}\n({invoice.order.project.name})",
@@ -224,7 +168,6 @@ def generate_payment_notice_pdf(invoice):
             "0",
             f"￥{item.base_fee:,}"
         ])
-        # 調整金詳細行 (オプションで表示)
         if item.excess_amount > 0:
             data.append(["", f"超過精算: {item.work_time}h (上限:{item.time_upper_limit}h)", "", "", f"￥{item.excess_rate:,}", f"￥{item.excess_amount:,}", "", ""])
         elif item.shortage_amount > 0:
@@ -245,7 +188,7 @@ def generate_payment_notice_pdf(invoice):
     ]))
 
     w, h = table.wrapOn(p, width, height)
-    table_y = height - 115*mm - h
+    table_y = amount_y - 15*mm - h  # 合計金額の下に動的配置
     table.drawOn(p, 10*mm, table_y)
 
     # 8. 支払条件等
