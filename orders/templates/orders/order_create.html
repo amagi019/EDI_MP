@@ -275,7 +275,14 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear values
         var inputs = newRow.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"])');
         for (var i = 0; i < inputs.length; i++) {
-            inputs[i].value = '';
+            var name = inputs[i].name || '';
+            if (name.endsWith('-time_lower_limit')) {
+                inputs[i].value = '140.00';
+            } else if (name.endsWith('-time_upper_limit')) {
+                inputs[i].value = '180.00';
+            } else {
+                inputs[i].value = '';
+            }
             delete inputs[i].dataset.manual;
         }
         var checkboxes = newRow.querySelectorAll('input[type="checkbox"]');
@@ -288,6 +295,7 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(newRow);
         totalForms.value = formCount + 1;
         attachListeners(newRow);
+        calcRates(newRow);
     });
 });
 </script>

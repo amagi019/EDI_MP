@@ -1,7 +1,7 @@
 """
 開発環境固有の設定
 
-ローカル開発時に使用。DEBUG=True、SQLite、コンソールメール出力等。
+ローカル開発時に使用。DEBUG=True、PostgreSQL、コンソールメール出力等。
 """
 
 from .base import *  # noqa: F401,F403
