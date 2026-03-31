@@ -378,19 +378,28 @@ class PartnerMonthlyProgressView(StaffRequiredMixin, View):
         
         # 当月の注文書を一括取得
         orders_by_partner = {}
-        for order in Order.objects.filter(order_end_ym=target_date).exclude(status='DRAFT'):
+        for order in Order.objects.filter(
+            order_end_ym__year=target_date.year, 
+            order_end_ym__month=target_date.month
+        ).exclude(status='DRAFT'):
             orders_by_partner[order.partner_id] = order
 
         # 当月の稼働報告を一括取得
         work_reports_by_order = {}
-        for wr in WorkReport.objects.filter(target_month=target_date):
+        for wr in WorkReport.objects.filter(
+            target_month__year=target_date.year, 
+            target_month__month=target_date.month
+        ):
             if wr.order_id not in work_reports_by_order:
                 work_reports_by_order[wr.order_id] = []
             work_reports_by_order[wr.order_id].append(wr)
 
         # 当月の請求書を一括取得
         invoices_by_order = {}
-        for inv in Invoice.objects.filter(target_month=target_date):
+        for inv in Invoice.objects.filter(
+            target_month__year=target_date.year, 
+            target_month__month=target_date.month
+        ):
             invoices_by_order[inv.order_id] = inv
 
         progress_data = []
@@ -419,7 +428,7 @@ class PartnerMonthlyProgressView(StaffRequiredMixin, View):
                     step2_accept = 'WAITING'
 
                 # 稼働報告
-                wrs = work_reports_by_order.get(order.id, [])
+                wrs = work_reports_by_order.get(order.order_id, [])
                 if wrs:
                     if any(w.status == 'APPROVED' for w in wrs):
                         step3_work = 'DONE'
@@ -429,7 +438,7 @@ class PartnerMonthlyProgressView(StaffRequiredMixin, View):
                     step3_work = 'WAITING'
 
                 # 請求書
-                inv = invoices_by_order.get(order.id)
+                inv = invoices_by_order.get(order.order_id)
                 if inv:
                     invoice_id = inv.pk
                     if inv.status in ('ISSUED', 'SENT', 'CONFIRMED', 'PAID'):
