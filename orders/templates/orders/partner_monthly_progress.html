@@ -47,59 +47,59 @@
                     </td>
                     
                     <!-- 1. 注文書 -->
-                    <td style="padding: 1rem; text-align: center;">
+                    <td style="padding: 1rem; text-align: center; font-size: 0.85rem; font-weight: 600;">
                         {% if data.steps.order == 'DONE' %}
-                            <span style="color: #10B981; font-size: 1.2rem;" title="送付済"><i class="fas fa-check-circle"></i></span>
+                            <span style="color: #10B981;"><i class="fas fa-check-circle"></i> 送付済</span>
                         {% else %}
-                            <span style="color: var(--border); font-size: 1.2rem;" title="なし"><i class="fas fa-minus-circle"></i></span>
+                            <span style="color: var(--border);"><i class="fas fa-minus-circle"></i> なし</span>
                         {% endif %}
                     </td>
 
                     <!-- 2. 承諾 -->
-                    <td style="padding: 1rem; text-align: center;">
+                    <td style="padding: 1rem; text-align: center; font-size: 0.85rem; font-weight: 600;">
                         {% if data.steps.accept == 'DONE' %}
-                            <span style="color: #10B981; font-size: 1.2rem;" title="承諾済"><i class="fas fa-check-circle"></i></span>
+                            <span style="color: #10B981;"><i class="fas fa-check-circle"></i> 承諾済</span>
                         {% elif data.steps.accept == 'WAITING' %}
-                            <span style="color: #F59E0B; font-size: 1.2rem;" title="未承諾"><i class="fas fa-clock"></i></span>
+                            <span style="color: #F59E0B;"><i class="fas fa-clock"></i> 未承諾</span>
                         {% else %}
-                            <span style="color: var(--border); font-size: 1.2rem;" title="対象外"><i class="fas fa-minus-circle"></i></span>
+                            <span style="color: var(--border);"><i class="fas fa-minus-circle"></i> 対象外</span>
                         {% endif %}
                     </td>
 
                     <!-- 3. 稼働状況 -->
-                    <td style="padding: 1rem; text-align: center;">
+                    <td style="padding: 1rem; text-align: center; font-size: 0.85rem; font-weight: 600;">
                         {% if data.steps.work == 'DONE' %}
-                            <span style="color: #10B981; font-size: 1.2rem;" title="確定済"><i class="fas fa-check-circle"></i></span>
+                            <span style="color: #10B981;"><i class="fas fa-check-circle"></i> 報告済</span>
                         {% elif data.steps.work == 'PROCESSING' %}
-                            <span style="color: #3B82F6; font-size: 1.2rem;" title="確認中"><i class="fas fa-spinner fa-spin"></i></span>
+                            <span style="color: #3B82F6;"><i class="fas fa-spinner fa-spin"></i> 確認中</span>
                         {% elif data.steps.work == 'WAITING' %}
-                            <span style="color: #F59E0B; font-size: 1.2rem;" title="未登録"><i class="fas fa-clock"></i></span>
+                            <span style="color: #F59E0B;"><i class="fas fa-clock"></i> 未報告</span>
                         {% else %}
-                            <span style="color: var(--border); font-size: 1.2rem;" title="対象外"><i class="fas fa-minus-circle"></i></span>
+                            <span style="color: var(--border);"><i class="fas fa-minus-circle"></i> 対象外</span>
                         {% endif %}
                     </td>
 
                     <!-- 4. 請求書送付 -->
-                    <td style="padding: 1rem; text-align: center;">
+                    <td style="padding: 1rem; text-align: center; font-size: 0.85rem; font-weight: 600;">
                         {% if data.steps.invoice == 'DONE' %}
-                            <a href="{% url 'invoices:invoice_edit' data.invoice_id %}" style="color: #10B981; font-size: 1.2rem; text-decoration: none;" title="送付済"><i class="fas fa-check-circle"></i></a>
+                            <a href="{% url 'invoices:invoice_edit' data.invoice_id %}" style="color: #10B981; text-decoration: none;"><i class="fas fa-check-circle"></i> 送付済</a>
                         {% elif data.steps.invoice == 'PROCESSING' %}
-                            <a href="{% url 'invoices:invoice_edit' data.invoice_id %}" style="color: #3B82F6; font-size: 1.2rem; text-decoration: none;" title="作成中/確認中"><i class="fas fa-spinner fa-spin"></i></a>
+                            <a href="{% url 'invoices:invoice_edit' data.invoice_id %}" style="color: #3B82F6; text-decoration: none;"><i class="fas fa-spinner fa-spin"></i> 準備中</a>
                         {% elif data.steps.invoice == 'WAITING' %}
-                            <span style="color: #F59E0B; font-size: 1.2rem;" title="未作成"><i class="fas fa-clock"></i></span>
+                            <span style="color: #F59E0B;"><i class="fas fa-clock"></i> 未作成</span>
                         {% else %}
-                            <span style="color: var(--border); font-size: 1.2rem;" title="対象外"><i class="fas fa-minus-circle"></i></span>
+                            <span style="color: var(--border);"><i class="fas fa-minus-circle"></i> 対象外</span>
                         {% endif %}
                     </td>
 
                     <!-- 5. 支払 -->
-                    <td style="padding: 1rem; text-align: center;">
+                    <td style="padding: 1rem; text-align: center; font-size: 0.85rem; font-weight: 600;">
                         {% if data.steps.payment == 'DONE' %}
-                            <span style="color: #10B981; font-size: 1.2rem;" title="支払済"><i class="fas fa-check-circle"></i></span>
+                            <span style="color: #10B981;"><i class="fas fa-check-circle"></i> 支払済</span>
                         {% elif data.steps.payment == 'WAITING' %}
-                            <span style="color: #F59E0B; font-size: 1.2rem;" title="未支払"><i class="fas fa-clock"></i></span>
+                            <span style="color: #F59E0B;"><i class="fas fa-clock"></i> 未支払</span>
                         {% else %}
-                            <span style="color: var(--border); font-size: 1.2rem;" title="対象外"><i class="fas fa-minus-circle"></i></span>
+                            <span style="color: var(--border);"><i class="fas fa-minus-circle"></i> 対象外</span>
                         {% endif %}
                     </td>
                 </tr>
