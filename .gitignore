@@ -31,3 +31,4 @@ data_dump.json
 *.log
 *.pot
 *.mo
+test.sqlite3

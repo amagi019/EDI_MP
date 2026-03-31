@@ -14,6 +14,8 @@ class Customer(models.Model):
     address = models.CharField(_("住所"), max_length=255, blank=True)
     tel = models.CharField(_("電話番号"), max_length=20, blank=True)
     email = models.EmailField(_("メールアドレス"), blank=True)
+    work_report_email = models.EmailField(_("稼働報告送付先メールアドレス"), blank=True, help_text=_("※稼働報告書（Excel）をメール自動送信する際の専用アドレスです。"))
+    invoice_email = models.EmailField(_("請求書送付先メールアドレス"), blank=True, help_text=_("※未入力の場合は上の「メールアドレス」が請求書の送付等に利用されます。"))
     representative_title = models.CharField(_("代表者役職"), max_length=64, default="代表取締役", blank=True)
     representative_name = models.CharField(_("代表者名"), max_length=64, blank=True)
     registration_no = models.CharField(_("登録番号"), max_length=20, blank=True, help_text=_("T13桁の番号"))

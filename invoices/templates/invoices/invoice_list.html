@@ -15,16 +15,16 @@
 
     {% if invoices %}
     <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse; color: var(--text-main);">
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-main); font-size: 0.95rem;">
             <thead>
                 <tr style="border-bottom: 1px solid var(--glass-border);">
-                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "作成日" %}</th>
-                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "請求番号" %}</th>
-                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "案件名" %}</th>
-                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "対象年月" %}</th>
-                    <th style="text-align: right; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "合計金額" %}</th>
-                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.9rem; padding-left: 2rem;">{% trans "ステータス" %}</th>
-                    <th style="text-align: right; padding: 1rem; color: var(--text-dim); font-size: 0.9rem;">{% trans "アクション" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.85rem; white-space: nowrap;">{% trans "作成日" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.85rem; white-space: nowrap;">{% trans "請求番号" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "案件名" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.85rem; white-space: nowrap;">{% trans "対象年月" %}</th>
+                    <th style="text-align: right; padding: 1rem; color: var(--text-dim); font-size: 0.85rem; white-space: nowrap;">{% trans "合計金額" %}</th>
+                    <th style="text-align: left; padding: 1rem; color: var(--text-dim); font-size: 0.85rem; padding-left: 2rem; white-space: nowrap;">{% trans "ステータス" %}</th>
+                    <th style="text-align: right; padding: 1rem; color: var(--text-dim); font-size: 0.85rem; white-space: nowrap;">{% trans "アクション" %}</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,12 +32,12 @@
                 <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: background 0.3s; cursor: default;"
                     onmouseover="this.style.background='rgba(255,255,255,0.02)'"
                     onmouseout="this.style.background='transparent'">
-                    <td style="padding: 1rem;">{{ invoice.issue_date }}</td>
-                    <td style="padding: 1rem; font-family: monospace;">{{ invoice.invoice_no }}</td>
+                    <td style="padding: 1rem; white-space: nowrap;">{{ invoice.issue_date }}</td>
+                    <td style="padding: 1rem; font-family: monospace; font-size: 1rem; white-space: nowrap;">{{ invoice.invoice_no }}</td>
                     <td style="padding: 1rem; font-weight: 500;">{{ invoice.order.project.name }}</td>
-                    <td style="padding: 1rem;">{{ invoice.target_month|date:"Y年m月" }}</td>
-                    <td style="padding: 1rem; text-align: right; font-weight: 600;">¥{{ invoice.total_amount|intcomma }}</td>
-                    <td style="padding: 1rem; padding-left: 2rem;">
+                    <td style="padding: 1rem; white-space: nowrap;">{{ invoice.target_month|date:"Y年m月" }}</td>
+                    <td style="padding: 1rem; text-align: right; font-weight: 600; white-space: nowrap;">¥{{ invoice.total_amount|floatformat:0|intcomma }}</td>
+                    <td style="padding: 1rem; padding-left: 2rem; white-space: nowrap;">
                         <span style="
                             padding: 0.2rem 0.6rem; 
                             border-radius: 4px; 
@@ -49,11 +49,17 @@
                             {{ invoice.get_status_display }}
                         </span>
                     </td>
-                    <td style="padding: 1rem; text-align: right;">
-                        <a href="{% url 'invoices:partner_invoice_pdf' invoice.id %}" class="btn"
-                            style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem;">
-                            {% trans "PDF表示" %}
-                        </a>
+                    <td style="padding: 1rem; text-align: right; white-space: nowrap;">
+                        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            <a href="{% url 'invoices:partner_invoice_pdf' invoice.id %}" class="btn"
+                                style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem; white-space: nowrap;" target="_blank">
+                                {% trans "請求書" %}
+                            </a>
+                            <a href="{% url 'invoices:partner_payment_notice_pdf' invoice.id %}" class="btn btn-secondary"
+                                style="text-decoration: none; font-size: 0.8rem; padding: 0.4rem 0.8rem; white-space: nowrap; background: rgba(75, 85, 99, 0.5);" target="_blank">
+                                {% trans "支払通知書" %}
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

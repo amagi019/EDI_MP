@@ -43,13 +43,25 @@
         }
 
         .company-info {
+            position: relative;
             text-align: right;
             font-size: 9pt;
+            min-width: 250px;
         }
 
         .company-name {
             font-size: 11pt;
             font-weight: bold;
+        }
+
+        .company-stamp {
+            position: absolute;
+            top: 10px;
+            right: 0px;
+            width: 60px;
+            height: 60px;
+            opacity: 0.85;
+            z-index: -1;
         }
 
         .total-box {
@@ -207,6 +219,9 @@
             <div>TEL: {{ company.tel }}</div>
             {% if company.registration_no %}
             <div class="registration">登録番号: {{ company.registration_no }}</div>
+            {% endif %}
+            {% if stamp_data_uri %}
+            <img class="company-stamp" src="{{ stamp_data_uri }}" alt="社印">
             {% endif %}
             {% endif %}
         </div>

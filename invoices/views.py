@@ -22,6 +22,9 @@ from .services.pdf_generator import generate_invoice_pdf, generate_payment_notic
 from .services.xml_generator import generate_invoice_xml
 from .services.json_exporter import generate_invoice_json
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 def _create_invoice_items_from_order(invoice, order):
     """OrderItemからInvoiceItemを一括生成する（共通ヘルパー）。"""
@@ -75,7 +78,25 @@ class PartnerInvoicePDFView(LoginRequiredMixin, View):
         buffer = generate_invoice_pdf(invoice)
         
         response = HttpResponse(buffer, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="invoice_{invoice.invoice_no}.pdf"'
+        response['Content-Disposition'] = f'inline; filename="invoice_{invoice.invoice_no}.pdf"'
+        return response
+
+class PartnerPaymentNoticePDFView(LoginRequiredMixin, View):
+    """パートナー用 支払い通知書PDF表示"""
+
+    def get(self, request, invoice_id):
+        invoice = get_object_or_404(Invoice, pk=invoice_id)
+
+        # スタッフは全閲覧可、パートナーは自分のリソースのみ
+        role = get_user_role(request.user)
+        if role != Role.STAFF:
+            if not is_owner_of_partner(request.user, invoice.order.partner):
+                raise PermissionDenied("権限がありません。")
+
+        buffer = generate_payment_notice_pdf(invoice)
+        
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="payment_notice_{invoice.invoice_no}.pdf"'
         return response
 
 class PartnerInvoiceListView(LoginRequiredMixin, ListView):
@@ -651,6 +672,131 @@ class WorkReportApproveView(LoginRequiredMixin, View):
             messages.warning(request, f"稼働報告書を確定しましたが、メール通知に失敗しました。")
 
         return redirect('invoices:work_report_upload')
+
+
+class WorkReportSendToClientView(StaffRequiredMixin, View):
+    """
+    自社担当者が稼働報告書（Excel）をGoogle Driveへ配置し、クライアントへ通知メールを送付する機能
+    GET: プレビュー表示
+    POST: 実際の送信
+    """
+    def _build_email_content(self, work_report, client, client_shared_url="【※ここに共有リンクが自動挿入されます】"):
+        from core.domain.models import EmailTemplate
+        from django.template import Context, Template
+        
+        ym_str = work_report.target_month.strftime("%Y年%m月") if work_report.target_month else "該当月"
+        partner_name = work_report.worker_name or (work_report.order.partner.name if work_report.order and work_report.order.partner else "未取得")
+        client_name = client.name if client else "未設定"
+        
+        default_subject = "【稼働報告書】{{ partner_name }} 様 ({{ ym_str }}分)"
+        default_body = """{{ client_name }} 様\n\nいつもお世話になっております。\n{{ partner_name }} 様の {{ ym_str }}分 稼働報告書を受領いたしました。\n\n以下のURL（Google Drive共有フォルダ）よりご確認をお願いいたします。\n{{ client_shared_url }}\n\n※本メールはシステムより自動送信されています。"""
+        
+        template_obj, _ = EmailTemplate.objects.get_or_create(
+            code='WORK_REPORT_SHARE',
+            defaults={
+                'subject': default_subject,
+                'body': default_body,
+                'description': '取引先への稼働報告共有メール',
+            }
+        )
+        ctx = Context({
+            'partner_name': partner_name,
+            'ym_str': ym_str,
+            'client_name': client_name,
+            'client_shared_url': client_shared_url,
+        }, autoescape=False)
+        subject = Template(template_obj.subject).render(ctx)
+        body = Template(template_obj.body).render(ctx)
+        return subject, body
+    def get(self, request, pk):
+        from .models import WorkReport
+        work_report = get_object_or_404(WorkReport, pk=pk)
+        
+        client = None
+        target_email = None
+        if work_report.order and work_report.order.project and hasattr(work_report.order.project, 'customer') and work_report.order.project.customer:
+            client = work_report.order.project.customer
+            target_email = client.work_report_email
+
+        client_shared_url = work_report.client_shared_url
+        try:
+            from core.services.google_drive_service import upload_work_report_excel
+            drive_result = upload_work_report_excel(work_report)
+            client_shared_url = drive_result.get('url', '')
+            work_report.client_shared_url = client_shared_url
+            work_report.save(update_fields=['client_shared_url'])
+        except Exception as e:
+            import traceback
+            logger.error(f"[Google Drive] プレビューでの稼働報告事前アップロード失敗: {e}\n{traceback.format_exc()}")
+            messages.warning(request, f"Google Driveへの事前アップロードに失敗しました。仮のリンクが表示されます。: {e}")
+            client_shared_url = "【※Google Driveアップロードエラーによりリンク取得失敗】"
+
+        subject, body = self._build_email_content(work_report, client, client_shared_url)
+
+        return render(request, 'invoices/work_report_send_preview.html', {
+            'report': work_report,
+            'client': client,
+            'target_email': target_email,
+            'subject': subject,
+            'body': body,
+        })
+
+    def post(self, request, pk):
+        from .models import WorkReport
+        from core.services.google_drive_service import upload_work_report_excel
+        from django.utils import timezone
+        import traceback
+
+        work_report = get_object_or_404(WorkReport, pk=pk)
+        
+        # 1. Google Drive アップロード (GET時に取得したURLがあればそれを利用、なければ再実行)
+        client_shared_url = work_report.client_shared_url
+        if not client_shared_url or "アップロードエラー" in client_shared_url:
+            try:
+                drive_result = upload_work_report_excel(work_report)
+                client_shared_url = drive_result.get('url', '')
+                work_report.client_shared_url = client_shared_url
+                work_report.save(update_fields=['client_shared_url'])
+            except Exception as e:
+                logger.error(f"[Google Drive] 稼働報告アップロード失敗: {e}\n{traceback.format_exc()}")
+                messages.error(request, f"Google Driveへのアップロードに失敗しました: {e}")
+                return redirect('invoices:work_report_result', pk=work_report.pk)
+
+        # 2. クライアント宛に通知メールを送付
+        try:
+            client = work_report.order.project.customer if hasattr(work_report.order.project, 'customer') else None
+            target_email = client.work_report_email if client else None
+            
+            if not target_email:
+                messages.warning(request, "Google Driveには保存されましたが、取引先に「稼働報告送付先メールアドレス」が登録されていないためメール送信をスキップしました。")
+            else:
+                # メール送信処理
+                from django.core.mail import EmailMessage
+                from django.conf import settings
+                from django.urls import reverse
+                
+                subject, body = self._build_email_content(work_report, client, client_shared_url)
+                
+                email = EmailMessage(
+                    subject=subject,
+                    body=body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[target_email],
+                    bcc=[settings.DEFAULT_FROM_EMAIL],
+                )
+                email.send(fail_silently=False)
+                
+        except Exception as e:
+            logger.error(f"[Mail Send Error] クライアント通知メール失敗: {e}\n{traceback.format_exc()}")
+            messages.error(request, "メールの送信に失敗しました（Driveへの保存は完了しています）。")
+            return redirect('invoices:work_report_result', pk=work_report.pk)
+
+        # 3. 状態更新
+        work_report.sent_to_client_at = timezone.now()
+        work_report.save()
+
+        messages.success(request, f"稼働報告書を取引先へ送付（共有）しました。")
+        return redirect('invoices:work_report_result', pk=work_report.pk)
 
 
 class InvoiceXMLDownloadView(LoginRequiredMixin, View):

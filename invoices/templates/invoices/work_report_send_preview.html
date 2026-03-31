@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}送信プレビュー | EDIシステム{% endblock %}
+{% block content %}
+<div class="card fade-in" style="max-width: 800px; margin: 0 auto;">
+    <h2 style="margin-bottom: 1.5rem;"><i class="fas fa-eye"></i> 稼働報告共有メール プレビュー</h2>
+    <p style="color: var(--text-dim); margin-bottom: 2rem;">
+        以下の内容で取引先へメールが送信されます。ご確認の上、「送信する」ボタンを押してください。<br>
+        <span style="color: #0ea5e9;">※プレビュー生成時にGoogle Driveへファイルが自動保存され、以下に実際のリンクURLが表示されています。クリックして正しくファイルが見れるか確認できます。</span>
+    </p>
+
+    <div style="background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem;">
+        <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.25rem;">宛先 (To)</div>
+            <div style="font-weight: 600; font-size: 1.1rem;">
+                {% if target_email %}
+                    {{ target_email }} <span style="font-weight: 400; color: var(--text-dim); font-size: 0.9rem;">({{ client.name }})</span>
+                {% else %}
+                    <span style="color: #ef4444;">※取引先（{{ client.name }}）に「稼働報告送付先メールアドレス」が登録されていません。Driveアップロードのみ実行されます。</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.25rem;">件名 (Subject)</div>
+            <div style="font-weight: 500;">{{ subject }}</div>
+        </div>
+
+        <div>
+            <div style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.5rem;">本文 (Body)</div>
+            <div style="white-space: pre-wrap; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 6px; font-family: monospace; line-height: 1.6;">{{ body|urlize }}</div>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+        <a href="{% url 'invoices:work_report_result' report.pk %}" class="btn btn-secondary">
+            キャンセルして戻る
+        </a>
+        <form method="post" action="{% url 'invoices:work_report_send_to_client' report.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background: #0ea5e9; color: white;">
+                <i class="fas fa-paper-plane"></i> クライアントへ稼働報告を送付
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

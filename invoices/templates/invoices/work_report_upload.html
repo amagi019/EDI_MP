@@ -63,23 +63,31 @@
         </h3>
         <div style="display: grid; gap: 0.75rem;">
             {% for report in existing_reports %}
-            <a href="{% url 'invoices:work_report_result' report.pk %}" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 8px; text-decoration: none; color: var(--text-main); transition: transform 0.15s;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
+            <a href="{% url 'invoices:work_report_result' report.pk %}" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; background: linear-gradient(145deg, var(--bg-app), rgba(255,255,255,0.03)); border: 1px solid var(--border-color); border-radius: 8px; text-decoration: none; color: var(--text-main); transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 15px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'; this.style.borderColor='#38bdf8';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)'; this.style.borderColor='var(--border-color)';">
                 <div>
-                    <span style="font-weight: 600;">{{ report.worker_name|default:"未取得" }}</span>
-                    <span style="color: var(--text-dim); margin-left: 0.75rem; font-size: 0.85rem;">{{ report.target_month|date:"Y年m月" }}</span>
-                    <span style="color: var(--text-dim); margin-left: 0.75rem; font-size: 0.85rem;">{{ report.total_hours }}h / {{ report.work_days }}日</span>
+                    <span style="font-weight: 600; font-size: 1.05rem;">{{ report.worker_name|default:"未取得" }}</span>
+                    <span style="color: var(--text-dim); margin-left: 1rem; font-size: 0.9rem;">
+                        <i class="far fa-calendar-alt"></i> {{ report.target_month|date:"Y年m月" }}
+                    </span>
+                    <span style="color: var(--text-dim); margin-left: 1rem; font-size: 0.9rem;">
+                        <i class="far fa-clock"></i> {{ report.total_hours }}h / {{ report.work_days }}日
+                    </span>
                 </div>
-                <div>
-                    {% if report.status == 'ALERT' %}
-                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(245, 158, 11, 0.2); color: #FBBF24;">⚠ 要確認</span>
-                    {% elif report.status == 'APPROVED' %}
-                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">✓ 確定済</span>
-                    {% elif report.status == 'PARSED' %}
-                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(79, 70, 229, 0.2); color: #818CF8;">解析済</span>
-                    {% else %}
-                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(100, 116, 139, 0.2); color: #94a3b8;">{{ report.get_status_display }}</span>
-                    {% endif %}
-                    <i class="fas fa-chevron-right" style="margin-left: 0.5rem; color: var(--text-dim);"></i>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div>
+                        {% if report.status == 'ALERT' %}
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; background: rgba(245, 158, 11, 0.2); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.4);">⚠ 要確認</span>
+                        {% elif report.status == 'APPROVED' %}
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; background: rgba(34, 197, 94, 0.2); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4);">✓ 確定済</span>
+                        {% elif report.status == 'PARSED' %}
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; background: rgba(79, 70, 229, 0.2); color: #a5b4fc; border: 1px solid rgba(79, 70, 229, 0.4);">解析済</span>
+                        {% else %}
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; background: rgba(100, 116, 139, 0.2); color: #cbd5e1; border: 1px solid rgba(100, 116, 139, 0.4);">{{ report.get_status_display }}</span>
+                        {% endif %}
+                    </div>
+                    <div style="background: #0ea5e9; color: white; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);">
+                        詳細を開く <i class="fas fa-external-link-alt" style="margin-left: 0.25rem; font-size: 0.8rem;"></i>
+                    </div>
                 </div>
             </a>
             {% endfor %}

@@ -56,6 +56,7 @@ def _get_folder_id(doc_type):
         'contract': 'GOOGLE_DRIVE_CONTRACT_FOLDER_ID',
         'order': 'GOOGLE_DRIVE_ORDER_FOLDER_ID',
         'payment': 'GOOGLE_DRIVE_PAYMENT_FOLDER_ID',
+        'work_report': 'GOOGLE_DRIVE_WORK_REPORT_FOLDER_ID',
     }
     setting_name = folder_map.get(doc_type, '')
     folder_id = getattr(settings, setting_name, '') if setting_name else ''
@@ -268,3 +269,76 @@ def upload_payment_pdf(pdf_buffer, filename, folder_id=None):
 def get_drive_file_url(file_id):
     """DriveファイルIDからURLを生成"""
     return f"https://drive.google.com/file/d/{file_id}/view"
+
+
+def upload_work_report_excel(work_report):
+    """
+    稼働報告書（Excelファイル）をGoogle Driveにアップロードする。
+    既存ファイルがあれば上書き更新。
+
+    フォルダ構成: 稼働報告書ルートフォルダ/クライアント名/ファイル
+    
+    Returns:
+        dict: {'file_id': str, 'url': str}
+    Raises:
+        ValueError: フォルダIDが未設定の場合
+    """
+    folder_id = _get_folder_id('work_report')
+    if not folder_id:
+        raise ValueError("GOOGLE_DRIVE_WORK_REPORT_FOLDER_ID が未設定です。")
+
+    service = _get_drive_service()
+    if not service:
+        raise ValueError("Google Drive サービスの初期化に失敗しました。")
+
+    # クライアント名を取得（※WorkReport → Order → Project → Client）
+    try:
+        client_name = work_report.order.project.client.name
+    except Exception:
+        client_name = "その他"
+
+    client_folder_id = _find_or_create_folder(service, client_name, folder_id)
+
+    # 実際のファイル名を利用
+    import os
+    filename = os.path.basename(work_report.file.name)
+
+    # Excelデータ取得
+    work_report.file.seek(0)
+    file_data = work_report.file.read()
+
+    # mimetypeはExcel
+    from googleapiclient.http import MediaInMemoryUpload
+    media = MediaInMemoryUpload(file_data, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    existing_id = _find_existing_file(service, filename, client_folder_id)
+    if existing_id:
+        # 上書き処理
+        updated = service.files().update(
+            fileId=existing_id,
+            media_body=media,
+            fields='id, webViewLink',
+            supportsAllDrives=True,
+        ).execute()
+        file_id = updated.get('id')
+        web_link = updated.get('webViewLink', '')
+        logger.info(f"[Google Drive] Excel更新成功: {file_id}")
+    else:
+        # 新規アップロード処理
+        file_metadata = {
+            'name': filename,
+            'parents': [client_folder_id],
+        }
+        uploaded = service.files().create(
+            body=file_metadata, media_body=media,
+            fields='id, webViewLink',
+            supportsAllDrives=True,
+        ).execute()
+        file_id = uploaded.get('id')
+        web_link = uploaded.get('webViewLink', '')
+        logger.info(f"[Google Drive] Excelアップロード成功: {file_id}")
+
+    return {
+        'file_id': file_id,
+        'url': web_link or f"https://drive.google.com/file/d/{file_id}/view",
+    }

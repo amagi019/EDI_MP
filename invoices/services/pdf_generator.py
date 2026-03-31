@@ -8,7 +8,10 @@ from reportlab.lib import colors
 import io
 import os
 import datetime
+import html
 from django.conf import settings
+from reportlab.platypus import Table, TableStyle, Paragraph
+from reportlab.lib.styles import ParagraphStyle
 from core.domain.models import CompanyInfo
 from orders.services.pdf_generator import (
     _setup_fonts as _setup_fonts_shared,
@@ -20,7 +23,7 @@ def _setup_fonts(p):
     return _setup_fonts_shared(p)
 
 def generate_invoice_pdf(invoice):
-    """請求書PDFの生成 (11列構成)"""
+    """請求書PDFの生成 (8列構成・自社宛)"""
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -35,79 +38,87 @@ def generate_invoice_pdf(invoice):
     p.setFont(font_name, 20)
     p.drawCentredString(width / 2, height - 35*mm, "御 請 求 書")
 
-    # 3-4. 宛先（取引先）＋発行者（自社）の自動バランス配置
-    customer = invoice.order.partner
+    # 3-4. 宛先（自社）＋発行者（パートナー）の自動バランス配置
+    company = CompanyInfo.objects.first()
+    partner = invoice.order.partner
     next_y = _draw_header_section(
         p, width, height, font_name,
         addressee_label="",
-        addressee_name=customer.name,
+        addressee_name=company.name if company else '',
         addressee_suffix="御中",
         issuer_label="",
-        show_stamp=False,  # 請求書はパートナーが作成元のため角印不要
+        issuer_info={
+            'name': partner.name,
+            'postal_code': partner.postal_code,
+            'address': partner.address,
+            'tel': partner.tel,
+            'fax': getattr(partner, 'fax', ''),
+        },
+        show_stamp=False,  # パートナー発行の請求書のため角印不要
     )
 
-    # 6. ご請求額サマリ
-    p.setFont(font_name, 12)
-    p.drawString(20*mm, next_y, "御請求額")
-    p.setFont(font_name, 16)
-    p.drawString(45*mm, next_y, f"￥ {invoice.total_amount:,}-")
-    p.line(40*mm, next_y - 2*mm, 100*mm, next_y - 2*mm)
+    # 5. メッセージ
+    p.setFont(font_name, 10)
+    p.drawString(20*mm, next_y, "下記の通り、ご請求申し上げます。")
 
-    # 7. 請求テーブル (11列)
-    header = ["番号", "項目", "単価", "作業H", "率", "Min/MaxH", "減", "増", "他", "金額", "備考"]
+    # 6. 合計金額 (枠付き)
+    p.setFont(font_name, 14)
+    amount_y = next_y - 15*mm
+    p.rect(110*mm, amount_y - 4*mm, 80*mm, 12*mm)
+    p.drawString(115*mm, amount_y, f"御請求額: ￥{invoice.total_amount:,}-")
+
+    # 7. 請求テーブル (8列)
+    header = ["番号", "名前 / 業務内容", "数量", "単位", "単価", "金額", "諸経費", "合計"]
     data = [header]
     
+    left_style = ParagraphStyle(name='Normal', fontName=font_name, fontSize=8, leading=10)
+    
     for i, item in enumerate(invoice.items.all(), 1):
-        range_text = f"{int(item.time_lower_limit)}/{int(item.time_upper_limit)}"
-        row = [
+        person_safe = html.escape(item.person_name)
+        project_safe = html.escape(invoice.order.project.name)
+        item_para = Paragraph(f"{person_safe}<br/>({project_safe})", left_style)
+
+        data.append([
             str(i),
-            f"{item.person_name}\n({invoice.order.project.name})",
-            f"{item.base_fee:,}",
-            f"{item.work_time}",
-            "1.0",
-            range_text,
-            f"{item.shortage_amount:,}" if item.shortage_amount > 0 else "0",
-            f"{item.excess_amount:,}" if item.excess_amount > 0 else "0",
+            item_para,
+            "1.00",
+            "月",
+            f"￥{item.base_fee:,}",
+            f"￥{item.base_fee:,}",
             "0",
-            f"{item.item_subtotal:,}",
-            item.remarks
-        ]
-        data.append(row)
+            f"￥{item.base_fee:,}"
+        ])
+        if item.excess_amount > 0:
+            data.append(["", f"超過精算: {item.work_time}h (上限:{item.time_upper_limit}h)", "", "", f"￥{item.excess_rate:,}", f"￥{item.excess_amount:,}", "", ""])
+        elif item.shortage_amount > 0:
+            data.append(["", f"控除精算: {item.work_time}h (下限:{item.time_lower_limit}h)", "", "", f"￥{item.shortage_rate:,}", f"▲￥{item.shortage_amount:,}", "", ""])
 
-    # フッター行 (小計等)
-    data.append(["", "税抜小計", "", "", "", "", "", "", "", f"{invoice.subtotal_amount:,}", ""])
-    data.append(["", "消費税(10%)", "", "", "", "", "", "", "", f"{invoice.tax_amount:,}", ""])
-    data.append(["", "税込合計金額", "", "", "", "", "", "", "", f"{invoice.total_amount:,}", ""])
+    # フッター
+    data.append(["", "税込合計金額", "", "", "", "", "", f"￥{invoice.total_amount:,}"])
 
-    col_widths = [10*mm, 35*mm, 18*mm, 14*mm, 10*mm, 18*mm, 14*mm, 14*mm, 8*mm, 20*mm, 15*mm]
+    col_widths = [12*mm, 60*mm, 15*mm, 12*mm, 25*mm, 25*mm, 15*mm, 25*mm]
     table = Table(data, colWidths=col_widths)
     table.setStyle(TableStyle([
-        ('FONT', (0, 0), (-1, -1), font_name, 7),
+        ('FONT', (0, 0), (-1, -1), font_name, 8),
         ('GRID', (0, 0), (-1, -2), 0.5, colors.black),
         ('BACKGROUND', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (2, 0), (-1, -1), 'RIGHT'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('SPAN', (1, -3), (8, -3)),
-        ('SPAN', (1, -2), (8, -2)),
-        ('SPAN', (1, -1), (8, -1)),
-        ('LINEBELOW', (1, -3), (-1, -1), 0.5, colors.black),
-        ('LINEAFTER', (0, -3), (0, -1), 0.5, colors.black),
-        ('LINEAFTER', (8, -3), (8, -1), 0.5, colors.black),
-        ('LINEAFTER', (9, -3), (9, -1), 0.5, colors.black),
+        ('SPAN', (1, -1), (6, -1)),
     ]))
 
     w, h = table.wrapOn(p, width, height)
-    table_y = next_y - 10*mm - h  # 請求額サマリの下に動的配置
-    table.drawOn(p, 15*mm, table_y)
+    table_y = amount_y - 15*mm - h  # 合計金額の下に動的配置
+    table.drawOn(p, 10*mm, table_y)
 
     # 8. 振込先
     p.setFont(font_name, 10)
     p.drawString(20*mm, table_y - 15*mm, "【お振込先】")
     p.setFont(font_name, 9)
     bank_y = table_y - 20*mm
-    bank_info = (f"{customer.bank_name} {customer.bank_branch} "
-                 f"{customer.account_type} {customer.account_number} "
-                 f"口座名義: {customer.account_name}")
+    bank_info = (f"{partner.bank_name} {partner.bank_branch} "
+                 f"{partner.account_type} {partner.account_number} "
+                 f"口座名義: {partner.account_name}")
     p.drawString(25*mm, bank_y, bank_info)
 
     p.showPage()
@@ -157,10 +168,16 @@ def generate_payment_notice_pdf(invoice):
     header = ["番号", "名前 / 業務内容", "数量", "単位", "単価", "金額", "諸経費", "合計"]
     data = [header]
     
+    left_style = ParagraphStyle(name='Normal', fontName=font_name, fontSize=8, leading=10)
+    
     for i, item in enumerate(invoice.items.all(), 1):
+        person_safe = html.escape(item.person_name)
+        project_safe = html.escape(invoice.order.project.name)
+        item_para = Paragraph(f"{person_safe}<br/>({project_safe})", left_style)
+
         data.append([
             str(i),
-            f"{item.person_name}\n({invoice.order.project.name})",
+            item_para,
             "1.00",
             "月",
             f"￥{item.base_fee:,}",

@@ -115,9 +115,11 @@
         {% endif %}
     </div>
     <div class="card">
-        <h2 style="margin-bottom: 1rem;">PDFプレビュー</h2>
-        <iframe src="{% url 'billing:invoice_pdf' invoice.pk %}"
-            style="width: 100%; height: 600px; border: 1px solid var(--border); border-radius: 8px;"></iframe>
+        <h2 style="margin-bottom: 1rem;">📄 PDF</h2>
+        <p style="color: var(--text-dim); margin-bottom: 1rem;">
+            PDFはページ上部の「👁 PDF」ボタンをクリックして新しいタブで確認してください。<br>
+            <span style="font-size: 0.85rem; color: #64748b;">※表示の軽量化のため、埋め込みプレビューはオフにしています。</span>
+        </p>
     </div>
 </div>
 

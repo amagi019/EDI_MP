@@ -372,15 +372,17 @@ class PartnerMonthlyProgressView(StaffRequiredMixin, View):
         prev_month = (target_date.replace(day=1) - datetime.timedelta(days=1)).replace(day=1)
         _, last_day = calendar.monthrange(target_date.year, target_date.month)
         next_month = (target_date.replace(day=last_day) + datetime.timedelta(days=1))
+        
+        month_end = datetime.date(target_date.year, target_date.month, last_day)
 
         # 進捗データ集計
         partners = Partner.objects.all().order_by('name')
         
-        # 当月の注文書を一括取得
+        # 当月が稼働期間に含まれる注文書を一括取得
         orders_by_partner = {}
         for order in Order.objects.filter(
-            order_end_ym__year=target_date.year, 
-            order_end_ym__month=target_date.month
+            work_start__lte=month_end,
+            work_end__gte=target_date
         ).exclude(status='DRAFT'):
             orders_by_partner[order.partner_id] = order
 

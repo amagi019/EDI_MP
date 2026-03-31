@@ -8,6 +8,7 @@ urlpatterns = [
     path('admin/pdf/payment-notice/<int:invoice_id>/', views.AdminPaymentNoticePDFView.as_view(), name='admin_payment_notice_pdf'),
     path('staff/review/<int:invoice_id>/', views.StaffInvoiceReviewView.as_view(), name='staff_invoice_review'),
     path('my/pdf/<int:invoice_id>/', views.PartnerInvoicePDFView.as_view(), name='partner_invoice_pdf'),
+    path('my/pdf/payment-notice/<int:invoice_id>/', views.PartnerPaymentNoticePDFView.as_view(), name='partner_payment_notice_pdf'),
     path('my/list/', views.PartnerInvoiceListView.as_view(), name='invoice_list'),
     path('my/<int:invoice_id>/', views.PartnerInvoiceDetailView.as_view(), name='invoice_detail'),
     path('my/<int:invoice_id>/confirm/', views.PartnerInvoiceConfirmView.as_view(), name='invoice_confirm'),
@@ -16,6 +17,7 @@ urlpatterns = [
     path('my/work-report/results/', views.WorkReportResultView.as_view(), name='work_report_results'),
     path('my/work-report/<int:pk>/', views.WorkReportResultView.as_view(), name='work_report_result'),
     path('my/work-report/approve/', views.WorkReportApproveView.as_view(), name='work_report_approve'),
+    path('staff/work-report/<int:pk>/send-to-client/', views.WorkReportSendToClientView.as_view(), name='work_report_send_to_client'),
     # 請求書作成・編集
     path('staff/create-from-order/<str:order_id>/', views.InvoiceCreateFromOrderView.as_view(), name='invoice_create_from_order'),
     path('staff/create-from-basic-info/<int:pk>/', views.InvoiceCreateFromBasicInfoView.as_view(), name='invoice_create_from_basic_info'),

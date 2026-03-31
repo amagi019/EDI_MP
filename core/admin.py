@@ -7,9 +7,9 @@ from .domain.models import Profile, Partner, Customer, CompanyInfo, BankMaster, 
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'tel', 'email', 'registration_no', 'representative_name', 'has_edi')
+    list_display = ('name', 'tel', 'email', 'invoice_email', 'work_report_email', 'registration_no', 'representative_name', 'has_edi')
     list_filter = ('has_edi',)
-    search_fields = ('name', 'registration_no')
+    search_fields = ('name', 'registration_no', 'email', 'invoice_email', 'work_report_email')
 
 @admin.register(Partner)
 class PartnerAdmin(admin.ModelAdmin):

@@ -131,6 +131,8 @@ class WorkReport(models.Model):
         _("ステータス"), max_length=20,
         choices=STATUS_CHOICES, default='UPLOADED'
     )
+    client_shared_url = models.URLField(_("共有URL"), max_length=500, blank=True)
+    sent_to_client_at = models.DateTimeField(_("送付日時"), null=True, blank=True)
 
     # パース結果
     total_hours = models.DecimalField(
