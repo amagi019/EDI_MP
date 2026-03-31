@@ -7,7 +7,8 @@ from .domain.models import Profile, Partner, Customer, CompanyInfo, BankMaster, 
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'tel', 'email', 'registration_no', 'representative_name')
+    list_display = ('name', 'tel', 'email', 'registration_no', 'representative_name', 'has_edi')
+    list_filter = ('has_edi',)
     search_fields = ('name', 'registration_no')
 
 @admin.register(Partner)
@@ -33,6 +34,16 @@ class PartnerAdmin(admin.ModelAdmin):
 
     class Media:
         js = ('core/js/bank_autocomplete.js',)
+
+    def save_model(self, request, obj, form, change):
+        if not change:  # 新規作成時のみ
+            existing = Partner.objects.filter(name=obj.name)
+            if existing.exists():
+                messages.warning(
+                    request,
+                    f"⚠️ 「{obj.name}」は既に登録されています（ID: {existing.first().partner_id}）。重複登録でないか確認してください。"
+                )
+        super().save_model(request, obj, form, change)
 
     def get_urls(self):
         custom_urls = [
@@ -172,6 +183,9 @@ class CompanyInfoAdmin(admin.ModelAdmin):
         }),
         (_('画像'), {
             'fields': ('stamp_image', 'logo_image')
+        }),
+        (_('税率設定'), {
+            'fields': ('tax_rate',)
         }),
     )
 

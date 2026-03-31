@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "リマインドカレンダー" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">📅 {% trans "リマインドカレンダー" %}</h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">◀</a>
+            <span style="font-size: 1.2rem; font-weight: 700; min-width: 120px; text-align: center;">{{ year }}年{{ month }}月</span>
+            <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">▶</a>
+            <a href="{% url 'tasks:calendar' %}" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; margin-left: 0.5rem;">今月</a>
+        </div>
+    </div>
+
+    <!-- 凡例 -->
+    <div style="display: flex; gap: 1.5rem; margin-bottom: 1rem; font-size: 0.8rem; color: var(--text-dim); flex-wrap: wrap;">
+        <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: rgba(245,158,11,0.3); margin-right: 4px; vertical-align: middle;"></span>📮 リマインド送信予定</span>
+        <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: rgba(239,68,68,0.3); margin-right: 4px; vertical-align: middle;"></span>📋 提出期限</span>
+        <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: rgba(16,185,129,0.3); margin-right: 4px; vertical-align: middle;"></span>✅ 送信済み / 完了</span>
+    </div>
+
+    <!-- カレンダーグリッド -->
+    <div style="overflow-x: auto;">
+        <table id="calendar-grid" style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+            <thead>
+                <tr>
+                    <th style="padding: 0.5rem; text-align: center; color: #EF4444; font-size: 0.85rem; border-bottom: 1px solid var(--border);">日</th>
+                    <th style="padding: 0.5rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; border-bottom: 1px solid var(--border);">月</th>
+                    <th style="padding: 0.5rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; border-bottom: 1px solid var(--border);">火</th>
+                    <th style="padding: 0.5rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; border-bottom: 1px solid var(--border);">水</th>
+                    <th style="padding: 0.5rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; border-bottom: 1px solid var(--border);">木</th>
+                    <th style="padding: 0.5rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; border-bottom: 1px solid var(--border);">金</th>
+                    <th style="padding: 0.5rem; text-align: center; color: #818CF8; font-size: 0.85rem; border-bottom: 1px solid var(--border);">土</th>
+                </tr>
+            </thead>
+            <tbody id="calendar-body">
+            </tbody>
+        </table>
+    </div>
+
+    <!-- イベント詳細パネル -->
+    <div id="event-detail" style="display: none; margin-top: 1.5rem;">
+        <div class="card" style="border-left: 4px solid #818CF8; padding: 1.2rem;">
+            <h3 id="detail-date" style="margin: 0 0 0.8rem; color: #818CF8; font-size: 1rem;"></h3>
+            <div id="detail-events"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var year = {{ year }};
+    var month = {{ month }};
+    var today = '{{ today }}';
+    var eventsUrl = '{% url "tasks:calendar_events" %}?year=' + year + '&month=' + month;
+
+    fetch(eventsUrl)
+        .then(function(res) { return res.json(); })
+        .then(function(data) { renderCalendar(data.events); })
+        .catch(function(err) { console.error('イベント取得エラー:', err); renderCalendar([]); });
+
+    function renderCalendar(events) {
+        // 月初の曜日と月末日を計算
+        var firstDay = new Date(year, month - 1, 1).getDay(); // 0=日
+        var lastDate = new Date(year, month, 0).getDate();
+
+        // 日付ごとのイベントをマッピング
+        var eventMap = {};
+        events.forEach(function(ev) {
+            if (!eventMap[ev.date]) eventMap[ev.date] = [];
+            eventMap[ev.date].push(ev);
+        });
+
+        var tbody = document.getElementById('calendar-body');
+        var html = '';
+        var day = 1;
+        var started = false;
+
+        for (var week = 0; week < 6; week++) {
+            if (day > lastDate) break;
+            html += '<tr>';
+            for (var dow = 0; dow < 7; dow++) {
+                if (!started && dow < firstDay) {
+                    html += '<td style="padding: 0.3rem; border: 1px solid var(--border); min-height: 80px; vertical-align: top;"></td>';
+                    continue;
+                }
+                started = true;
+                if (day > lastDate) {
+                    html += '<td style="padding: 0.3rem; border: 1px solid var(--border); min-height: 80px; vertical-align: top;"></td>';
+                    continue;
+                }
+
+                var dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+                var isToday = dateStr === today;
+                var isWeekend = dow === 0 || dow === 6;
+                var dayEvents = eventMap[dateStr] || [];
+
+                var bgStyle = '';
+                if (isToday) bgStyle = 'background: rgba(79,70,229,0.15);';
+                var cursor = dayEvents.length > 0 ? 'cursor: pointer;' : '';
+
+                html += '<td style="padding: 0.3rem; border: 1px solid var(--border); min-height: 80px; vertical-align: top; ' + bgStyle + cursor + '"';
+                if (dayEvents.length > 0) {
+                    html += ' onclick="showDayEvents(\'' + dateStr + '\')"';
+                }
+                html += '>';
+
+                // 日付番号
+                var numColor = isToday ? '#818CF8; font-weight:700' : (isWeekend ? (dow === 0 ? '#EF4444' : '#818CF8') : 'var(--text-dim)');
+                html += '<div style="font-size: 0.8rem; color: ' + numColor + '; margin-bottom: 0.2rem;">' + day + '</div>';
+
+                // イベントチップ
+                dayEvents.forEach(function(ev) {
+                    var chipBg, chipColor, icon;
+                    if (ev.status === 'DONE') {
+                        chipBg = 'rgba(16,185,129,0.15)'; chipColor = '#10B981'; icon = '✅';
+                    } else if (ev.type === 'reminder') {
+                        if (ev.sent) {
+                            chipBg = 'rgba(16,185,129,0.15)'; chipColor = '#10B981'; icon = '✉️';
+                        } else {
+                            chipBg = 'rgba(245,158,11,0.15)'; chipColor = '#F59E0B'; icon = '📮';
+                        }
+                    } else {
+                        chipBg = 'rgba(239,68,68,0.15)'; chipColor = '#EF4444'; icon = '📋';
+                    }
+
+                    // パートナー名を短縮
+                    var shortName = ev.partner_name.length > 6 ? ev.partner_name.substring(0, 6) + '…' : ev.partner_name;
+                    html += '<div style="font-size: 0.65rem; padding: 0.1rem 0.3rem; margin-bottom: 0.15rem; border-radius: 3px; background: ' + chipBg + '; color: ' + chipColor + '; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + icon + ' ' + shortName + '</div>';
+                });
+
+                html += '</td>';
+                day++;
+            }
+            html += '</tr>';
+        }
+        tbody.innerHTML = html;
+
+        // イベント詳細表示用にグローバルに保持
+        window._calendarEvents = eventMap;
+    }
+})();
+
+function showDayEvents(dateStr) {
+    var events = window._calendarEvents[dateStr];
+    if (!events || events.length === 0) return;
+
+    var panel = document.getElementById('event-detail');
+    var dateObj = new Date(dateStr + 'T00:00:00');
+    var dow = ['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()];
+    document.getElementById('detail-date').textContent = dateStr.replace(/-/g, '/') + '（' + dow + '）のイベント';
+
+    var html = '';
+    events.forEach(function(ev) {
+        var icon, label, badgeBg, badgeColor;
+        if (ev.status === 'DONE') {
+            icon = '✅'; label = '完了'; badgeBg = 'rgba(16,185,129,0.15)'; badgeColor = '#10B981';
+        } else if (ev.type === 'reminder') {
+            if (ev.sent) {
+                icon = '✉️'; label = '送信済み'; badgeBg = 'rgba(16,185,129,0.15)'; badgeColor = '#10B981';
+            } else {
+                icon = '📮'; label = 'リマインド予定'; badgeBg = 'rgba(245,158,11,0.15)'; badgeColor = '#F59E0B';
+            }
+        } else {
+            icon = '📋'; label = '提出期限'; badgeBg = 'rgba(239,68,68,0.15)'; badgeColor = '#EF4444';
+        }
+
+        html += '<div style="padding: 0.6rem 0.8rem; margin-bottom: 0.4rem; border-radius: 8px; border-left: 3px solid ' + badgeColor + '; background: ' + badgeBg.replace('0.15', '0.06') + ';">';
+        html += '<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem;">';
+        html += '<span style="font-size: 0.9rem; font-weight: 600;">' + icon + ' ' + label + '</span>';
+        html += '<span style="font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 10px; background: ' + badgeBg + '; color: ' + badgeColor + ';">' + ev.work_month + '</span>';
+        html += '</div>';
+        html += '<div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.3rem;">';
+        html += ev.partner_name + ' / ' + ev.project_name;
+        html += '</div>';
+        html += '</div>';
+    });
+
+    document.getElementById('detail-events').innerHTML = html;
+    panel.style.display = 'block';
+}
+</script>
+{% endblock %}

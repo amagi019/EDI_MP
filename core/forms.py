@@ -87,6 +87,14 @@ class QuickPartnerRegistrationForm(forms.Form):
         from django.contrib.auth.models import User
         self.fields['staff_contact'].queryset = User.objects.filter(is_staff=True).order_by('username')
 
+    def clean_company_name(self):
+        company_name = self.cleaned_data.get('company_name')
+        if company_name and Partner.objects.filter(name=company_name).exists():
+            raise forms.ValidationError(
+                f"「{company_name}」は既に登録されています。重複登録でないか確認してください。"
+            )
+        return company_name
+
     def clean_email(self):
         email = self.cleaned_data.get('email')
         from django.contrib.auth.models import User

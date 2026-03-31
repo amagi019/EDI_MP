@@ -5,25 +5,22 @@
 
 {% block content %}
 <div class="card">
-    <h1 style="margin-top: 0; font-family: 'Outfit', sans-serif;">{% trans "進捗管理ダッシュボード" %}</h1>
+    <h1 style="margin-top: 0; font-family: 'Outfit', sans-serif; white-space: nowrap; font-size: clamp(1.2rem, 4vw, 2rem);">{% trans "進捗管理ダッシュボード" %}</h1>
     <p style="color: var(--text-dim);">{% blocktrans with username=user.username %}ようこそ、<strong>{{ username }}</strong>
         さん。現在の業務進捗状況です。{% endblocktrans %}</p>
 
-    {% if is_authorized %}
-    <div style="margin: 1.5rem 0; display: flex; gap: 1rem; flex-wrap: wrap;">
-        {% if user.is_staff %}
-        <a href="{% url 'core:quick_partner_registration' %}" class="btn btn-secondary">
-            <i class="fas fa-user-plus"></i> {% trans "パートナー新規登録" %}
-        </a>
-        <a href="{% url 'core:contract_progress_list' %}" class="btn btn-secondary">{% trans "基本契約進捗" %}</a>
-        {% endif %}
-        <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">{% trans "注文書一覧" %}</a>
-        <a href="{% url 'invoices:invoice_list' %}" class="btn btn-secondary">{% trans "請求書（支払通知）一覧" %}</a>
+
+
+
+    {% if user.is_staff %}
+    <!-- ━━━ パートナー管理 ━━━ -->
+    <div style="margin-top: 2rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <div style="width: 4px; height: 24px; background: linear-gradient(135deg, #818CF8, #6366F1); border-radius: 2px;"></div>
+        <h2 style="margin: 0; font-size: 1.1rem; font-family: 'Outfit', sans-serif; color: #818CF8;">{% trans "パートナー管理" %}</h2>
     </div>
     {% endif %}
 
-    <div
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
         <div onclick="toggleDetail('unconfirmed')"
             style="background: rgba(79, 70, 229, 0.1); border: 1px solid rgba(79, 70, 229, 0.2); border-radius: 12px; padding: 1.5rem; cursor: pointer; transition: transform 0.2s;"
             onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
@@ -49,6 +46,112 @@
             <div style="font-size: 0.8rem; color: var(--text-dim);">クリックで詳細表示 ▼</div>
         </div>
     </div>
+
+    {% if user.is_staff %}
+    <!-- ━━━ クライアント管理 ━━━ -->
+    <div style="margin-top: 2.5rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <div style="width: 4px; height: 24px; background: linear-gradient(135deg, #F59E0B, #D97706); border-radius: 2px;"></div>
+        <h2 style="margin: 0; font-size: 1.1rem; font-family: 'Outfit', sans-serif; color: #F59E0B;">{% trans "クライアント管理" %}</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+        <a href="{% url 'billing:received_order_list' %}" style="text-decoration: none; color: inherit; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; padding: 1.5rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+            <h3 style="margin: 0; color: #FBBF24;">{% trans "進行中の受注" %}</h3>
+            <p style="font-size: 2rem; font-weight: 700; margin: 0.5rem 0;">{{ client_received_orders|length }} <span style="font-size: 1rem; color: var(--text-dim);">件</span></p>
+            {% for ro in client_received_orders %}
+            <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem;">{{ ro.customer.name }} - {{ ro.project_name|truncatechars:20 }}</div>
+            {% endfor %}
+        </a>
+        <a href="{% url 'billing:timesheet_list' %}" style="text-decoration: none; color: inherit; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 1.5rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+            <h3 style="margin: 0; color: #C084FC;">{% trans "未承認の勤怠" %}</h3>
+            <p style="font-size: 2rem; font-weight: 700; margin: 0.5rem 0;">{{ client_pending_timesheets|length }} <span style="font-size: 1rem; color: var(--text-dim);">件</span></p>
+            {% for ts in client_pending_timesheets %}
+            <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem;">{{ ts.worker_name }} ({{ ts.get_status_display }})</div>
+            {% endfor %}
+        </a>
+        <a href="{% url 'billing:invoice_list' %}" style="text-decoration: none; color: inherit; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 1.5rem; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+            <h3 style="margin: 0; color: #34D399;">{% trans "売上請求書" %}</h3>
+            <div style="margin: 0.5rem 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: rgba(148,163,184,0.15); color: #94A3B8;">下書 {{ client_invoices.draft|default:"0" }}</span>
+                <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: rgba(245,158,11,0.15); color: #F59E0B;">発行 {{ client_invoices.issued|default:"0" }}</span>
+                <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: rgba(79,70,229,0.15); color: #818CF8;">送付 {{ client_invoices.sent|default:"0" }}</span>
+                <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: rgba(16,185,129,0.15); color: #10B981;">入金 {{ client_invoices.paid|default:"0" }}</span>
+            </div>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if user.is_staff and monthly_tasks %}
+    {# ===== 月次タスク管理 ===== #}
+    <div style="margin-top: 2rem;">
+        <div class="card" style="border-left: 4px solid #EF4444; padding: 1.2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 style="margin: 0; color: #EF4444; font-size: 1rem;">
+                    <i class="fas fa-tasks"></i> {% trans "月次タスク管理" %}
+                </h3>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    {% if overdue_count > 0 %}
+                    <span style="background: rgba(239, 68, 68, 0.15); color: #EF4444; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">超過 {{ overdue_count }}件</span>
+                    {% endif %}
+                    {% if this_week_count > 0 %}
+                    <span style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">今週 {{ this_week_count }}件</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% for task in monthly_tasks %}
+            <a href="{% if task.task_type == 'ORDER_CREATE' %}{% url 'orders:order_create' %}{% elif task.task_type == 'ORDER_APPROVE' %}{% url 'orders:order_list' %}{% elif task.task_type == 'REPORT_UPLOAD' %}{% url 'invoices:work_report_upload' %}{% elif task.task_type == 'INVOICE_CREATE' %}{% url 'invoices:invoice_list' %}{% else %}{% url 'invoices:invoice_list' %}{% endif %}" style="display: block; text-decoration: none; color: inherit; padding: 0.6rem 0.8rem; margin-bottom: 0.4rem; border-radius: 8px; border-left: 3px solid {% if task.is_overdue %}#EF4444{% else %}#F59E0B{% endif %}; background: {% if task.is_overdue %}rgba(239,68,68,0.06){% else %}rgba(245,158,11,0.04){% endif %}; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 0.85rem; font-weight: 600;">{{ task.get_task_type_display }}</span>
+                    <span style="font-size: 0.75rem; padding: 0.15rem 0.5rem; border-radius: 10px; {% if task.is_overdue %}background: rgba(239,68,68,0.15); color: #EF4444;{% else %}background: rgba(245,158,11,0.15); color: #F59E0B;{% endif %}">{% if task.is_overdue %}{{ task.days_until_deadline }}日超過{% else %}あと{{ task.days_until_deadline }}日{% endif %}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem;">
+                    {{ task.partner.name }} / {{ task.work_month|date:"Y/m" }} / {{ task.deadline|date:"m/d" }}期限 /
+                    {% if task.responsible == 'STAFF' %}<span style="color: #818CF8;">自社</span>{% else %}<span style="color: #F59E0B;">パートナー</span>{% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if user.is_staff %}
+    {# ===== リマインドカレンダー ===== #}
+    <div style="margin-top: 2rem;">
+        <div class="card" style="padding: 1.2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 style="margin: 0; color: #818CF8; font-size: 1rem;">
+                    <i class="fas fa-calendar-alt"></i> {% trans "リマインドカレンダー" %}
+                    <span style="font-size: 0.85rem; color: var(--text-dim); margin-left: 0.3rem;">{{ cal_year }}年{{ cal_month }}月</span>
+                </h3>
+                <a href="{% url 'tasks:calendar' %}" style="font-size: 0.75rem; color: #818CF8; text-decoration: none;">全画面で見る →</a>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-bottom: 0.8rem; font-size: 0.7rem; color: var(--text-dim); flex-wrap: wrap;">
+                <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(245,158,11,0.4);margin-right:3px;vertical-align:middle;"></span>📮 リマインド</span>
+                <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(239,68,68,0.4);margin-right:3px;vertical-align:middle;"></span>📋 期限</span>
+                <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(16,185,129,0.4);margin-right:3px;vertical-align:middle;"></span>✅ 完了</span>
+            </div>
+            <div style="overflow-x: auto;">
+                <table id="dash-cal" style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                    <thead>
+                        <tr>
+                            <th style="padding:0.3rem;text-align:center;color:#EF4444;font-size:0.75rem;border-bottom:1px solid var(--border);">日</th>
+                            <th style="padding:0.3rem;text-align:center;color:var(--text-dim);font-size:0.75rem;border-bottom:1px solid var(--border);">月</th>
+                            <th style="padding:0.3rem;text-align:center;color:var(--text-dim);font-size:0.75rem;border-bottom:1px solid var(--border);">火</th>
+                            <th style="padding:0.3rem;text-align:center;color:var(--text-dim);font-size:0.75rem;border-bottom:1px solid var(--border);">水</th>
+                            <th style="padding:0.3rem;text-align:center;color:var(--text-dim);font-size:0.75rem;border-bottom:1px solid var(--border);">木</th>
+                            <th style="padding:0.3rem;text-align:center;color:var(--text-dim);font-size:0.75rem;border-bottom:1px solid var(--border);">金</th>
+                            <th style="padding:0.3rem;text-align:center;color:#818CF8;font-size:0.75rem;border-bottom:1px solid var(--border);">土</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dash-cal-body"></tbody>
+                </table>
+            </div>
+            <div id="dash-cal-detail" style="display:none; margin-top: 0.8rem; padding: 0.6rem; border-radius: 8px; background: rgba(79,70,229,0.06); border: 1px solid rgba(79,70,229,0.15);">
+                <div id="dash-cal-detail-title" style="font-size: 0.8rem; font-weight: 600; color: #818CF8; margin-bottom: 0.4rem;"></div>
+                <div id="dash-cal-detail-body" style="font-size: 0.75rem;"></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- 未確認の発注 詳細 -->
     <div id="detail-unconfirmed" style="display:none; margin-top:1.5rem;">
@@ -155,6 +258,92 @@
                 el.style.display = 'none';
             }
         }
+    }
+
+    // ミニリマインドカレンダー
+    (function() {
+        var calBody = document.getElementById('dash-cal-body');
+        if (!calBody) return;
+
+        var year = {{ cal_year }};
+        var month = {{ cal_month }};
+        var today = '{{ cal_today }}';
+        var events = {{ calendar_events_json|safe }};
+
+        var eventMap = {};
+        events.forEach(function(ev) {
+            if (!eventMap[ev.date]) eventMap[ev.date] = [];
+            eventMap[ev.date].push(ev);
+        });
+        window._dashCalEvents = eventMap;
+
+        var firstDay = new Date(year, month - 1, 1).getDay();
+        var lastDate = new Date(year, month, 0).getDate();
+        var html = '';
+        var day = 1;
+        var started = false;
+
+        for (var w = 0; w < 6; w++) {
+            if (day > lastDate) break;
+            html += '<tr>';
+            for (var d = 0; d < 7; d++) {
+                if (!started && d < firstDay) {
+                    html += '<td style="padding:0.2rem;border:1px solid var(--border);"></td>';
+                    continue;
+                }
+                started = true;
+                if (day > lastDate) {
+                    html += '<td style="padding:0.2rem;border:1px solid var(--border);"></td>';
+                    continue;
+                }
+                var ds = year + '-' + String(month).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+                var isT = ds === today;
+                var isWe = d === 0 || d === 6;
+                var devs = eventMap[ds] || [];
+                var bg = isT ? 'background:rgba(79,70,229,0.15);' : '';
+                var cur = devs.length > 0 ? 'cursor:pointer;' : '';
+                var nc = isT ? '#818CF8;font-weight:700' : (isWe ? (d===0?'#EF4444':'#818CF8') : 'var(--text-dim)');
+
+                html += '<td style="padding:0.2rem;border:1px solid var(--border);vertical-align:top;min-height:50px;' + bg + cur + '"';
+                if (devs.length > 0) html += ' onclick="showDashCalDetail(\'' + ds + '\')"';
+                html += '>';
+                html += '<div style="font-size:0.7rem;color:' + nc + ';">' + day + '</div>';
+
+                devs.forEach(function(ev) {
+                    var cb, cc, ic;
+                    if (ev.status === 'DONE') { cb='rgba(16,185,129,0.15)'; cc='#10B981'; ic='✅'; }
+                    else if (ev.type === 'reminder') { cb = ev.sent ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)'; cc = ev.sent ? '#10B981' : '#F59E0B'; ic = ev.sent ? '✉️' : '📮'; }
+                    else { cb='rgba(239,68,68,0.15)'; cc='#EF4444'; ic='📋'; }
+                    var sn = ev.partner_name.length > 4 ? ev.partner_name.substring(0,4) + '…' : ev.partner_name;
+                    html += '<div style="font-size:0.55rem;padding:0.05rem 0.15rem;margin-bottom:0.1rem;border-radius:2px;background:' + cb + ';color:' + cc + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ic + ' ' + sn + '</div>';
+                });
+                html += '</td>';
+                day++;
+            }
+            html += '</tr>';
+        }
+        calBody.innerHTML = html;
+    })();
+
+    function showDashCalDetail(ds) {
+        var evs = window._dashCalEvents[ds];
+        if (!evs || evs.length === 0) return;
+        var d = new Date(ds + 'T00:00:00');
+        var dow = ['日','月','火','水','木','金','土'][d.getDay()];
+        document.getElementById('dash-cal-detail-title').textContent = ds.replace(/-/g,'/') + '（' + dow + '）';
+        var h = '';
+        evs.forEach(function(ev) {
+            var ic, lb, bc;
+            if (ev.status === 'DONE') { ic='✅'; lb='完了'; bc='#10B981'; }
+            else if (ev.type === 'reminder') { ic = ev.sent?'✉️':'📮'; lb = ev.sent?'送信済':'リマインド予定'; bc = ev.sent?'#10B981':'#F59E0B'; }
+            else { ic='📋'; lb='提出期限'; bc='#EF4444'; }
+            h += '<div style="padding:0.3rem 0.4rem;margin-bottom:0.2rem;border-radius:4px;border-left:2px solid ' + bc + ';background:rgba(0,0,0,0.1);">';
+            h += '<span style="color:' + bc + ';font-weight:600;">' + ic + ' ' + lb + '</span> ';
+            h += '<span style="color:var(--text-dim);">' + ev.partner_name + ' / ' + ev.work_month + '</span>';
+            h += '</div>';
+        });
+        document.getElementById('dash-cal-detail-body').innerHTML = h;
+        document.getElementById('dash-cal-detail').style.display = 'block';
     }
 </script>
 {% endblock %}

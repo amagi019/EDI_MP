@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "受注基本情報 編集" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 2rem;">{% trans "受注基本情報 編集" %}</h2>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 8px; {% if message.tags == 'error' %}background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5;{% else %}background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #86efac;{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "取引先" %}</label>
+                <input type="text" value="{{ order.customer.name }}" disabled style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-dim);">
+            </div>
+            <div>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "注文番号" %}</label>
+                <input type="text" name="order_number" value="{{ order.order_number }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+            </div>
+            <div>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "業務名称" %}</label>
+                <input type="text" name="project_name" value="{{ order.project_name }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+            </div>
+            <div>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "対象月" %}</label>
+                <input type="month" name="target_month" value="{{ order.target_month|date:'Y-m' }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+            </div>
+            <div>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "作業開始日" %}</label>
+                <input type="date" name="work_start" value="{{ order.work_start|date:'Y-m-d' }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+            </div>
+            <div>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "作業終了日" %}</label>
+                <input type="date" name="work_end" value="{{ order.work_end|date:'Y-m-d' }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+            </div>
+            <div>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "ステータス" %}</label>
+                <select name="status" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                    <option value="REGISTERED" {% if order.status == 'REGISTERED' %}selected{% endif %}>{% trans "登録済" %}</option>
+                    <option value="ACTIVE" {% if order.status == 'ACTIVE' %}selected{% endif %}>{% trans "進行中" %}</option>
+                    <option value="COMPLETED" {% if order.status == 'COMPLETED' %}selected{% endif %}>{% trans "完了" %}</option>
+                    <option value="CANCELLED" {% if order.status == 'CANCELLED' %}selected{% endif %}>{% trans "取消" %}</option>
+                </select>
+            </div>
+            <div>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "継続注文" %}</label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.6rem;">
+                    <input type="checkbox" name="is_recurring" {% if order.is_recurring %}checked{% endif %} style="width: 18px; height: 18px; accent-color: #818CF8;">
+                    <span style="color: var(--text-main); font-size: 0.9rem;">{% trans "毎月ロールフォワード" %}</span>
+                </label>
+            </div>
+            <div>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "注文日" %}</label>
+                <input type="date" name="order_date" value="{{ order.order_date|date:'Y-m-d' }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+            </div>
+        </div>
+
+        <!-- 報告書メール送信先 -->
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.15); border-radius: 8px;">
+            <h3 style="margin: 0 0 0.8rem; font-size: 0.9rem; color: #10B981;"><i class="fas fa-envelope"></i> {% trans "報告書メール送信先" %}</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "送信先(TO)" %}</label>
+                    <input type="email" name="report_to_email" value="{{ order.report_to_email }}" placeholder="maeno.ken@example.com" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "CC（カンマ区切り）" %}</label>
+                    <input type="text" name="report_cc_emails" value="{{ order.report_cc_emails }}" placeholder="a@example.com, b@example.com" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                </div>
+            </div>
+        </div>
+
+        <!-- 請求書メール送信先 -->
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(129,140,248,0.05); border: 1px solid rgba(129,140,248,0.15); border-radius: 8px;">
+            <h3 style="margin: 0 0 0.8rem; font-size: 0.9rem; color: #818CF8;"><i class="fas fa-file-invoice"></i> {% trans "請求書メール送信先" %}</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "送信先(TO)" %}</label>
+                    <input type="email" name="invoice_to_email" value="{{ order.invoice_to_email }}" placeholder="keiri@example.com" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "CC（カンマ区切り）" %}</label>
+                    <input type="text" name="invoice_cc_emails" value="{{ order.invoice_cc_emails }}" placeholder="a@example.com, b@example.com" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "備考" %}</label>
+            <textarea name="remarks" rows="2" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); resize: vertical;">{{ order.remarks }}</textarea>
+        </div>
+
+        <!-- 明細行 -->
+        <section style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="border-left: 4px solid #10b981; padding-left: 0.8rem; margin: 0; font-size: 1rem;">{% trans "明細行（作業者）" %}</h3>
+                <button type="button" id="addItemBtn" class="btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; background: linear-gradient(135deg, #818CF8, #6366F1);">
+                    <i class="fas fa-plus"></i> {% trans "作業者を追加" %}
+                </button>
+            </div>
+
+            <div id="itemsContainer">
+            {% for item in items %}
+            <div class="item-row" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 0.8rem;">
+                <input type="hidden" name="item_id_{{ forloop.counter0 }}" value="{{ item.pk }}">
+                <div class="bi-item-grid">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem;">{% trans "作業者名" %}</label>
+                        <input type="text" name="item_person_{{ forloop.counter0 }}" value="{{ item.person_name }}">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem;">{% trans "月額（円）" %}</label>
+                        <input type="number" name="item_price_{{ forloop.counter0 }}" value="{{ item.unit_price }}" class="calc-trigger">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem;">{% trans "精算条件" %}</label>
+                        <select name="item_settlement_{{ forloop.counter0 }}" class="calc-trigger" style="font-size: 0.85rem; padding: 0.4rem;">
+                            <option value="MIDDLE" {% if item.settlement_type == 'MIDDLE' %}selected{% endif %}>中間割</option>
+                            <option value="RANGE" {% if item.settlement_type == 'RANGE' %}selected{% endif %}>上下限割</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem;">{% trans "中間(h)" %}</label>
+                        <input type="number" name="item_middle_{{ forloop.counter0 }}" value="{{ item.settlement_middle_hours }}" step="0.5" class="calc-trigger">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem;">{% trans "下限(h)" %}</label>
+                        <input type="number" name="item_lower_{{ forloop.counter0 }}" value="{{ item.time_lower_limit }}" step="0.5" class="calc-trigger">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem;">{% trans "上限(h)" %}</label>
+                        <input type="number" name="item_upper_{{ forloop.counter0 }}" value="{{ item.time_upper_limit }}" step="0.5" class="calc-trigger">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem;">{% trans "不足(円/h)" %}</label>
+                        <input type="number" name="item_shortage_{{ forloop.counter0 }}" value="{{ item.shortage_rate }}">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem;">{% trans "超過(円/h)" %}</label>
+                        <input type="number" name="item_excess_{{ forloop.counter0 }}" value="{{ item.excess_rate }}">
+                    </div>
+                    <div style="display: flex; align-items: flex-end; padding-bottom: 0.15rem;">
+                        <button type="button" class="delete-btn" onclick="removeRow(this)" title="削除">🗑️</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            </div>
+            <input type="hidden" name="item_count" id="itemCount" value="{{ items|length }}">
+        </section>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+            <a href="{% url 'billing:received_order_detail' order.pk %}" class="btn btn-secondary" style="text-decoration: none;">{% trans "キャンセル" %}</a>
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #10B981, #059669);">
+                <i class="fas fa-save"></i> {% trans "保存" %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; font-size: 0.85rem; color: var(--text-dim); }
+    .form-group input, .form-group select, .form-group textarea {
+        width: 100%; padding: 0.4rem; border: 1px solid var(--border); border-radius: 6px;
+        background: var(--background); color: var(--text-main); box-sizing: border-box; font-size: 0.85rem;
+    }
+    .form-group input:focus, .form-group select:focus {
+        outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+    .bi-item-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr auto; gap: 0.5rem; align-items: start; }
+    .item-row input, .item-row select { font-size: 0.85rem; padding: 0.4rem; }
+    .delete-btn {
+        background: rgba(239, 68, 68, 0.1); border: none; border-radius: 8px;
+        cursor: pointer; padding: 0.4rem 0.6rem; font-size: 1.1rem; line-height: 1;
+    }
+    .delete-btn:hover { background: rgba(239, 68, 68, 0.3); }
+    @media (max-width: 768px) {
+        .bi-item-grid { grid-template-columns: 1fr 1fr !important; }
+        .item-row input, .item-row select { font-size: 16px !important; padding: 0.5rem !important; }
+    }
+</style>
+
+<script>
+function removeRow(btn) {
+    btn.closest('.item-row').remove();
+    reindexItems();
+}
+
+function reindexItems() {
+    var container = document.getElementById('itemsContainer');
+    var rows = container.querySelectorAll('.item-row');
+    var fields = ['item_id','item_person','item_price','item_settlement','item_middle','item_manmonth','item_lower','item_upper','item_shortage','item_excess'];
+    for (var i = 0; i < rows.length; i++) {
+        var inputs = rows[i].querySelectorAll('input, select');
+        for (var j = 0; j < inputs.length; j++) {
+            var name = inputs[j].name;
+            for (var k = 0; k < fields.length; k++) {
+                if (name.startsWith(fields[k] + '_')) {
+                    inputs[j].name = fields[k] + '_' + i;
+                    break;
+                }
+            }
+        }
+    }
+    document.getElementById('itemCount').value = rows.length;
+}
+
+/* 精算条件に基づく自動計算 */
+function calcRates(row) {
+    var settlement = row.querySelector('select[name^="item_settlement_"]');
+    var priceInput = row.querySelector('input[name^="item_price_"]');
+    var middleInput = row.querySelector('input[name^="item_middle_"]');
+    var lowerInput = row.querySelector('input[name^="item_lower_"]');
+    var upperInput = row.querySelector('input[name^="item_upper_"]');
+    var shortageInput = row.querySelector('input[name^="item_shortage_"]');
+    var excessInput = row.querySelector('input[name^="item_excess_"]');
+    if (!settlement || !priceInput) return;
+
+    var price = parseFloat(priceInput.value) || 0;
+    var type = settlement.value;
+
+    if (type === 'MIDDLE') {
+        var mid = parseFloat(middleInput.value) || 170;
+        if (mid > 0 && price > 0) {
+            var rate = Math.floor(price / mid / 10) * 10;
+            shortageInput.value = rate;
+            excessInput.value = rate;
+        }
+    } else {
+        var lower = parseFloat(lowerInput.value) || 140;
+        var upper = parseFloat(upperInput.value) || 180;
+        if (lower > 0 && price > 0) {
+            shortageInput.value = Math.floor(price / lower / 10) * 10;
+        }
+        if (upper > 0 && price > 0) {
+            excessInput.value = Math.floor(price / upper / 10) * 10;
+        }
+    }
+}
+
+function attachCalcListeners(row) {
+    var triggers = row.querySelectorAll('.calc-trigger');
+    for (var i = 0; i < triggers.length; i++) {
+        triggers[i].addEventListener('input', function() { calcRates(row); });
+        triggers[i].addEventListener('change', function() { calcRates(row); });
+    }
+}
+
+// 既存行にリスナー設定
+document.addEventListener('DOMContentLoaded', function() {
+    var rows = document.querySelectorAll('.item-row');
+    for (var i = 0; i < rows.length; i++) {
+        attachCalcListeners(rows[i]);
+    }
+});
+
+document.getElementById('addItemBtn').addEventListener('click', function() {
+    var container = document.getElementById('itemsContainer');
+    var countInput = document.getElementById('itemCount');
+    var idx = parseInt(countInput.value);
+
+    var row = document.createElement('div');
+    row.className = 'item-row';
+    row.style.cssText = 'background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px; padding: 1rem; margin-bottom: 0.8rem;';
+    row.innerHTML = '<input type="hidden" name="item_id_' + idx + '" value="-1">'
+        + '<div class="bi-item-grid">'
+        + '<div class="form-group" style="margin-bottom:0;"><label style="font-size:0.8rem;">作業者名</label><input type="text" name="item_person_' + idx + '" value="" placeholder="氏名"></div>'
+        + '<div class="form-group" style="margin-bottom:0;"><label style="font-size:0.8rem;">月額（円）</label><input type="number" name="item_price_' + idx + '" value="0" class="calc-trigger"></div>'
+        + '<div class="form-group" style="margin-bottom:0;"><label style="font-size:0.8rem;">精算条件</label><select name="item_settlement_' + idx + '" class="calc-trigger" style="font-size:0.85rem;padding:0.4rem;"><option value="MIDDLE">中間割</option><option value="RANGE" selected>上下限割</option></select></div>'
+        + '<div class="form-group" style="margin-bottom:0;"><label style="font-size:0.8rem;">中間(h)</label><input type="number" name="item_middle_' + idx + '" value="170" step="0.5" class="calc-trigger"></div>'
+        + '<div class="form-group" style="margin-bottom:0;"><label style="font-size:0.8rem;">下限(h)</label><input type="number" name="item_lower_' + idx + '" value="140" step="0.5" class="calc-trigger"></div>'
+        + '<div class="form-group" style="margin-bottom:0;"><label style="font-size:0.8rem;">上限(h)</label><input type="number" name="item_upper_' + idx + '" value="180" step="0.5" class="calc-trigger"></div>'
+        + '<div class="form-group" style="margin-bottom:0;"><label style="font-size:0.8rem;">不足(円/h)</label><input type="number" name="item_shortage_' + idx + '" value="0"></div>'
+        + '<div class="form-group" style="margin-bottom:0;"><label style="font-size:0.8rem;">超過(円/h)</label><input type="number" name="item_excess_' + idx + '" value="0"></div>'
+        + '<div style="display:flex;align-items:flex-end;padding-bottom:0.15rem;"><button type="button" class="delete-btn" onclick="removeRow(this)" title="削除">🗑️</button></div>'
+        + '</div>';
+    container.appendChild(row);
+    countInput.value = idx + 1;
+    attachCalcListeners(row);
+});
+</script>
+{% endblock %}

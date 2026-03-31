@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Excel取込 確認" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">
+            <i class="fas fa-clipboard-check" style="color: #818CF8;"></i>
+            {% trans "Excel取込 確認・編集" %}
+        </h2>
+        <a href="{% url 'billing:timesheet_excel_upload' %}" class="btn btn-secondary" style="font-size: 0.9rem; text-decoration: none;">
+            <i class="fas fa-arrow-left"></i> {% trans "アップロードに戻る" %}
+        </a>
+    </div>
+
+    <form method="post" id="confirm-form">
+        {% csrf_token %}
+        <input type="hidden" name="result_count" value="{{ results|length }}">
+
+        {% for r in results %}
+        <div style="background: var(--bg-app); border: 1px solid {% if r.error %}rgba(239, 68, 68, 0.5){% else %}var(--glass-border){% endif %}; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <!-- ヘッダー -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 style="margin: 0; font-size: 1.1rem;">
+                    <i class="fas fa-file-excel" style="color: #34D399;"></i>
+                    {{ r.filename }}
+                </h3>
+                <div>
+                    {% if r.error %}
+                    <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(239, 68, 68, 0.2); color: #fca5a5;">✕ {% trans "エラー" %}</span>
+                    <input type="hidden" name="skip_{{ forloop.counter0 }}" value="1">
+                    {% elif r.alerts %}
+                    <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(245, 158, 11, 0.2); color: #FBBF24;">⚠ {% trans "要確認" %}</span>
+                    {% else %}
+                    <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(79, 70, 229, 0.2); color: #818CF8;">✓ {% trans "解析完了" %}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if r.error %}
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem;">
+                <i class="fas fa-exclamation-triangle" style="color: #fca5a5;"></i>
+                <span style="color: #fca5a5;">{{ r.error }}</span>
+            </div>
+            {% else %}
+
+            {% if r.name_mismatch_warning %}
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                <i class="fas fa-exclamation-triangle" style="color: #FBBF24;"></i>
+                <span style="color: #FBBF24;">{{ r.name_mismatch_warning }}</span>
+            </div>
+            {% endif %}
+
+            <!-- 編集フォーム -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">{% trans "受注" %} * <span style="color: #818CF8; font-size: 0.75rem;">（対象月で自動照合）</span></label>
+                    <select name="order_id_{{ forloop.counter0 }}" required class="order-select" data-index="{{ forloop.counter0 }}" data-matched-item="{{ r.matched_item_id }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem;">
+                        <option value="">{% trans "選択してください" %}</option>
+                        {% for o in orders %}
+                        <option value="{{ o.pk }}" {% if r.matched_order_id == o.pk|stringformat:'s' %}selected{% endif %}>{{ o.customer.name }} - {{ o.project_name|default:o.order_number }} ({{ o.target_month|date:"Y/m" }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">{% trans "受注明細" %} <span style="color: #818CF8; font-size: 0.75rem;">（作業者名で自動照合）</span></label>
+                    <select name="order_item_id_{{ forloop.counter0 }}" id="order_item_{{ forloop.counter0 }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem;">
+                        <option value="">{% trans "自動（先頭明細）" %}</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">{% trans "作業者名" %} *</label>
+                    <input type="text" name="worker_name_{{ forloop.counter0 }}" value="{{ r.worker_name }}" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">{% trans "要員種別" %}</label>
+                    <select name="worker_type_{{ forloop.counter0 }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem;">
+                        <option value="INTERNAL">{% trans "自社社員" %}</option>
+                        <option value="PARTNER">{% trans "パートナー" %}</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">{% trans "対象月" %} *</label>
+                    <input type="month" name="target_month_{{ forloop.counter0 }}" value="{{ r.target_month|slice:':7' }}" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">{% trans "合計稼働時間" %} *</label>
+                    <input type="number" name="total_hours_{{ forloop.counter0 }}" value="{{ r.total_hours }}" step="0.25" min="0" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">{% trans "稼働日数" %}</label>
+                    <input type="number" name="work_days_{{ forloop.counter0 }}" value="{{ r.work_days }}" min="0" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+            </div>
+
+            <!-- daily_data / ファイル情報を hidden で保持 -->
+            <input type="hidden" name="daily_data_{{ forloop.counter0 }}" value='{{ r.daily_data|safe }}'>
+            <input type="hidden" name="saved_file_path_{{ forloop.counter0 }}" value="{{ r.saved_file_path }}">
+            <input type="hidden" name="original_filename_{{ forloop.counter0 }}" value="{{ r.filename }}">
+
+            <!-- 警告 -->
+            {% if r.alerts %}
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                <h4 style="margin: 0 0 0.75rem 0; color: #FBBF24; font-size: 0.9rem;">
+                    <i class="fas fa-exclamation-triangle"></i> {% trans "土日祝の稼働が検出されました" %}
+                </h4>
+                {% for alert in r.alerts %}
+                <div style="display: flex; gap: 1rem; padding: 0.3rem 0; font-size: 0.85rem; color: var(--text-main);">
+                    <span style="min-width: 90px;">{{ alert.date }}</span>
+                    <span style="min-width: 25px;">({{ alert.day_name }})</span>
+                    <span style="min-width: 40px; font-weight: 600;">{{ alert.hours }}h</span>
+                    <span style="color: #FBBF24;">{{ alert.holiday_name }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- 日別データ -->
+            {% if r.daily_data %}
+            <details style="margin-bottom: 0.5rem;">
+                <summary style="cursor: pointer; color: var(--text-dim); font-size: 0.85rem; padding: 0.5rem 0;">
+                    <i class="fas fa-table"></i> {% trans "日別稼働データを表示" %}
+                </summary>
+                <div style="overflow-x: auto; margin-top: 0.75rem;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--glass-border);">
+                                <th style="text-align: left; padding: 0.4rem; color: var(--text-dim);">{% trans "日付" %}</th>
+                                <th style="text-align: center; padding: 0.4rem; color: var(--text-dim);">{% trans "曜日" %}</th>
+                                <th style="text-align: right; padding: 0.4rem; color: var(--text-dim);">{% trans "稼働時間" %}</th>
+                                <th style="text-align: center; padding: 0.4rem; color: var(--text-dim);">{% trans "開始" %}</th>
+                                <th style="text-align: center; padding: 0.4rem; color: var(--text-dim);">{% trans "終了" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day in r.daily_data %}
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); {% if day.day_name == '土' or day.day_name == '日' %}background: rgba(100, 116, 139, 0.08);{% endif %}">
+                                <td style="padding: 0.4rem;">{{ day.date }}</td>
+                                <td style="text-align: center; padding: 0.4rem; {% if day.day_name == '土' %}color: #60a5fa;{% elif day.day_name == '日' %}color: #f87171;{% endif %}">{{ day.day_name }}</td>
+                                <td style="text-align: right; padding: 0.4rem; font-weight: {% if day.hours > 0 %}600{% else %}400{% endif %}; {% if day.hours == 0 %}color: var(--text-dim);{% endif %}">{{ day.hours }}h</td>
+                                <td style="text-align: center; padding: 0.4rem; color: var(--text-dim);">{{ day.start|default:"-" }}</td>
+                                <td style="text-align: center; padding: 0.4rem; color: var(--text-dim);">{{ day.end|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+            {% endif %}
+
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+            <a href="{% url 'billing:timesheet_excel_upload' %}" class="btn btn-secondary" style="text-decoration: none;">
+                {% trans "キャンセル" %}
+            </a>
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #10B981, #059669);" onclick="return confirm('上記の内容で稼働報告を登録しますか？')">
+                <i class="fas fa-save"></i> {% trans "登録" %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+// 受注→明細連動
+var orderItemsMap = {{ order_items_json|safe }};
+
+function loadItems(sel, selectedItemId) {
+    var idx = sel.dataset.index;
+    var itemSel = document.getElementById('order_item_' + idx);
+    itemSel.innerHTML = '<option value="">自動（先頭明細）</option>';
+    var items = orderItemsMap[sel.value] || [];
+    items.forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.name;
+        if (selectedItemId && String(item.id) === String(selectedItemId)) {
+            opt.selected = true;
+        }
+        itemSel.appendChild(opt);
+    });
+}
+
+document.querySelectorAll('.order-select').forEach(function(sel) {
+    // 初期表示: マッチ済みの場合は明細もロード
+    if (sel.value) {
+        loadItems(sel, sel.dataset.matchedItem);
+    }
+    sel.addEventListener('change', function() {
+        loadItems(this, null);
+    });
+});
+</script>
+{% endblock %}

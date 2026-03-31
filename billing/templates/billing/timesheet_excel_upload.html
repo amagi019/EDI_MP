@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Excel取込" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">
+            <i class="fas fa-file-excel" style="color: #34D399;"></i>
+            {% trans "稼働報告 Excel取込" %}
+        </h2>
+        <a href="{% url 'billing:timesheet_list' %}" class="btn btn-secondary" style="font-size: 0.9rem; text-decoration: none;">
+            <i class="fas fa-arrow-left"></i> {% trans "一覧に戻る" %}
+        </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+        {% csrf_token %}
+
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.5rem;">
+                {% trans "Excelファイル（複数ファイル選択可）" %}
+            </label>
+            <div id="drop-zone" style="border: 2px dashed var(--glass-border); border-radius: 12px; padding: 3rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('file-input').click()">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 2.5rem; color: var(--text-dim); margin-bottom: 1rem; display: block;"></i>
+                <p style="color: var(--text-dim); margin: 0;">{% trans "ここをクリック、またはファイルをドラッグ＆ドロップ" %}</p>
+                <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 0.5rem;">.xlsx / .xlsm {% trans "形式" %}</p>
+                <div id="file-list" style="margin-top: 1rem;"></div>
+            </div>
+            <input type="file" name="files" id="file-input" multiple accept=".xlsx,.xlsm" style="display: none;" onchange="showFiles(this)">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn" id="submit-btn" disabled style="opacity: 0.5; background: linear-gradient(135deg, #10B981, #059669);">
+                <i class="fas fa-upload"></i> {% trans "アップロード＆解析" %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    #drop-zone.drag-over {
+        border-color: #818CF8;
+        background: rgba(79, 70, 229, 0.05);
+    }
+</style>
+<script>
+    var dropZone = document.getElementById('drop-zone');
+    if (dropZone) {
+        dropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', function() { this.classList.remove('drag-over'); });
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            document.getElementById('file-input').files = e.dataTransfer.files;
+            showFiles(document.getElementById('file-input'));
+        });
+    }
+    function showFiles(input) {
+        var list = document.getElementById('file-list');
+        var btn = document.getElementById('submit-btn');
+        list.innerHTML = '';
+        if (input.files.length > 0) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            for (var i = 0; i < input.files.length; i++) {
+                var div = document.createElement('div');
+                div.style.cssText = 'padding: 0.3rem 0; color: #86efac; font-size: 0.9rem;';
+                div.innerHTML = '<i class="fas fa-file-excel"></i> ' + input.files[i].name;
+                list.appendChild(div);
+            }
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+        }
+    }
+</script>
+{% endblock %}

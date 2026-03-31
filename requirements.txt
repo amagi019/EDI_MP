@@ -8,3 +8,7 @@ whitenoise
 google-api-python-client
 google-auth
 weasyprint
+openpyxl
+jpholiday
+APScheduler
+pdfminer.six>=20221105

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "受信メール管理" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">
+            <i class="fas fa-inbox" style="color: #818CF8;"></i> {% trans "受信メール管理" %}
+        </h2>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <a href="?status=" class="btn {% if not status_filter %}btn{% else %}btn-secondary{% endif %}" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                {% trans "全て" %} ({{ total_count }})
+            </a>
+            <a href="?status=NEW" class="btn {% if status_filter == 'NEW' %}btn{% else %}btn-secondary{% endif %}" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                ⏳ {% trans "新規" %} ({{ status_counts.NEW|default:"0" }})
+            </a>
+            <a href="?status=IMPORTED" class="btn {% if status_filter == 'IMPORTED' %}btn{% else %}btn-secondary{% endif %}" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                ✅ {% trans "取込済" %} ({{ status_counts.IMPORTED|default:"0" }})
+            </a>
+            <a href="?status=ERROR" class="btn {% if status_filter == 'ERROR' %}btn{% else %}btn-secondary{% endif %}" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                ❌ {% trans "エラー" %} ({{ status_counts.ERROR|default:"0" }})
+            </a>
+        </div>
+    </div>
+
+    {% if emails %}
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-main); font-size: 0.9rem;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="padding: 0.75rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">{% trans "受信日時" %}</th>
+                    <th style="padding: 0.75rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">{% trans "ステータス" %}</th>
+                    <th style="padding: 0.75rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "送信元" %}</th>
+                    <th style="padding: 0.75rem; color: var(--text-dim); font-weight: 600; text-align: left;">{% trans "件名" %}</th>
+                    <th style="padding: 0.75rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">{% trans "パートナー" %}</th>
+                    <th style="padding: 0.75rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">{% trans "添付" %}</th>
+                    <th style="padding: 0.75rem; color: var(--text-dim); font-weight: 600; text-align: left; white-space: nowrap;">{% trans "アクション" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for em in emails %}
+                <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(79,70,229,0.05)'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 0.75rem; white-space: nowrap; color: var(--text-dim);">
+                        {{ em.received_at|date:"m/d H:i" }}
+                    </td>
+                    <td style="padding: 0.75rem; white-space: nowrap;">
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; {{ em.status_badge_style }}">
+                            {{ em.get_status_display }}
+                        </span>
+                    </td>
+                    <td style="padding: 0.75rem;">
+                        <div style="font-weight: 500;">{{ em.from_name|default:em.from_email }}</div>
+                        {% if em.from_name %}<div style="font-size: 0.8rem; color: var(--text-dim);">{{ em.from_email }}</div>{% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">
+                        {{ em.subject|truncatechars:60 }}
+                    </td>
+                    <td style="padding: 0.75rem; white-space: nowrap;">
+                        {% if em.partner %}
+                            <span style="color: #10B981;"><i class="fas fa-check-circle"></i> {{ em.partner.name|truncatechars:15 }}</span>
+                        {% else %}
+                            <span style="color: #F59E0B;"><i class="fas fa-question-circle"></i> {% trans "未照合" %}</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; white-space: nowrap;">
+                        {% if em.attachment_filename %}
+                            <span style="color: #34D399;" title="{{ em.attachment_filename }}"><i class="fas fa-file-excel"></i> {{ em.attachment_filename|truncatechars:20 }}</span>
+                        {% else %}
+                            <span style="color: var(--text-dim);">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; white-space: nowrap;">
+                        {% if em.status == 'NEW' or em.status == 'ERROR' %}
+                        <div style="display: flex; gap: 0.3rem; align-items: center;">
+                            {% if not em.partner %}
+                            <form method="post" action="{% url 'invoices:received_email_action' em.pk %}" style="display: flex; gap: 0.3rem; align-items: center;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="match_partner">
+                                <select name="partner_id" style="padding: 0.3rem; font-size: 0.8rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 4px; color: var(--text-main); max-width: 120px;">
+                                    <option value="">{% trans "選択" %}</option>
+                                    {% for p in partners %}
+                                    <option value="{{ p.partner_id }}">{{ p.name|truncatechars:12 }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">{% trans "照合" %}</button>
+                            </form>
+                            {% endif %}
+                            {% if em.partner and em.attachment_file %}
+                            <form method="post" action="{% url 'invoices:received_email_action' em.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="retry">
+                                <button type="submit" class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; background: linear-gradient(135deg, #10B981, #059669);">
+                                    <i class="fas fa-redo"></i> {% trans "再取込" %}
+                                </button>
+                            </form>
+                            {% endif %}
+                            <form method="post" action="{% url 'invoices:received_email_action' em.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="ignore">
+                                <button type="submit" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="return confirm('このメールを対象外にしますか？')">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% elif em.work_report %}
+                            <a href="{% url 'invoices:work_report_result' em.work_report.pk %}" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; text-decoration: none;">
+                                <i class="fas fa-external-link-alt"></i> {% trans "報告書" %}
+                            </a>
+                        {% else %}
+                            <span style="color: var(--text-dim);">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if em.error_message %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td colspan="7" style="padding: 0.3rem 0.75rem 0.75rem; font-size: 0.8rem; color: #EF4444;">
+                        <i class="fas fa-exclamation-triangle"></i> {{ em.error_message|truncatechars:200 }}
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="text-align: center; color: var(--text-dim); padding: 3rem;">
+        <i class="fas fa-inbox" style="font-size: 2rem; display: block; margin-bottom: 1rem;"></i>
+        {% if status_filter %}{% trans "該当するメールはありません。" %}{% else %}{% trans "受信メールはまだありません。" %}{% endif %}
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

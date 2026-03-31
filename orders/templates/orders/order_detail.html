@@ -25,6 +25,12 @@
             <a href="{% url 'orders:admin_acceptance_pdf' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid var(--secondary); color: var(--text-main); font-size: 0.9rem;" target="_blank">
                 <i class="fas fa-file-invoice"></i> {% trans "注文請書印刷" %}
             </a>
+            <a href="{% url 'orders:order_xml' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid #10B981; color: #10B981; font-size: 0.9rem;">
+                <i class="fas fa-file-code"></i> XML
+            </a>
+            <a href="{% url 'orders:order_json' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid #F59E0B; color: #F59E0B; font-size: 0.9rem;">
+                <i class="fas fa-file-alt"></i> JSON
+            </a>
             {% else %}
             <a href="{% url 'orders:customer_order_pdf' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid var(--primary); color: var(--text-main); font-size: 0.9rem;">
                 <i class="fas fa-file-pdf"></i> {% trans "注文書印刷" %}
@@ -32,13 +38,22 @@
             <a href="{% url 'orders:customer_acceptance_pdf' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid var(--secondary); color: var(--text-main); font-size: 0.9rem;">
                 <i class="fas fa-file-invoice"></i> {% trans "注文請書印刷" %}
             </a>
+            <a href="{% url 'orders:order_xml' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid #10B981; color: #10B981; font-size: 0.9rem;">
+                <i class="fas fa-file-code"></i> XML
+            </a>
+            <a href="{% url 'orders:order_json' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid #F59E0B; color: #F59E0B; font-size: 0.9rem;">
+                <i class="fas fa-file-alt"></i> JSON
+            </a>
             {% endif %}
             {% if order.status == 'DRAFT' and user.is_staff %}
+            <a href="{% url 'orders:order_edit' order.order_id %}" class="btn" style="background: var(--surface); border: 1px solid #f59e0b; color: #f59e0b; font-size: 0.9rem;">
+                <i class="fas fa-pen"></i> {% trans "編集" %}
+            </a>
             <form action="{% url 'orders:order_publish' order.order_id %}" method="post" style="margin: 0;">
                 {% csrf_token %}
                 <button type="submit" class="btn"
                     style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); border: none;">
-                    <i class="fas fa-paper-plane"></i> {% trans "正式発行する" %}
+                    <i class="fas fa-paper-plane"></i> {% trans "正式発行" %}
                 </button>
             </form>
             {% elif order.status != 'APPROVED' and not user.is_staff %}
@@ -46,7 +61,7 @@
                 {% csrf_token %}
                 <button type="submit" class="btn"
                     style="background: linear-gradient(135deg, var(--secondary) 0%, #059669 100%); border: none;">
-                    {% trans "承認" %}
+                    {% trans "承諾" %}
                 </button>
             </form>
             {% endif %}
@@ -188,11 +203,25 @@
         </table>
     </div>
 
-    {# ===== フッター: 戻るボタン ===== #}
-    <div style="display: flex; gap: 1rem;">
+    {# ===== フッター: 戻るボタン・請求書ボタン ===== #}
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
         <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i> {% trans "一覧に戻る" %}
         </a>
+        {% if user.is_staff %}
+            {% if invoice %}
+            <a href="{% url 'invoices:invoice_edit' invoice.pk %}" class="btn" style="background: var(--surface); border: 1px solid #22c55e; color: #22c55e; font-size: 0.9rem;">
+                <i class="fas fa-file-invoice"></i> {% trans "請求書を見る" %}
+            </a>
+            {% elif order.status != 'DRAFT' %}
+            <form action="{% url 'invoices:invoice_create_from_order' order.order_id %}" method="post" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border: none;" onclick="return confirm('この注文書から請求書を作成しますか？')">
+                    <i class="fas fa-file-invoice-dollar"></i> {% trans "請求書作成" %}
+                </button>
+            </form>
+            {% endif %}
+        {% endif %}
     </div>
 </div>
 {% endblock %}

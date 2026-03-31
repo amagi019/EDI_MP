@@ -100,10 +100,22 @@
                                 <i class="fas fa-paper-plane"></i> {% trans "送信" %}
                             </button>
                         </form>
+                        <form method="post" action="{% url 'core:contract_regenerate' progress.partner.partner_id %}" style="display: inline;" onsubmit="return confirm('パートナー情報の変更を反映してPDFを再作成しますか？');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
+                                <i class="fas fa-sync-alt"></i> {% trans "再作成" %}
+                            </button>
+                        </form>
                         {% elif progress.status == 'PENDING_APPROVAL' or progress.status == 'COMPLETED' %}
                         <a href="{% url 'core:contract_preview' progress.partner.partner_id %}" class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;" target="_blank">
                             <i class="fas fa-file-pdf"></i> {% trans "契約書PDF" %}
                         </a>
+                        <form method="post" action="{% url 'core:contract_regenerate' progress.partner.partner_id %}" style="display: inline;" onsubmit="return confirm('パートナー情報の変更を反映してPDFを再作成しますか？');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">
+                                <i class="fas fa-sync-alt"></i> {% trans "再作成" %}
+                            </button>
+                        </form>
                         {% endif %}
                     </td>
                     {% endif %}

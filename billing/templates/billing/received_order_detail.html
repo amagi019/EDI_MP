@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "受注詳細" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">{% trans "受注詳細" %}</h2>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            {% if order.status == 'REGISTERED' %}
+            <span style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(59, 130, 246, 0.2); color: #93c5fd;">{{ order.get_status_display }}</span>
+            {% elif order.status == 'ACTIVE' %}
+            <span style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">{{ order.get_status_display }}</span>
+            {% elif order.status == 'COMPLETED' %}
+            <span style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(156, 163, 175, 0.2); color: #d1d5db;">{{ order.get_status_display }}</span>
+            {% else %}
+            <span style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(239, 68, 68, 0.2); color: #fca5a5;">{{ order.get_status_display }}</span>
+            {% endif %}
+            {% if order.order_file %}
+            <a href="{{ order.order_file.url }}" target="_blank" class="btn" style="background: var(--surface); border: 1px solid var(--primary); color: var(--text-main); font-size: 0.9rem;">
+                <i class="fas fa-file-pdf"></i> {% trans "注文書PDF" %}
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "注文番号" %}</p>
+            <p style="font-family: monospace; font-size: 1.1rem;">{{ order.order_number|default:"—" }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "取引先" %}</p>
+            <p>{{ order.customer.name }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "注文日" %}</p>
+            <p>{{ order.order_date }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "業務名称" %}</p>
+            <p>{{ order.project_name|default:"—" }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "対象月" %}</p>
+            <p>{{ order.target_month|date:"Y年m月" }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "作業期間" %}</p>
+            <p>{{ order.work_start }} ～ {{ order.work_end }}</p>
+        </div>
+        {% if order.contract %}
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "基本契約" %}</p>
+            <p>{{ order.contract.project_name }}</p>
+        </div>
+        {% endif %}
+        {% if order.remarks %}
+        <div style="grid-column: span 3;">
+            <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "備考" %}</p>
+            <p>{{ order.remarks }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if items %}
+    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-dim);">{% trans "受注明細" %}</h3>
+    <div style="overflow-x: auto; margin-bottom: 2rem;">
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-main);">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--glass-border);">
+                    <th style="text-align: left; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "要員名" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "単価" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "人月" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "精算幅" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "超過単価" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "控除単価" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <td style="padding: 0.8rem;">{{ item.person_name|default:"—" }}</td>
+                    <td style="padding: 0.8rem; text-align: right;">¥{{ item.unit_price|floatformat:0 }}</td>
+                    <td style="padding: 0.8rem; text-align: right;">{{ item.man_month }}</td>
+                    <td style="padding: 0.8rem; text-align: right;">{{ item.time_lower_limit }}～{{ item.time_upper_limit }}h</td>
+                    <td style="padding: 0.8rem; text-align: right;">¥{{ item.excess_rate|floatformat:0 }}/h</td>
+                    <td style="padding: 0.8rem; text-align: right;">¥{{ item.shortage_rate|floatformat:0 }}/h</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if order.parsed_data %}
+    <details style="margin-top: 1rem;">
+        <summary style="cursor: pointer; color: var(--text-dim); font-size: 0.85rem;">
+            <i class="fas fa-robot"></i> {% trans "PDF自動パース結果" %}（{{ order.parsed_data.format }}形式）
+        </summary>
+        <pre style="margin-top: 0.5rem; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 8px; font-size: 0.8rem; overflow-x: auto; color: var(--text-dim);">{{ order.parsed_data|pprint }}</pre>
+    </details>
+    {% endif %}
+
+    {% if order.is_recurring %}
+    <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px;">
+        <span style="color: #818CF8; font-size: 0.85rem;"><i class="fas fa-sync-alt"></i> {% trans "継続注文" %}</span>
+        {% if order.parent_order %}
+        <span style="color: var(--text-dim); font-size: 0.8rem; margin-left: 0.5rem;">（元注文: {{ order.parent_order.target_month|date:"Y/m" }}）</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem; flex-wrap: wrap;">
+        <a href="{% url 'billing:received_order_list' %}" class="btn btn-secondary" style="text-decoration: none;">{% trans "一覧へ戻る" %}</a>
+        <a href="{% url 'billing:received_order_edit' order.pk %}" class="btn" style="background: rgba(99, 102, 241, 0.2); border: 1px solid #818CF8; color: #818CF8; text-decoration: none;">
+            <i class="fas fa-edit"></i> {% trans "編集" %}
+        </a>
+        <form method="post" action="{% url 'billing:rollforward_order' order.pk %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #6366F1, #8B5CF6);" onclick="return confirm('翌月分をロールフォワードしますか？')">
+                <i class="fas fa-forward"></i> {% trans "翌月コピー" %}
+            </button>
+        </form>
+        <form method="post" action="{% url 'billing:generate_invoice_from_order' order.pk %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #F59E0B, #D97706);" onclick="return confirm('この受注から請求書を生成しますか？')">
+                <i class="fas fa-file-invoice"></i> {% trans "請求書生成" %}
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

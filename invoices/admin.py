@@ -3,7 +3,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings
-from .models import Invoice, InvoiceItem
+from .models import Invoice, InvoiceItem, WorkReport, ReceivedEmail
 from .services.billing_calculator import BillingCalculator
 
 class InvoiceItemInline(admin.TabularInline):
@@ -170,3 +170,35 @@ class InvoiceAdmin(admin.ModelAdmin):
             )
         return "-"
     view_pdf_links.short_description = "PDF発行"
+
+
+@admin.register(WorkReport)
+class WorkReportAdmin(admin.ModelAdmin):
+    list_display = ('worker_name', 'target_month', 'total_hours', 'work_days', 'status', 'order', 'uploaded_at')
+    list_filter = ('status', 'target_month')
+    search_fields = ('worker_name', 'original_filename', 'order__order_id')
+    readonly_fields = ('uploaded_at', 'daily_data_json', 'alerts_json')
+    fieldsets = (
+        ('基本情報', {
+            'fields': ('order', 'worker_name', 'target_month', 'status', 'uploaded_by')
+        }),
+        ('ファイル', {
+            'fields': ('file', 'original_filename')
+        }),
+        ('パース結果', {
+            'fields': ('total_hours', 'work_days', 'daily_data_json', 'alerts_json', 'error_message')
+        }),
+        ('Google Drive', {
+            'fields': ('drive_file_id',),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(ReceivedEmail)
+class ReceivedEmailAdmin(admin.ModelAdmin):
+    list_display = ('received_at', 'from_email', 'subject', 'partner', 'status', 'attachment_filename')
+    list_filter = ('status', 'received_at')
+    search_fields = ('from_email', 'from_name', 'subject', 'partner__name')
+    readonly_fields = ('message_id', 'created_at', 'processed_at')
+    raw_id_fields = ('partner', 'work_report')

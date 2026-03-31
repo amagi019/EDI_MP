@@ -19,8 +19,10 @@ from .partner_views import (  # noqa: F401
 from .contract_views import (  # noqa: F401
     ContractProgressListView,
     ContractGenerateView,
+    ContractRegenerateView,
     ContractPreviewView,
     ContractSendView,
     ContractApproveView,
 )
 from .bank_api import bank_search, branch_search  # noqa: F401
+from .pwa_views import service_worker_view, manifest_view  # noqa: F401

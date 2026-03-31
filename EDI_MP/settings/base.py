@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     'orders',
     'invoices',
     'billing',
+    'tasks.apps.TasksConfig',
+    'payroll.apps.PayrollConfig',
 ]
 
 
@@ -133,6 +135,7 @@ GOOGLE_DRIVE_CREDENTIALS_FILE = os.path.join(BASE_DIR, 'credentials', 'drive-ser
 GOOGLE_DRIVE_CONTRACT_FOLDER_ID = env('GOOGLE_DRIVE_CONTRACT_FOLDER_ID', default='')
 GOOGLE_DRIVE_ORDER_FOLDER_ID = env('GOOGLE_DRIVE_ORDER_FOLDER_ID', default='')
 GOOGLE_DRIVE_PAYMENT_FOLDER_ID = env('GOOGLE_DRIVE_PAYMENT_FOLDER_ID', default='')
+GOOGLE_DRIVE_BILLING_INVOICE_FOLDER_ID = env('GOOGLE_DRIVE_BILLING_INVOICE_FOLDER_ID', default='')
 # 後方互換: 旧ROOT_FOLDER_ID（個別未設定時のフォールバック）
 GOOGLE_DRIVE_ROOT_FOLDER_ID = env('GOOGLE_DRIVE_ROOT_FOLDER_ID', default='')
 
@@ -161,3 +164,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# ============================================================
+# システム間API連携設定
+# ============================================================
+# 共通APIキー（EDI・PayrollSystem双方で同じ値を設定）
+EDI_API_KEY = env('EDI_API_KEY', default='')
+# EDI APIのURL（PayrollSystem側で設定）
+EDI_API_URL = env('EDI_API_URL', default='')
+# PayrollSystem APIのURL（EDI側で設定）
+PAYROLL_API_URL = env('PAYROLL_API_URL', default='')

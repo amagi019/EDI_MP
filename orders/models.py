@@ -113,6 +113,58 @@ class OrderBasicInfo(models.Model):
         _("請求書発行タイミング"), max_length=20, choices=TIMING_CHOICES, default='LAST_DAY'
     )
 
+    # 注文書テンプレート情報
+    甲_責任者 = models.CharField(_("委託業務責任者（甲）"), max_length=64, blank=True)
+    甲_担当者 = models.CharField(_("連絡窓口担当者（甲）"), max_length=64, blank=True)
+    乙_責任者 = models.CharField(_("委託業務責任者（乙）"), max_length=64, blank=True)
+    乙_担当者 = models.CharField(_("連絡窓口担当者（乙）"), max_length=64, blank=True)
+    作業責任者 = models.CharField(_("作業責任者"), max_length=64, blank=True)
+    workplace = models.ForeignKey(
+        'orders.Workplace', on_delete=models.SET_NULL,
+        verbose_name=_("勤務場所"), blank=True, null=True
+    )
+    deliverable_text = models.CharField(
+        _("納入物件"), max_length=255, default="月別作業報告書", blank=True
+    )
+    payment_condition = models.TextField(
+        _("支払条件"), blank=True, default="毎月末日締め翌月末日払い（税別）"
+    )
+    contract_items = models.TextField(
+        _("契約条項"), blank=True,
+        default="１．本作業に関わる著作権は、甲に一切帰属するものとする。\n２．乙は、本作業にて知り得た知識・企業秘密・ノウハウその他の情報（本作業自体を含め）、一切乙以外の外部に漏洩しないものとする。\n３．顧客の都合によりこの注文書の業務が中断もしくは終了した場合は、その時点で、当該注文は解除され発注の効力を失う。",
+    )
+    remarks = models.TextField(_("備考"), blank=True)
+
+    # 期限ルール設定（プロジェクトごとにカスタマイズ可能）
+    order_create_deadline_day = models.IntegerField(
+        _("注文書作成期限日（前月）"), default=15,
+        help_text=_("前月の何日までに注文書を作成するか（例: 15 → 前月15日）")
+    )
+    order_approve_deadline_days_before = models.IntegerField(
+        _("注文書承認期限（前月末からの日数）"), default=0,
+        help_text=_("前月末日から何日前が期限か（0=月末当日、1=月末1日前）")
+    )
+    report_upload_deadline_days_before = models.IntegerField(
+        _("作業報告書期限（月末からの日数）"), default=2,
+        help_text=_("作業月末日から何日前が期限か（例: 2 → 月末2日前）")
+    )
+    invoice_create_deadline_day = models.IntegerField(
+        _("請求書作成期限日（翌月）"), default=1,
+        help_text=_("翌月の何日までに請求書を作成するか（例: 1 → 翌月1日）")
+    )
+    invoice_approve_deadline_day = models.IntegerField(
+        _("請求書承認期限日（翌月）"), default=10,
+        help_text=_("翌月の何日までにパートナーが請求書承認するか（例: 10 → 翌月10日）")
+    )
+    reminder_days_before = models.IntegerField(
+        _("リマインド日数"), default=3,
+        help_text=_("パートナー担当タスクの期限何日前にリマインドメールを送るか")
+    )
+    alert_days_after = models.IntegerField(
+        _("アラート日数"), default=3,
+        help_text=_("期限超過何日後に自社担当者にアラートを送るか")
+    )
+
     class Meta:
         verbose_name = _("発注基本情報")
         verbose_name_plural = _("発注基本情報")
@@ -120,6 +172,28 @@ class OrderBasicInfo(models.Model):
 
     def __str__(self):
         return f"{self.project.name} - {self.partner.name}"
+
+
+class OrderBasicInfoItem(models.Model):
+    """発注基本情報の明細行テンプレート（毎月の作業者情報）"""
+    basic_info = models.ForeignKey(
+        OrderBasicInfo, on_delete=models.CASCADE,
+        related_name='template_items', verbose_name=_("発注基本情報")
+    )
+    person_name = models.CharField(_("作業者氏名"), max_length=64)
+    effort = models.DecimalField(_("工数"), max_digits=3, decimal_places=2, default=1.00)
+    base_fee = models.IntegerField(_("月額基本料金"), default=0)
+    time_lower_limit = models.DecimalField(_("基準時間_下限"), max_digits=5, decimal_places=2, default=140.00)
+    time_upper_limit = models.DecimalField(_("基準時間_上限"), max_digits=5, decimal_places=2, default=180.00)
+    shortage_rate = models.IntegerField(_("不足単価"), default=0)
+    excess_rate = models.IntegerField(_("超過単価"), default=0)
+
+    class Meta:
+        verbose_name = _("基本情報明細テンプレート")
+        verbose_name_plural = _("基本情報明細テンプレート")
+
+    def __str__(self):
+        return f"{self.person_name} - {self.base_fee}円"
 
 # トランザクションモデル（実績）
 
@@ -129,7 +203,7 @@ class Order(models.Model):
         ('UNCONFIRMED', _('未確認（発行済）')),
         ('CONFIRMING', _('受領確認中')),
         ('RECEIVED', _('受領済')),
-        ('APPROVED', _('承認済')),
+        ('APPROVED', _('承諾済')),
     ]
 
     class Meta:
@@ -285,3 +359,5 @@ class Person(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.role})"
+
+

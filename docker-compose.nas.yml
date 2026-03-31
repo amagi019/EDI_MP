@@ -22,7 +22,6 @@ services:
     environment:
       - POSTGRES_DB=edi_mp
       - POSTGRES_USER=edi_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U edi_user -d edi_mp"]
       interval: 5s

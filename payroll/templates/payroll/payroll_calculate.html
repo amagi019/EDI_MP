@@ -1,0 +1,57 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "給与計算" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <h1>📊 {% trans "給与一括計算" %}</h1>
+        <p style="color: var(--text-dim);">{% trans "対象年月を選択して、全社員の給与を一括計算します。" %}</p>
+    </div>
+
+    <div class="card" style="padding: 2rem; max-width: 600px;">
+        <form method="post">
+            {% csrf_token %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <label for="year" style="display: block; margin-bottom: 0.5rem; color: var(--text-dim);">{% trans "年" %}</label>
+                    <select name="year" id="year" style="width: 100%;">
+                        {% for y in "012" %}{% with yr=default_year %}
+                        <option value="{{ yr }}" {% if forloop.first %}selected{% endif %}>{{ yr }}{% trans "年" %}</option>
+                        {% endwith %}{% endfor %}
+                        <option value="{{ default_year }}" selected>{{ default_year }}{% trans "年" %}</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="month" style="display: block; margin-bottom: 0.5rem; color: var(--text-dim);">{% trans "月" %}</label>
+                    <select name="month" id="month" style="width: 100%;">
+                        {% for i in "123456789abc" %}{% with m=forloop.counter %}
+                        <option value="{{ m }}" {% if m == default_month %}selected{% endif %}>{{ m }}{% trans "月" %}</option>
+                        {% endwith %}{% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="card" style="padding: 1rem; margin-bottom: 1.5rem; background: rgba(79, 70, 229, 0.05); border: 1px solid rgba(79, 70, 229, 0.2);">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">👤 {% trans "対象社員" %}（{{ employees.count }}{% trans "名" %}）</div>
+                {% for emp in employees %}
+                <div style="padding: 0.3rem 0; color: var(--text-dim);">
+                    {{ emp.employee_id }} {{ emp.name }}
+                    <span style="font-size: 0.85rem;">（{% trans "基本給" %} ¥{{ emp.base_salary|floatformat:0 }}）</span>
+                </div>
+                {% empty %}
+                <div style="color: #F59E0B;">⚠ {% trans "社員が登録されていません。先に社員マスタを登録してください。" %}</div>
+                {% endfor %}
+            </div>
+
+            {% if employees %}
+            <button type="submit" class="btn" style="width: 100%; padding: 0.75rem; font-size: 1.1rem; background: linear-gradient(135deg, #818CF8, #6366F1);" onclick="return confirm('給与計算を実行しますか？')">
+                📊 {% trans "一括計算を実行" %}
+            </button>
+            {% endif %}
+        </form>
+    </div>
+
+    <div style="margin-top: 1.5rem;">
+        <a href="{% url 'payroll:payroll_list' %}" class="btn btn-secondary">← {% trans "給与一覧に戻る" %}</a>
+    </div>
+</div>
+{% endblock %}

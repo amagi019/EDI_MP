@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}稼働報告書アップロード | EDIシステム{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">
+            <i class="fas fa-file-excel" style="color: #34D399;"></i>
+            稼働報告書アップロード
+        </h2>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-secondary" style="font-size: 0.9rem;">
+            <i class="fas fa-arrow-left"></i> ダッシュボードに戻る
+        </a>
+    </div>
+
+    {% if orders %}
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+        {% csrf_token %}
+
+        <div style="margin-bottom: 1.5rem;">
+            <label for="order_id" style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.5rem;">対象注文</label>
+            <select name="order_id" id="order_id" required style="width: 100%; padding: 0.75rem; background: var(--bg-app); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem;">
+                <option value="" selected disabled>── 対象注文を選択してください ──</option>
+                {% for order in orders %}
+                <option value="{{ order.order_id }}" {% if selected_order_id == order.order_id %}selected{% endif %}>{{ order.project.name }} - {{ order.order_id }} ({{ order.work_start|date:"Y/m" }}〜{{ order.work_end|date:"Y/m" }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.5rem;">
+                Excelファイル（複数名の場合は複数ファイル選択可）
+            </label>
+            <div id="drop-zone" style="border: 2px dashed var(--border-color); border-radius: 12px; padding: 3rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s;" onclick="document.getElementById('file-input').click()">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 2.5rem; color: var(--text-dim); margin-bottom: 1rem; display: block;"></i>
+                <p style="color: var(--text-dim); margin: 0;">ここをクリック、またはファイルをドラッグ＆ドロップ</p>
+                <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 0.5rem;">.xlsx / .xlsm 形式</p>
+                <div id="file-list" style="margin-top: 1rem;"></div>
+            </div>
+            <input type="file" name="files" id="file-input" multiple accept=".xlsx,.xlsm" style="display: none;" onchange="showFiles(this)">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn" id="submit-btn" disabled style="opacity: 0.5;">
+                <i class="fas fa-upload"></i> アップロード＆解析
+            </button>
+        </div>
+    </form>
+
+    {% else %}
+    <div style="text-align: center; padding: 4rem; color: var(--text-dim);">
+        <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; display: block;"></i>
+        <p>現在、有効な注文がありません。</p>
+    </div>
+    {% endif %}
+
+    {% if existing_reports %}
+    <div style="margin-top: 2.5rem; border-top: 1px solid var(--border-color); padding-top: 2rem;">
+        <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-dim);">
+            <i class="fas fa-history"></i> アップロード済みの報告書
+        </h3>
+        <div style="display: grid; gap: 0.75rem;">
+            {% for report in existing_reports %}
+            <a href="{% url 'invoices:work_report_result' report.pk %}" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 8px; text-decoration: none; color: var(--text-main); transition: transform 0.15s;" onmouseover="this.style.transform='translateX(4px)'" onmouseout="this.style.transform='none'">
+                <div>
+                    <span style="font-weight: 600;">{{ report.worker_name|default:"未取得" }}</span>
+                    <span style="color: var(--text-dim); margin-left: 0.75rem; font-size: 0.85rem;">{{ report.target_month|date:"Y年m月" }}</span>
+                    <span style="color: var(--text-dim); margin-left: 0.75rem; font-size: 0.85rem;">{{ report.total_hours }}h / {{ report.work_days }}日</span>
+                </div>
+                <div>
+                    {% if report.status == 'ALERT' %}
+                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(245, 158, 11, 0.2); color: #FBBF24;">⚠ 要確認</span>
+                    {% elif report.status == 'APPROVED' %}
+                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">✓ 確定済</span>
+                    {% elif report.status == 'PARSED' %}
+                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(79, 70, 229, 0.2); color: #818CF8;">解析済</span>
+                    {% else %}
+                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(100, 116, 139, 0.2); color: #94a3b8;">{{ report.get_status_display }}</span>
+                    {% endif %}
+                    <i class="fas fa-chevron-right" style="margin-left: 0.5rem; color: var(--text-dim);"></i>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    #drop-zone.drag-over {
+        border-color: #818CF8;
+        background: rgba(79, 70, 229, 0.05);
+    }
+</style>
+<script>
+    var dropZone = document.getElementById('drop-zone');
+    if (dropZone) {
+        dropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', function() { this.classList.remove('drag-over'); });
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            document.getElementById('file-input').files = e.dataTransfer.files;
+            showFiles(document.getElementById('file-input'));
+        });
+    }
+    function showFiles(input) {
+        var list = document.getElementById('file-list');
+        var btn = document.getElementById('submit-btn');
+        list.innerHTML = '';
+        if (input.files.length > 0) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            for (var i = 0; i < input.files.length; i++) {
+                var div = document.createElement('div');
+                div.style.cssText = 'padding: 0.3rem 0; color: #86efac; font-size: 0.9rem;';
+                div.innerHTML = '<i class="fas fa-file-excel"></i> ' + input.files[i].name;
+                list.appendChild(div);
+            }
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+        }
+    }
+</script>
+{% endblock %}

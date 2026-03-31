@@ -28,22 +28,48 @@
         </div>
 
         <div class="manual-section">
-            <h2 id="section3"><i class="fas fa-file-signature"></i> 3. {% trans "注文書の確認と承認" %}</h2>
-            <p>{% trans "新しい注文が発行されるとメールで通知されます。一覧から詳細を開き、「注文書印刷」をクリックして内容を確認してください。" %}</p>
+            <h2 id="section3"><i class="fas fa-file-contract"></i> 3. {% trans "基本契約書の確認と承諾" %}</h2>
+            <p>{% trans "基本契約書が作成されると、メールで通知が届きます。メール内のURLからログインし、契約書の内容をご確認ください。" %}</p>
             <div
                 style="background: rgba(var(--primary-rgb), 0.05); border-left: 4px solid var(--primary-color); padding: 1rem; margin: 1rem 0;">
-                <p style="margin: 0;"><strong>注意:</strong> システムの「承認」ボタンをクリックすることで正式な受領となります。承認後は自動的に「注文請書」が生成されます。</p>
+                <p style="margin: 0;">{% trans "内容に問題がなければ「承諾」ボタンをクリックしてください。承諾完了後、契約が締結されます。承諾済みの契約書は、サイドバーの「基本契約書」からいつでも確認できます。" %}</p>
+            </div>
+            <div
+                style="background: rgba(79, 70, 229, 0.05); border-left: 4px solid #818CF8; padding: 1rem; margin: 1rem 0; font-size: 0.9rem;">
+                <p style="margin: 0; color: var(--text-dim);"><i class="fas fa-info-circle" style="color: #818CF8;"></i>
+                    {% trans "本システムの契約締結は、電子契約法および電子帳簿保存法に基づき、電子署名がなくても法的に有効です。ご要望に応じて、電子署名サービスを利用した契約手続きも可能です。" %}</p>
             </div>
         </div>
 
         <div class="manual-section">
-            <h2 id="section4"><i class="fas fa-money-check-alt"></i> 4. {% trans "支払通知の確認" %}</h2>
-            <p>{% trans "メニューの「請求書（支払通知）一覧」より、弊社からの支払予定額を確認できます。金額に相違がある場合は、速やかに弊社担当者までご連絡ください。" %}</p>
+            <h2 id="section4"><i class="fas fa-file-signature"></i> 4. {% trans "注文書の確認と承諾" %}</h2>
+            <p>{% trans "新しい注文書が発行されると、メールで通知されます。メール内のURLまたはダッシュボードの「注文書一覧」から対象の注文を選択し、内容をご確認ください。" %}</p>
+            <div
+                style="background: rgba(var(--primary-rgb), 0.05); border-left: 4px solid var(--primary-color); padding: 1rem; margin: 1rem 0;">
+                <p style="margin: 0;"><strong>{% trans "承諾方法" %}:</strong> {% trans "注文書の内容を確認し、「承諾」ボタンをクリックしてください。承諾後、「注文請書」が自動生成・保存されます。" %}</p>
+            </div>
         </div>
 
         <div class="manual-section">
-            <h2 id="section5"><i class="fas fa-pen-nib"></i> 5. {% trans "電子署名の実施" %}</h2>
-            <p>基本契約などの法的文書については、外部の電子署名サービス（Google Docs等）から依頼が届く場合があります。オンラインでの署名完了後、EDIシステム側のステータスも自動的に更新されます。</p>
+            <h2 id="section5"><i class="fas fa-file-excel"></i> 5. {% trans "稼働報告書の提出" %}</h2>
+            <p>{% trans "毎月の稼働実績をExcelファイルでアップロードしてください。月末付近にメールでリマインド通知が届きます。" %}</p>
+            <ol>
+                <li>{% trans "サイドバーの「稼働報告書」をクリックします。" %}</li>
+                <li>{% trans "対象の注文をドロップダウンから選択してください。" %}</li>
+                <li>{% trans "Excel形式（.xlsx / .xlsm）の稼働報告書をアップロードします。" %}</li>
+                <li>{% trans "アップロード後、自動で氏名・稼働時間・土日祝稼働が解析されます。" %}</li>
+                <li>{% trans "内容に問題がなければ「稼働報告を確定」ボタンをクリックしてください。" %}</li>
+            </ol>
+            <div
+                style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #F59E0B; padding: 1rem; margin: 1rem 0; font-size: 0.9rem;">
+                <p style="margin: 0; color: var(--text-dim);"><i class="fas fa-exclamation-triangle" style="color: #F59E0B;"></i>
+                    {% trans "複数名の場合は、作業者ごとにファイルを分けてアップロードしてください。" %}</p>
+            </div>
+        </div>
+
+        <div class="manual-section">
+            <h2 id="section6"><i class="fas fa-money-check-alt"></i> 6. {% trans "支払通知の確認" %}</h2>
+            <p>{% trans "支払通知書が発行されると、メールで通知が届きます。メニューの「請求書（支払通知）一覧」から支払金額を確認し、「承諾」をクリックしてください。金額に相違がある場合は、弊社担当者までご連絡ください。" %}</p>
         </div>
 
         <div
@@ -79,7 +105,8 @@
         color: var(--text-main);
     }
 
-    .manual-section ul {
+    .manual-section ul,
+    .manual-section ol {
         padding-left: 1.5rem;
     }
 

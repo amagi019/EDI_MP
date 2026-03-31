@@ -1,0 +1,53 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "権限管理" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <h1>🔐 {% trans "給与権限管理" %}</h1>
+        <p style="color: var(--text-dim);">{% trans "ユーザーごとの給与情報へのアクセス権限を管理します。" %}</p>
+    </div>
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "ユーザー" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "紐付き社員" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "閲覧範囲" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "計算" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "承認" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "振込" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "操作" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in permissions %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem; font-weight: 500;">{{ p.user.username }}</td>
+                    <td style="padding: 0.75rem;">{{ p.employee.name|default:"-" }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        {% if p.permission_level == 'ALL' %}
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(16,185,129,0.15); color: #10B981;">{% trans "全社員" %}</span>
+                        {% else %}
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(148,163,184,0.15); color: #94A3B8;">{% trans "自分のみ" %}</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center;">{% if p.can_calculate %}✅{% else %}❌{% endif %}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{% if p.can_approve %}✅{% else %}❌{% endif %}</td>
+                    <td style="padding: 0.75rem; text-align: center;">{% if p.can_transfer %}✅{% else %}❌{% endif %}</td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <a href="{% url 'payroll:permission_edit' p.pk %}" style="color: #818CF8;">{% trans "編集" %}</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-dim);">{% trans "権限が設定されていません" %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top: 1.5rem;">
+        <a href="{% url 'payroll:payroll_list' %}" class="btn btn-secondary">← {% trans "給与一覧に戻る" %}</a>
+    </div>
+</div>
+{% endblock %}

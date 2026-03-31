@@ -18,6 +18,10 @@ class Customer(models.Model):
     representative_name = models.CharField(_("代表者名"), max_length=64, blank=True)
     registration_no = models.CharField(_("登録番号"), max_length=20, blank=True, help_text=_("T13桁の番号"))
     url = models.URLField(_("URL"), max_length=200, blank=True)
+    has_edi = models.BooleanField(
+        _("EDI保有"), default=False,
+        help_text=_("EDIを保有している取引先は請求書の送付が不要")
+    )
 
     class Meta:
         db_table = 'core_client'
@@ -26,6 +30,11 @@ class Customer(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def needs_invoice(self):
+        """請求書の作成・送付が必要かどうか"""
+        return not self.has_edi
 
 
 class Partner(models.Model):
@@ -38,6 +47,10 @@ class Partner(models.Model):
     tel = models.CharField(_("電話番号"), max_length=20, blank=True)
     fax = models.CharField(_("FAX番号"), max_length=20, blank=True)
     email = models.EmailField(_("メールアドレス"))
+    report_email = models.EmailField(
+        _("報告用メールアドレス"), blank=True,
+        help_text=_("稼働報告メールの送信元アドレス（メインアドレスと異なる場合に設定）")
+    )
     cc = models.TextField(_("Cc"), blank=True, help_text=_("複数指定する場合はカンマ区切りで入力してください"))
     bcc = models.TextField(_("Bcc"), blank=True, help_text=_("複数指定する場合はカンマ区切りで入力してください"))
     
@@ -139,6 +152,12 @@ class CompanyInfo(models.Model):
     stamp_image = models.ImageField(_("印影画像"), upload_to='stamps/', blank=True, null=True)
     logo_image = models.ImageField(_("ロゴ画像"), upload_to='logos/', blank=True, null=True)
 
+    # 消費税率（%表記、例: 10.00 = 10%）
+    tax_rate = models.DecimalField(
+        _("消費税率（%）"), max_digits=5, decimal_places=2, default=10.00,
+        help_text=_("消費税率をパーセントで入力してください（例: 10.00）")
+    )
+
     class Meta:
         verbose_name = _("自社情報")
         verbose_name_plural = _("自社情報")
@@ -186,7 +205,7 @@ class MasterContractProgress(models.Model):
         ('INVITED', '招待済み'),
         ('INFO_DONE', '基本情報登録済み'),
         ('CONTRACT_SENT', '基本契約送信済み'),
-        ('PENDING_APPROVAL', '承認待ち'),
+        ('PENDING_APPROVAL', '承諾待ち'),
         ('COMPLETED', '締結完了'),
     ]
 

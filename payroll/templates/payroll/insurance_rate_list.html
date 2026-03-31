@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "保険料率" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <h1>📋 {% trans "保険料率一覧" %}</h1>
+    <p style="color: var(--text-dim); margin-bottom: 1.5rem;">{% trans "保険料率の管理は管理画面（/admin/）から行えます。" %}</p>
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "年度" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "厚生年金(%)" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "健康保険(%)" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "介護保険(%)" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "雇用保険・従業員(%)" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "都道府県" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rates %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem; font-weight: 500;">{{ r.fiscal_year }}{% trans "年度" %}</td>
+                    <td style="padding: 0.75rem; text-align: right;">{{ r.pension_rate }}</td>
+                    <td style="padding: 0.75rem; text-align: right;">{{ r.health_rate }}</td>
+                    <td style="padding: 0.75rem; text-align: right;">{{ r.nursing_rate }}</td>
+                    <td style="padding: 0.75rem; text-align: right;">{{ r.employment_rate_employee }}</td>
+                    <td style="padding: 0.75rem;">{{ r.prefecture }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="padding: 2rem; text-align: center; color: var(--text-dim);">{% trans "保険料率が登録されていません。管理画面から登録してください。" %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top: 1.5rem;">
+        <a href="{% url 'payroll:payroll_list' %}" class="btn btn-secondary">← {% trans "給与一覧に戻る" %}</a>
+    </div>
+</div>
+{% endblock %}

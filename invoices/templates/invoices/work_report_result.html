@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}稼働報告チェック結果 | EDIシステム{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">
+            <i class="fas fa-clipboard-check" style="color: #818CF8;"></i>
+            稼働報告チェック結果
+        </h2>
+        <a href="{% url 'invoices:work_report_upload' %}" class="btn btn-secondary" style="font-size: 0.9rem; text-decoration: none;">
+            <i class="fas fa-arrow-left"></i> アップロード画面に戻る
+        </a>
+    </div>
+
+    <form method="post" id="result-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save">
+
+        {% for report in reports %}
+        <input type="hidden" name="report_ids" value="{{ report.pk }}">
+        <div style="background: var(--bg-app); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 style="margin: 0; font-size: 1.15rem;">
+                    <i class="fas fa-user" style="color: #818CF8;"></i>
+                    {{ report.worker_name|default:"氏名不明" }}
+                </h3>
+                <div>
+                    {% if report.status == 'ALERT' %}
+                    <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(245, 158, 11, 0.2); color: #FBBF24;">⚠ 要確認（土日祝稼働あり）</span>
+                    {% elif report.status == 'APPROVED' %}
+                    <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">✓ 確定済</span>
+                    {% elif report.status == 'ERROR' %}
+                    <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(239, 68, 68, 0.2); color: #fca5a5;">✕ エラー</span>
+                    {% else %}
+                    <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(79, 70, 229, 0.2); color: #818CF8;">✓ 解析完了</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if report.error_message %}
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                <i class="fas fa-exclamation-triangle" style="color: #fca5a5;"></i>
+                <span style="color: #fca5a5;">{{ report.error_message }}</span>
+            </div>
+            {% endif %}
+
+            <!-- 編集可能フォーム -->
+            {% if report.status != 'APPROVED' and report.status != 'ERROR' %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">作業者氏名</label>
+                    <input type="text" name="worker_name_{{ report.pk }}" value="{{ report.worker_name }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">対象月</label>
+                    <input type="month" name="target_month_{{ report.pk }}" value="{{ report.target_month|date:'Y-m' }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">合計時間</label>
+                    <input type="number" name="total_hours_{{ report.pk }}" value="{{ report.total_hours }}" step="0.25" min="0" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">稼働日数</label>
+                    <input type="number" name="work_days_{{ report.pk }}" value="{{ report.work_days }}" min="0" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+            </div>
+            {% else %}
+            <!-- 確定済/エラーは読み取り専用表示 -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                <div style="background: rgba(79, 70, 229, 0.08); border-radius: 8px; padding: 1rem; text-align: center;">
+                    <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">対象月</div>
+                    <div style="font-size: 1.1rem; font-weight: 600;">{{ report.target_month|date:"Y年m月" }}</div>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.08); border-radius: 8px; padding: 1rem; text-align: center;">
+                    <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">合計時間</div>
+                    <div style="font-size: 1.1rem; font-weight: 600;">{{ report.total_hours }}h</div>
+                </div>
+                <div style="background: rgba(59, 130, 246, 0.08); border-radius: 8px; padding: 1rem; text-align: center;">
+                    <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">稼働日数</div>
+                    <div style="font-size: 1.1rem; font-weight: 600;">{{ report.work_days }}日</div>
+                </div>
+                <div style="background: rgba(234, 179, 8, 0.08); border-radius: 8px; padding: 1rem; text-align: center;">
+                    <div style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.3rem;">ファイル</div>
+                    <div style="font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ report.original_filename }}">{{ report.original_filename }}</div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if report.alerts_json %}
+            <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
+                <h4 style="margin: 0 0 0.75rem 0; color: #FBBF24; font-size: 0.95rem;">
+                    <i class="fas fa-exclamation-triangle"></i> 土日祝の稼働が検出されました
+                </h4>
+                {% for alert in report.alerts_json %}
+                <div style="display: flex; gap: 1rem; padding: 0.4rem 0; font-size: 0.9rem; color: var(--text-main);">
+                    <span style="min-width: 100px;">{{ alert.date }}</span>
+                    <span style="min-width: 30px;">({{ alert.day_name }})</span>
+                    <span style="min-width: 50px; font-weight: 600;">{{ alert.hours }}h</span>
+                    <span style="color: #FBBF24;">{{ alert.holiday_name }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if report.daily_data_json %}
+            <details style="margin-bottom: 1rem;">
+                <summary style="cursor: pointer; color: var(--text-dim); font-size: 0.9rem; padding: 0.5rem 0;">
+                    <i class="fas fa-table"></i> 日別稼働データを表示
+                </summary>
+                <div style="overflow-x: auto; margin-top: 0.75rem;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-color);">
+                                <th style="text-align: left; padding: 0.5rem; color: var(--text-dim);">日付</th>
+                                <th style="text-align: center; padding: 0.5rem; color: var(--text-dim);">曜日</th>
+                                <th style="text-align: right; padding: 0.5rem; color: var(--text-dim);">稼働時間</th>
+                                <th style="text-align: center; padding: 0.5rem; color: var(--text-dim);">開始</th>
+                                <th style="text-align: center; padding: 0.5rem; color: var(--text-dim);">終了</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for day in report.daily_data_json %}
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); {% if day.day_name == '土' or day.day_name == '日' %}background: rgba(100, 116, 139, 0.08);{% endif %}">
+                                <td style="padding: 0.5rem;">{{ day.date }}</td>
+                                <td style="text-align: center; padding: 0.5rem; {% if day.day_name == '土' %}color: #60a5fa;{% elif day.day_name == '日' %}color: #f87171;{% endif %}">{{ day.day_name }}</td>
+                                <td style="text-align: right; padding: 0.5rem; font-weight: {% if day.hours > 0 %}600{% else %}400{% endif %}; {% if day.hours == 0 %}color: var(--text-dim);{% endif %}">{{ day.hours }}h</td>
+                                <td style="text-align: center; padding: 0.5rem; color: var(--text-dim);">{{ day.start|default:"-" }}</td>
+                                <td style="text-align: center; padding: 0.5rem; color: var(--text-dim);">{{ day.end|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% if can_approve %}
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+            <button type="submit" name="action" value="save" class="btn btn-secondary">
+                <i class="fas fa-save"></i> 編集内容を保存
+            </button>
+            <button type="submit" name="action" value="approve" class="btn" onclick="return confirm('上記の稼働報告内容を確定しますか？\n確定後、自社担当者に通知されます。')">
+                <i class="fas fa-check"></i> 稼働報告を確定
+            </button>
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

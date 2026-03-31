@@ -1,0 +1,75 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "給与設定" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <h1>⚙️ {% trans "給与設定" %}</h1>
+    <div class="card" style="max-width: 700px; padding: 2rem;">
+        <form method="post">
+            {% csrf_token %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div>
+                    <label>{% trans "支給日" %}</label>
+                    <select name="payment_day" style="width: 100%;">
+                        {% for val, label in payment_day_choices %}
+                        <option value="{{ val }}" {% if settings.payment_day == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label>{% trans "締め日" %}</label>
+                    <select name="closing_day" style="width: 100%;">
+                        {% for val, label in closing_day_choices %}
+                        <option value="{{ val }}" {% if settings.closing_day == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                <h3 style="font-size: 1rem; color: var(--text-dim); margin-bottom: 1rem;">{% trans "割増率" %}</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label>{% trans "残業割増率" %}</label>
+                        <input type="number" name="overtime_rate_multiplier" value="{{ settings.overtime_rate_multiplier }}" step="0.01" min="1.00">
+                        <div style="font-size: 0.75rem; color: var(--text-dim);">{% trans "法定: 1.25" %}</div>
+                    </div>
+                    <div>
+                        <label>{% trans "60h超残業割増率" %}</label>
+                        <input type="number" name="overtime_60_rate_multiplier" value="{{ settings.overtime_60_rate_multiplier }}" step="0.01" min="1.00">
+                        <div style="font-size: 0.75rem; color: var(--text-dim);">{% trans "法定: 1.50" %}</div>
+                    </div>
+                    <div>
+                        <label>{% trans "深夜割増率" %}</label>
+                        <input type="number" name="night_rate_multiplier" value="{{ settings.night_rate_multiplier }}" step="0.01" min="0.01">
+                        <div style="font-size: 0.75rem; color: var(--text-dim);">{% trans "法定: 0.25" %}</div>
+                    </div>
+                    <div>
+                        <label>{% trans "休日出勤割増率" %}</label>
+                        <input type="number" name="holiday_rate_multiplier" value="{{ settings.holiday_rate_multiplier }}" step="0.01" min="1.00">
+                        <div style="font-size: 0.75rem; color: var(--text-dim);">{% trans "法定: 1.35" %}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                <h3 style="font-size: 1rem; color: var(--text-dim); margin-bottom: 1rem;">{% trans "デフォルト値" %}</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <label>{% trans "デフォルト出勤日数" %}</label>
+                        <input type="number" name="default_work_days" value="{{ settings.default_work_days }}" min="1" max="31">
+                    </div>
+                    <div>
+                        <label>{% trans "デフォルト所定時間" %}</label>
+                        <input type="number" name="default_monthly_hours" value="{{ settings.default_monthly_hours }}" step="0.5" min="1">
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                <button type="submit" class="btn">💾 {% trans "保存" %}</button>
+                <a href="{% url 'payroll:payroll_list' %}" class="btn btn-secondary">{% trans "戻る" %}</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

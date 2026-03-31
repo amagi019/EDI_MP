@@ -32,9 +32,14 @@ urlpatterns = [
     path('orders/', include('orders.urls')),
     path('invoices/', include('invoices.urls')),
     path('billing/', include('billing.presentation.urls')),
+    path('tasks/', include('tasks.urls')),
+    path('payroll/', include('payroll.presentation.urls')),
     path('accounts/password_change/', core_views.CustomPasswordChangeView.as_view(), name='password_change'),
     path('accounts/logout/', auth_views.LogoutView.as_view(http_method_names=['get', 'post', 'options']), name='logout'),
     path('accounts/', include('django.contrib.auth.urls')),
+    # PWA: Service Workerはルートパスから配信する必要がある
+    path('service-worker.js', core_views.service_worker_view, name='service_worker'),
+    path('manifest.json', core_views.manifest_view, name='manifest'),
 ]
 
 if settings.DEBUG:

@@ -10,6 +10,19 @@ from django.template import Template, Context
 from .domain.models import CompanyInfo, SentEmailLog, EmailTemplate
 
 
+def normalize_name(name):
+    """全角・半角スペースを除去して比較用に正規化する。"""
+    return (name or '').replace(' ', '').replace('\u3000', '').strip()
+
+
+def get_notify_email(partner):
+    """パートナーの自社担当者メールアドレスを取得する。未設定時はDEFAULT_FROM_EMAIL。"""
+    from django.conf import settings
+    if partner and partner.staff_contact and partner.staff_contact.email:
+        return partner.staff_contact.email
+    return settings.DEFAULT_FROM_EMAIL
+
+
 def _get_login_url():
     """ログインURLを取得する。CSRF_TRUSTED_ORIGINS の最初のURLをベースにする。"""
     from django.conf import settings
@@ -101,10 +114,11 @@ def send_invitation_email(partner, email, password):
     )
 
     try:
+        from django.conf import settings as django_settings
         send_mail(
             subject,
             body,
-            f"noreply@{email.split('@')[1]}",
+            django_settings.DEFAULT_FROM_EMAIL,
             [email],
             fail_silently=False,
         )
@@ -157,10 +171,10 @@ EDIシステムに注文書を登録いたしましたので、
 《お願い》
 
 注文書内容をご確認いただき、内容にご同意いただける場合は
-「承認」ボタンを押してください。
-承認いただけない場合はメールにてご返信ください。
+「承諾」ボタンを押してください。
+承諾いただけない場合はメールにてご返信ください。
 
-※「承認」をいただいた場合は、注文請書のご返送は不要となります。
+※「承諾」をいただいた場合は、注文請書のご返送は不要となります。
 
 ■注文番号：{{ order_id }}
 ■プロジェクト：{{ project_name }}
@@ -215,7 +229,7 @@ def compose_order_approve_email(order, order_url):
 
     template_code = 'order_approve'
     default_subject = '【承認通知】{{ partner_name }}様 注文番号：{{ order_id }}'
-    default_body = """{{ partner_name }} 様より、以下の注文書が承認されました。
+    default_body = """{{ partner_name }} 様より、以下の注文書が承諾されました。
 
 ■注文番号：{{ order_id }}
 ■プロジェクト：{{ project_name }}
@@ -319,15 +333,15 @@ def compose_contract_send_email(partner, contract_url):
 
 《お願い》
 契約書内容をご確認いただき、内容にご同意いただける場合は
-「承認」ボタンを押してください。
-承認いただけない場合はメールにてご返信ください。
+「承諾」ボタンを押してください。
+承諾いただけない場合はメールにてご返信ください。
 
-※「承認」をいただいた場合は、従来のように契約書のご返送は不要となります。
+※「承諾」をいただいた場合は、従来のように契約書のご返送は不要となります。
 
 御手数ではございますが、ご協力の程お願い申し上げます。
 
 《ご参考》
-承認済みの契約書は、ログイン後サイドバーの「基本契約書」からいつでもご確認いただけます。
+承諾済みの契約書は、ログイン後サイドバーの「基本契約書」からいつでもご確認いただけます。
 
 操作手順について不明な点がございましたら
 サイドバーの「操作マニュアル」をご参照ください。
@@ -354,7 +368,7 @@ def compose_contract_approve_email(partner, contract_url, signed_at, signed_by):
     return _render_email_template(
         template_code='contract_approve',
         default_subject='【基本契約承認通知】{{ partner_name }}',
-        default_body="""{{ partner_name }} 様が基本契約書を承認しました。
+        default_body="""{{ partner_name }} 様が基本契約書を承諾しました。
 契約が締結されましたのでお知らせいたします。
 
 ■ パートナー名：{{ partner_name }}
@@ -364,7 +378,7 @@ def compose_contract_approve_email(partner, contract_url, signed_at, signed_by):
 ■ 契約書確認URL:
 {{ contract_url }}
 
-※承認済みの契約書PDFは上記URLよりご確認いただけます。
+※承諾済みの契約書PDFは上記URLよりご確認いただけます。
 """,
         description='契約書承認通知メール（自社担当者宛）',
         context={
@@ -402,13 +416,13 @@ EDIシステムに支払通知書を登録しましたので、
   各1通
 
 《お願い》
-請求書内容をご確認いただき、内容にご同意いただける場合は「承認する」ボタンを押してください。
-承認いただけない場合はメールにてご返信ください。
+請求書内容をご確認いただき、内容にご同意いただける場合は「承諾」ボタンを押してください。
+承諾いただけない場合はメールにてご返信ください。
 
    対象月：{{ target_month }}
    税込合計：¥{{ total_amount }}-
 
-※尚、「承認」をいただいた場合は、従来のように請求書のご返送は不要となります。
+※尚、「承諾」をいただいた場合は、従来のように請求書のご返送は不要となります。
 
 御手数ではございますが、ご協力の程お願い申し上げます。
 
@@ -444,7 +458,7 @@ def compose_invoice_approve_email(invoice, partner, invoice_url):
     return _render_email_template(
         template_code='invoice_approve',
         default_subject='【請求書承認通知】請求番号：{{ invoice_no }}',
-        default_body="""{{ partner_name }} 様より、以下の請求書（支払通知書）が承認されました。
+        default_body="""{{ partner_name }} 様より、以下の請求書（支払通知書）が承諾されました。
 
 ■請求番号：{{ invoice_no }}
 ■対象年月：{{ target_month }}
@@ -462,4 +476,62 @@ def compose_invoice_approve_email(invoice, partner, invoice_url):
             'invoice_url': invoice_url,
         },
     )
+
+
+def compose_work_report_reminder_email(partner, project_name, target_month_str, deadline_str):
+    """⑥ 稼働報告書提出リマインドメール（自社→パートナー）"""
+    company = CompanyInfo.objects.first()
+    company_name = company.name if company else ''
+    company_tel = company.tel if company else ''
+    login_url = _get_login_url()
+
+    return _render_email_template(
+        template_code='work_report_reminder',
+        default_subject='【{{ company_name }}】{{ target_month }}分 稼働報告書ご提出のお願い（{{ deadline }}締切）',
+        default_body="""{{ partner_name }}　御中
+
+いつもお世話になっております。
+{{ company_name }}でございます。
+
+{{ target_month }}分の稼働報告書のご提出をお願いいたします。
+
+下記ＵＲＬからEDI-MPにログインし、
+「稼働報告書」画面よりExcelファイルのアップロードをお願いいたします。
+
+《URL》
+{{ login_url }}
+
+《対象プロジェクト》
+{{ project_name }}
+
+《提出期限》
+{{ deadline }}
+
+《ご注意》
+・稼働報告書はExcel形式（.xlsx / .xlsm）でアップロードしてください。
+・複数名の場合は、作業者ごとにファイルを分けてアップロードしてください。
+・アップロード後、内容を確認し「確定」ボタンを押してください。
+
+操作手順について不明な点がございましたら
+サイドバーの「操作マニュアル」をご参照ください。
+
+以上、よろしくお願いいたします。
+
+--------------------------------------------------
+{{ company_name }}
+TEL: {{ company_tel }}
+--------------------------------------------------
+""",
+        description='稼働報告書提出リマインドメール（パートナー宛）',
+        context={
+            'company_name': company_name,
+            'company_tel': company_tel,
+            'partner_name': partner.name,
+            'project_name': project_name,
+            'target_month': target_month_str,
+            'deadline': deadline_str,
+            'login_url': login_url,
+        },
+    )
+
 

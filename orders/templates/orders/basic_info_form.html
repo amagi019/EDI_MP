@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% if is_edit %}{% trans "発注基本情報編集" %}{% else %}{% trans "発注基本情報登録" %}{% endif %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="max-width: 900px; margin: 0 auto; padding: 2rem;">
+    <h1 style="margin-top: 0; font-family: 'Outfit', sans-serif; font-size: clamp(1.2rem, 4vw, 1.8rem);">
+        <span style="background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">{% if is_edit %}{% trans "発注基本情報 編集" %}{% else %}{% trans "発注基本情報 新規登録" %}{% endif %}</span>
+    </h1>
+
+    {% if form.errors or item_formset.errors %}
+    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; color: #FCA5A5;">
+        <strong>{% trans "入力エラーがあります。" %}</strong>
+        <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+            {% for field, errors in form.errors.items %}
+            <li>{{ field }}: {% for e in errors %}{{ e }}{% endfor %}</li>
+            {% endfor %}
+            {% for f in item_formset %}
+            {% if f.errors %}
+            <li>明細行{{ forloop.counter }}: {% for field, errors in f.errors.items %}{{ field }}:{% for e in errors %}{{ e }}{% endfor %} {% endfor %}</li>
+            {% endif %}
+            {% endfor %}
+            {% if item_formset.non_form_errors %}
+            {% for e in item_formset.non_form_errors %}
+            <li>{{ e }}</li>
+            {% endfor %}
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" id="basic-info-form">
+        {% csrf_token %}
+
+        {# === 基本情報 === #}
+        <section style="margin-bottom: 2rem;">
+            <h3 style="border-left: 4px solid var(--primary); padding-left: 0.8rem; margin-bottom: 1rem; font-size: 1rem;">{% trans "パートナー・プロジェクト" %}</h3>
+            <div class="bi-grid">
+                <div class="form-group">
+                    <label>{{ form.partner.label }} <span class="required">*</span></label>
+                    {{ form.partner }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.project.label }} <span class="required">*</span></label>
+                    {{ form.project }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.project_start_date.label }} <span class="required">*</span></label>
+                    {{ form.project_start_date }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.project_end_date.label }} <span class="required">*</span></label>
+                    {{ form.project_end_date }}
+                </div>
+            </div>
+        </section>
+
+        {# === 担当者 === #}
+        <section style="margin-bottom: 2rem;">
+            <h3 style="border-left: 4px solid var(--secondary); padding-left: 0.8rem; margin-bottom: 1rem; font-size: 1rem;">{% trans "担当者・責任者" %}</h3>
+            <div class="bi-grid">
+                <div class="form-group">
+                    <label>{{ form.甲_責任者.label }}</label>
+                    {{ form.甲_責任者 }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.甲_担当者.label }}</label>
+                    {{ form.甲_担当者 }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.乙_責任者.label }}</label>
+                    {{ form.乙_責任者 }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.乙_担当者.label }}</label>
+                    {{ form.乙_担当者 }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.作業責任者.label }}</label>
+                    {{ form.作業責任者 }}
+                </div>
+            </div>
+        </section>
+
+        {# === 契約情報 === #}
+        <section style="margin-bottom: 2rem;">
+            <h3 style="border-left: 4px solid var(--accent); padding-left: 0.8rem; margin-bottom: 1rem; font-size: 1rem;">{% trans "契約・支払" %}</h3>
+            <div class="bi-grid">
+                <div class="form-group">
+                    <label>{{ form.workplace.label }}</label>
+                    {{ form.workplace }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.deliverable_text.label }}</label>
+                    {{ form.deliverable_text }}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>{{ form.payment_condition.label }}</label>
+                {{ form.payment_condition }}
+            </div>
+            <div class="form-group">
+                <label>{{ form.contract_items.label }}</label>
+                {{ form.contract_items }}
+            </div>
+        </section>
+
+        {# === 明細行テンプレート === #}
+        <section style="margin-bottom: 2rem;">
+            <h3 style="border-left: 4px solid #10b981; padding-left: 0.8rem; margin-bottom: 1rem; font-size: 1rem;">{% trans "明細行（作業者テンプレート）" %}</h3>
+
+            {{ item_formset.management_form }}
+
+            <div id="item-formset-container">
+                {% for item_form in item_formset %}
+                <div class="item-row" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 0.8rem;">
+                    <div class="bi-item-grid">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem;">{% trans "作業者名" %}</label>
+                            {{ item_form.person_name }}
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem;">{% trans "工数" %}</label>
+                            {{ item_form.effort }}
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem;">{% trans "月額（円）" %}</label>
+                            {{ item_form.base_fee }}
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem;">{% trans "下限(h)" %}</label>
+                            {{ item_form.time_lower_limit }}
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem;">{% trans "上限(h)" %}</label>
+                            {{ item_form.time_upper_limit }}
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem;">{% trans "不足(円/h)" %}</label>
+                            {{ item_form.shortage_rate }}
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem;">{% trans "超過(円/h)" %}</label>
+                            {{ item_form.excess_rate }}
+                        </div>
+                        <div style="display: flex; align-items: flex-end; padding-bottom: 0.15rem;">
+                            {% if item_form.DELETE %}
+                            <span style="display:none;">{{ item_form.DELETE }}</span>
+                            <button type="button" class="delete-btn" onclick="toggleDelete(this)" title="削除">🗑️</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {{ item_form.id }}
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" id="add-item-btn" class="btn btn-secondary" style="margin-top: 0.5rem;">
+                <i class="fas fa-plus"></i> {% trans "作業者を追加" %}
+            </button>
+        </section>
+
+        {# === 期限ルール === #}
+        <section style="margin-bottom: 2rem;">
+            <h3 style="border-left: 4px solid #EF4444; padding-left: 0.8rem; margin-bottom: 1rem; font-size: 1rem;">{% trans "期限ルール設定" %}</h3>
+            <div class="bi-grid">
+                <div class="form-group">
+                    <label>{{ form.order_create_deadline_day.label }}</label>
+                    {{ form.order_create_deadline_day }}
+                    <small style="color: var(--text-dim);">前月の何日</small>
+                </div>
+                <div class="form-group">
+                    <label>{{ form.order_approve_deadline_days_before.label }}</label>
+                    {{ form.order_approve_deadline_days_before }}
+                    <small style="color: var(--text-dim);">前月末から何日前</small>
+                </div>
+                <div class="form-group">
+                    <label>{{ form.report_upload_deadline_days_before.label }}</label>
+                    {{ form.report_upload_deadline_days_before }}
+                    <small style="color: var(--text-dim);">月末から何日前</small>
+                </div>
+                <div class="form-group">
+                    <label>{{ form.invoice_create_deadline_day.label }}</label>
+                    {{ form.invoice_create_deadline_day }}
+                    <small style="color: var(--text-dim);">翌月の何日</small>
+                </div>
+                <div class="form-group">
+                    <label>{{ form.invoice_approve_deadline_day.label }}</label>
+                    {{ form.invoice_approve_deadline_day }}
+                    <small style="color: var(--text-dim);">翌月の何日</small>
+                </div>
+            </div>
+            <div class="bi-grid" style="margin-top: 1rem;">
+                <div class="form-group">
+                    <label>{{ form.reminder_days_before.label }}</label>
+                    {{ form.reminder_days_before }}
+                </div>
+                <div class="form-group">
+                    <label>{{ form.alert_days_after.label }}</label>
+                    {{ form.alert_days_after }}
+                </div>
+            </div>
+        </section>
+
+        {# === 備考 === #}
+        <section style="margin-bottom: 2rem;">
+            <div class="form-group">
+                <label>{{ form.remarks.label }}</label>
+                {{ form.remarks }}
+            </div>
+        </section>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+            <a href="{% url 'orders:basic_info_list' %}" class="btn btn-secondary">{% trans "キャンセル" %}</a>
+            <button type="submit" class="btn" style="padding: 0.75rem 2rem;">
+                <i class="fas fa-save"></i> {% if is_edit %}{% trans "更新" %}{% else %}{% trans "登録" %}{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; font-size: 0.85rem; }
+    .form-group input, .form-group select, .form-group textarea {
+        width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;
+        background: var(--background); color: var(--text-main); box-sizing: border-box; font-size: 0.9rem;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+    .required { color: #ef4444; font-weight: bold; }
+    .bi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .bi-item-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr auto; gap: 0.5rem; align-items: start; }
+    .item-row input { font-size: 0.85rem; padding: 0.4rem; }
+    .delete-btn {
+        background: rgba(239, 68, 68, 0.1); border: none; border-radius: 8px;
+        cursor: pointer; padding: 0.4rem 0.6rem; font-size: 1.1rem; line-height: 1;
+    }
+    .item-row.marked-delete { opacity: 0.4; }
+
+    @media (max-width: 768px) {
+        .card { padding: 1rem !important; }
+        .bi-grid { grid-template-columns: 1fr !important; }
+        .bi-item-grid { grid-template-columns: 1fr 1fr !important; }
+        .form-group input, .form-group select, .form-group textarea { font-size: 16px !important; }
+        .item-row input { font-size: 16px !important; padding: 0.5rem !important; }
+    }
+</style>
+
+<script>
+function toggleDelete(btn) {
+    var row = btn.closest('.item-row');
+    var checkbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        row.classList.toggle('marked-delete', checkbox.checked);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var container = document.getElementById('item-formset-container');
+    var addBtn = document.getElementById('add-item-btn');
+    var totalForms = document.getElementById('id_template_items-TOTAL_FORMS');
+
+    // 不足/超過単価の自動計算
+    function calcRates(row) {
+        var baseFee = parseFloat(row.querySelector('[name$="-base_fee"]').value) || 0;
+        var lower = parseFloat(row.querySelector('[name$="-time_lower_limit"]').value) || 0;
+        var upper = parseFloat(row.querySelector('[name$="-time_upper_limit"]').value) || 0;
+        var shortageInput = row.querySelector('[name$="-shortage_rate"]');
+        var excessInput = row.querySelector('[name$="-excess_rate"]');
+        if (!shortageInput.dataset.manual && lower > 0 && baseFee > 0) {
+            shortageInput.value = Math.floor(baseFee / lower / 10) * 10;
+        }
+        if (!excessInput.dataset.manual && upper > 0 && baseFee > 0) {
+            excessInput.value = Math.floor(baseFee / upper / 10) * 10;
+        }
+    }
+
+    function attachListeners(row) {
+        var triggers = row.querySelectorAll('[name$="-base_fee"], [name$="-time_lower_limit"], [name$="-time_upper_limit"]');
+        for (var i = 0; i < triggers.length; i++) {
+            triggers[i].addEventListener('input', function() { calcRates(row); });
+        }
+        var shortageInput = row.querySelector('[name$="-shortage_rate"]');
+        var excessInput = row.querySelector('[name$="-excess_rate"]');
+        if (shortageInput) shortageInput.addEventListener('input', function() { this.dataset.manual = '1'; });
+        if (excessInput) excessInput.addEventListener('input', function() { this.dataset.manual = '1'; });
+    }
+
+    var existingRows = container.querySelectorAll('.item-row');
+    for (var k = 0; k < existingRows.length; k++) {
+        attachListeners(existingRows[k]);
+    }
+
+    addBtn.addEventListener('click', function() {
+        var formCount = parseInt(totalForms.value);
+        var lastRow = container.querySelector('.item-row:last-child');
+        if (!lastRow) return;
+
+        var newRow = lastRow.cloneNode(true);
+        newRow.innerHTML = newRow.innerHTML.replace(
+            new RegExp('template_items-\\d+-', 'g'),
+            'template_items-' + formCount + '-'
+        );
+        newRow.innerHTML = newRow.innerHTML.replace(
+            new RegExp('id_template_items-\\d+-', 'g'),
+            'id_template_items-' + formCount + '-'
+        );
+        var inputs = newRow.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"])');
+        for (var i = 0; i < inputs.length; i++) {
+            var name = inputs[i].name || '';
+            if (name.endsWith('-time_lower_limit')) {
+                inputs[i].value = '140.00';
+            } else if (name.endsWith('-time_upper_limit')) {
+                inputs[i].value = '180.00';
+            } else {
+                inputs[i].value = '';
+            }
+            delete inputs[i].dataset.manual;
+        }
+        var checkboxes = newRow.querySelectorAll('input[type="checkbox"]');
+        for (var j = 0; j < checkboxes.length; j++) {
+            checkboxes[j].checked = false;
+        }
+        var hiddenId = newRow.querySelector('input[name$="-id"]');
+        if (hiddenId) hiddenId.value = '';
+
+        newRow.classList.remove('marked-delete');
+        container.appendChild(newRow);
+        totalForms.value = formCount + 1;
+        attachListeners(newRow);
+    });
+});
+</script>
+{% endblock %}

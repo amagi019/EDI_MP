@@ -23,7 +23,8 @@ class BillingCustomer(models.Model):
     )
     phone = models.CharField(_("電話番号"), max_length=20, blank=True)
     postal_code = models.CharField(_("郵便番号"), max_length=10, blank=True)
-    address = models.CharField(_("住所"), max_length=255, blank=True)
+    address = models.CharField(_("住所1"), max_length=255, blank=True)
+    address2 = models.CharField(_("住所2"), max_length=255, blank=True)
 
     class Meta:
         verbose_name = _("請求先")
@@ -86,6 +87,13 @@ class BillingInvoice(models.Model):
     notes = models.TextField(_("備考"), blank=True)
     status = models.CharField(
         _("ステータス"), max_length=10, choices=STATUS_CHOICES, default='DRAFT'
+    )
+
+    # 受注への紐付け（Phase 2追加）
+    received_order = models.ForeignKey(
+        'billing.ReceivedOrder', on_delete=models.SET_NULL,
+        verbose_name=_("受注"), null=True, blank=True,
+        related_name='billing_invoices'
     )
 
     # PDF・ドライブ連携
@@ -231,3 +239,331 @@ class BillingItem(models.Model):
     def total(self):
         """合計（税込）"""
         return self.amount + self.tax
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# クライアント管理 — 新規モデル（Phase 2）
+# パートナー管理と対称的な業務フロー:
+#   取引先登録 → 基本契約 → 受注 → 勤怠報告 → 請求 → 入金確認
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class ClientContract(models.Model):
+    """クライアント基本契約（パートナー側のOrderBasicInfoに対応）"""
+    BILLING_TIMING_CHOICES = [
+        ('FIRST_DAY', _('月初')),
+        ('10TH_DAY', _('10日')),
+        ('15TH_DAY', _('15日')),
+        ('20TH_DAY', _('20日')),
+        ('LAST_DAY', _('月末')),
+    ]
+
+    customer = models.ForeignKey(
+        BillingCustomer, on_delete=models.CASCADE,
+        verbose_name=_("取引先"), related_name='contracts'
+    )
+    project_name = models.CharField(_("案件名"), max_length=128)
+    start_date = models.DateField(_("契約開始日"))
+    end_date = models.DateField(_("契約終了日"))
+    billing_timing = models.CharField(
+        _("請求タイミング"), max_length=20,
+        choices=BILLING_TIMING_CHOICES, default='LAST_DAY'
+    )
+    payment_terms = models.CharField(
+        _("支払条件"), max_length=255,
+        default="毎月末日締め翌月末日払い", blank=True
+    )
+    remarks = models.TextField(_("備考"), blank=True)
+    is_active = models.BooleanField(_("有効"), default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("クライアント基本契約")
+        verbose_name_plural = _("クライアント基本契約")
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return f"{self.customer.name} - {self.project_name}"
+
+
+class ReceivedOrder(models.Model):
+    """受注（クライアントからの注文書）— パートナー側のOrderに対応"""
+    STATUS_CHOICES = [
+        ('REGISTERED', _('登録済')),
+        ('ACTIVE', _('進行中')),
+        ('COMPLETED', _('完了')),
+        ('CANCELLED', _('取消')),
+    ]
+
+    contract = models.ForeignKey(
+        ClientContract, on_delete=models.SET_NULL,
+        verbose_name=_("基本契約"), null=True, blank=True,
+        related_name='received_orders'
+    )
+    customer = models.ForeignKey(
+        BillingCustomer, on_delete=models.PROTECT,
+        verbose_name=_("取引先"), related_name='received_orders'
+    )
+    order_number = models.CharField(
+        _("注文番号"), max_length=50, blank=True,
+        help_text=_("クライアントが発番した注文番号")
+    )
+    target_month = models.DateField(
+        _("対象月"), help_text=_("YYYY-MM-01形式")
+    )
+    work_start = models.DateField(_("作業開始日"))
+    work_end = models.DateField(_("作業終了日"))
+    project_name = models.CharField(_("業務名称"), max_length=255, blank=True)
+
+    # 注文書原本
+    order_file = models.FileField(
+        _("注文書PDF"), upload_to='received_orders/',
+        blank=True, null=True,
+        help_text=_("クライアントから受領した注文書PDF")
+    )
+    parsed_data = models.JSONField(
+        _("パース結果"), null=True, blank=True,
+        help_text=_("PDFから自動抽出されたデータ")
+    )
+
+    status = models.CharField(
+        _("ステータス"), max_length=20,
+        choices=STATUS_CHOICES, default='REGISTERED'
+    )
+    is_recurring = models.BooleanField(
+        _("継続注文"), default=False,
+        help_text=_("毎月自動でロールフォワードする注文")
+    )
+    parent_order = models.ForeignKey(
+        'self', on_delete=models.SET_NULL,
+        verbose_name=_("元注文"), null=True, blank=True,
+        related_name='child_orders',
+        help_text=_("ロールフォワード元の注文")
+    )
+    order_date = models.DateField(_("注文日"), default=datetime.date.today)
+    remarks = models.TextField(_("備考"), blank=True)
+
+    # 作業報告書メール送信先
+    report_to_email = models.EmailField(
+        _("報告書送信先(TO)"), blank=True,
+        help_text=_("作業報告書の送信先メールアドレス")
+    )
+    report_cc_emails = models.TextField(
+        _("報告書CC"), blank=True,
+        help_text=_("カンマ区切りで複数指定可（例: a@example.com, b@example.com）")
+    )
+    # 請求書メール送信先
+    invoice_to_email = models.EmailField(
+        _("請求書送信先(TO)"), blank=True,
+        help_text=_("請求書の送信先メールアドレス")
+    )
+    invoice_cc_emails = models.TextField(
+        _("請求書CC"), blank=True,
+        help_text=_("カンマ区切りで複数指定可")
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("受注")
+        verbose_name_plural = _("受注")
+        ordering = ['-target_month', '-created_at']
+
+    def __str__(self):
+        return f"{self.order_number or '---'} - {self.customer.name} ({self.target_month.strftime('%Y/%m')})"
+
+
+class ReceivedOrderItem(models.Model):
+    """受注明細 — パートナー側のOrderItemに対応"""
+    order = models.ForeignKey(
+        ReceivedOrder, on_delete=models.CASCADE,
+        related_name='items', verbose_name=_("受注")
+    )
+    product = models.ForeignKey(
+        BillingProduct, on_delete=models.SET_NULL,
+        verbose_name=_("商品"), null=True, blank=True
+    )
+    person_name = models.CharField(_("要員名"), max_length=64, blank=True)
+    unit_price = models.IntegerField(_("単価"), default=0)
+    man_month = models.DecimalField(
+        _("人月"), max_digits=4, decimal_places=2, default=1.00
+    )
+    # SES精算条件
+    SETTLEMENT_CHOICES = [
+        ('MIDDLE', _('中間割')),
+        ('RANGE', _('上下限割')),
+    ]
+    settlement_type = models.CharField(
+        _("精算条件"), max_length=10, choices=SETTLEMENT_CHOICES,
+        default='RANGE'
+    )
+    settlement_middle_hours = models.DecimalField(
+        _("中間基準時間"), max_digits=5, decimal_places=2, default=170.00,
+        help_text=_("中間割の場合の基準時間")
+    )
+    time_lower_limit = models.DecimalField(
+        _("基準時間_下限"), max_digits=5, decimal_places=2, default=140.00
+    )
+    time_upper_limit = models.DecimalField(
+        _("基準時間_上限"), max_digits=5, decimal_places=2, default=180.00
+    )
+    shortage_rate = models.IntegerField(_("控除単価"), default=0)
+    excess_rate = models.IntegerField(_("超過単価"), default=0)
+
+    class Meta:
+        verbose_name = _("受注明細")
+        verbose_name_plural = _("受注明細")
+
+    def __str__(self):
+        name = self.person_name or (self.product.name if self.product else _('明細'))
+        return f"{self.order.order_number} - {name}"
+
+
+class StaffTimesheet(models.Model):
+    """勤怠報告 — パートナー側のWorkReportに対応"""
+    STATUS_CHOICES = [
+        ('DRAFT', _('下書き')),
+        ('SUBMITTED', _('提出済')),
+        ('SENT', _('送付済')),
+        ('APPROVED', _('承認済')),
+    ]
+    WORKER_TYPE_CHOICES = [
+        ('INTERNAL', _('自社社員')),
+        ('PARTNER', _('パートナー')),
+    ]
+
+    order = models.ForeignKey(
+        ReceivedOrder, on_delete=models.CASCADE,
+        verbose_name=_("受注"), related_name='timesheets'
+    )
+    order_item = models.ForeignKey(
+        ReceivedOrderItem, on_delete=models.SET_NULL,
+        verbose_name=_("受注明細"), null=True, blank=True,
+        related_name='timesheets'
+    )
+    worker_name = models.CharField(_("作業者名"), max_length=64)
+    worker_type = models.CharField(
+        _("要員種別"), max_length=10,
+        choices=WORKER_TYPE_CHOICES, default='INTERNAL'
+    )
+    # PayrollSystem社員番号との紐付け（自社社員の場合に設定）
+    employee_id = models.CharField(
+        _("社員番号"), max_length=20, blank=True,
+        help_text=_("PayrollSystemの社員番号。自社社員の場合に設定")
+    )
+    target_month = models.DateField(_("対象月"))
+    total_hours = models.DecimalField(
+        _("合計稼働時間"), max_digits=6, decimal_places=2, default=0.00
+    )
+    work_days = models.IntegerField(_("稼働日数"), default=0)
+    daily_data = models.JSONField(
+        _("日別データ"), null=True, blank=True,
+        help_text=_('[{"date": "2026-03-01", "hours": 8.0, "start": "9:00", "end": "18:00"}, ...]')
+    )
+    # Excelファイル原本（取引先へのメール送信時に添付）
+    excel_file = models.FileField(
+        _("Excelファイル"), upload_to='timesheets/excel/',
+        blank=True, null=True,
+        help_text=_("アップロードされた稼働報告Excelファイルの原本")
+    )
+    original_filename = models.CharField(
+        _("元ファイル名"), max_length=512, blank=True
+    )
+    status = models.CharField(
+        _("ステータス"), max_length=10,
+        choices=STATUS_CHOICES, default='DRAFT'
+    )
+    # パートナー稼働報告との紐付け
+    partner_report = models.ForeignKey(
+        'invoices.WorkReport', on_delete=models.SET_NULL,
+        verbose_name=_("パートナー稼働報告"), null=True, blank=True,
+        related_name='staff_timesheets'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("稼働報告")
+        verbose_name_plural = _("稼働報告")
+        ordering = ['-target_month']
+
+    def __str__(self):
+        return f"{self.worker_name} - {self.target_month.strftime('%Y/%m')}"
+
+    def save(self, *args, **kwargs):
+        """保存時にemployee_idを自動設定する。
+
+        worker_typeが'INTERNAL'（自社社員）でemployee_idが未設定の場合、
+        SyncedEmployeeテーブルからworker_nameで検索し自動補完する。
+        """
+        if self.worker_type == 'INTERNAL' and not self.employee_id:
+            self._auto_fill_employee_id()
+        super().save(*args, **kwargs)
+
+    def _auto_fill_employee_id(self):
+        """SyncedEmployeeからworker_nameで社員番号を自動検索・設定する"""
+        import logging
+        from billing.domain.synced_employee import SyncedEmployee
+
+        logger = logging.getLogger(__name__)
+
+        # 空白を正規化して比較
+        def normalize(name):
+            return name.replace(' ', '').replace('\u3000', '').strip()
+
+        normalized = normalize(self.worker_name)
+        matches = [
+            emp for emp in SyncedEmployee.objects.filter(is_active=True)
+            if normalize(emp.name) == normalized
+        ]
+
+        if len(matches) == 1:
+            self.employee_id = matches[0].employee_id
+            logger.info(
+                f'employee_id自動設定: {self.worker_name} → {self.employee_id}'
+            )
+        elif len(matches) > 1:
+            logger.warning(
+                f'同姓同名の社員が{len(matches)}名います: {self.worker_name}。'
+                f'employee_idを手動で設定してください。'
+            )
+
+
+class PaymentRecord(models.Model):
+    """入金記録 — パートナー側には対応物なし（新規概念）"""
+    METHOD_CHOICES = [
+        ('TRANSFER', _('銀行振込')),
+        ('CHECK', _('小切手')),
+        ('OTHER', _('その他')),
+    ]
+
+    invoice = models.ForeignKey(
+        BillingInvoice, on_delete=models.CASCADE,
+        verbose_name=_("請求書"), related_name='payments'
+    )
+    payment_date = models.DateField(_("入金日"))
+    amount = models.IntegerField(_("入金額"))
+    method = models.CharField(
+        _("入金方法"), max_length=10,
+        choices=METHOD_CHOICES, default='TRANSFER'
+    )
+    reference = models.CharField(
+        _("振込名義/備考"), max_length=255, blank=True
+    )
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        verbose_name=_("確認者"), null=True, blank=True
+    )
+    confirmed_at = models.DateTimeField(_("確認日時"), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("入金記録")
+        verbose_name_plural = _("入金記録")
+        ordering = ['-payment_date']
+
+    def __str__(self):
+        return f"{self.payment_date} - ¥{self.amount:,} ({self.get_method_display()})"

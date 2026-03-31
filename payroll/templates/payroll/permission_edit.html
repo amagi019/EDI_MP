@@ -1,0 +1,52 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% trans "権限編集" %} - {{ perm.user.username }}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <h1>🔐 {{ perm.user.username }} {% trans "の権限編集" %}</h1>
+    <div class="card" style="padding: 2rem; max-width: 600px;">
+        <form method="post">
+            {% csrf_token %}
+            <div style="margin-bottom: 1.5rem;">
+                <label style="color: var(--text-dim); margin-bottom: 0.5rem;">{% trans "閲覧範囲" %}</label>
+                <select name="permission_level" style="width: 100%;">
+                    {% for value, label in permission_choices %}
+                    <option value="{{ value }}" {% if perm.permission_level == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="color: var(--text-dim); margin-bottom: 0.5rem;">{% trans "紐付き社員" %}</label>
+                <select name="employee" style="width: 100%;">
+                    <option value="">---</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.pk }}" {% if perm.employee_id == emp.pk %}selected{% endif %}>{{ emp.employee_id }} {{ emp.name }}</option>
+                    {% endfor %}
+                </select>
+                <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.2rem;">{% trans "「自分のみ」の場合、この社員の給与のみ閲覧可能になります" %}</div>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="can_calculate" {% if perm.can_calculate %}checked{% endif %}>
+                    <span>{% trans "計算実行権限" %}</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="can_approve" {% if perm.can_approve %}checked{% endif %}>
+                    <span>{% trans "承認権限" %}</span>
+                </label>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" name="can_transfer" {% if perm.can_transfer %}checked{% endif %}>
+                    <span>{% trans "振込実行権限" %}</span>
+                </label>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn" style="padding: 0.75rem 2rem;">💾 {% trans "保存" %}</button>
+                <a href="{% url 'payroll:permission_list' %}" class="btn btn-secondary" style="padding: 0.75rem 2rem;">{% trans "キャンセル" %}</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

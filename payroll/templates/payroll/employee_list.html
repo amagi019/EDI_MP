@@ -1,0 +1,53 @@
+{% extends "base.html" %}{% load i18n %}{% load humanize %}
+{% block title %}{% trans "社員管理" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <div class="flex justify-between" style="align-items: center; margin-bottom: 2rem;">
+        <h1>👤 {% trans "社員管理" %}</h1>
+        <a href="{% url 'payroll:employee_create' %}" class="btn">＋ {% trans "社員登録" %}</a>
+    </div>
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "社員番号" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "氏名" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "基本給" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "役職手当" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "標準報酬月額" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "状態" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "操作" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem;">{{ emp.employee_id }}</td>
+                    <td style="padding: 0.75rem; font-weight: 500;">{{ emp.name }}</td>
+                    <td style="padding: 0.75rem; text-align: right;">¥{{ emp.base_salary|intcomma }}</td>
+                    <td style="padding: 0.75rem; text-align: right;">¥{{ emp.position_allowance|intcomma }}</td>
+                    <td style="padding: 0.75rem; text-align: right;">¥{{ emp.standard_remuneration|intcomma }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        {% if emp.is_active %}
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(16,185,129,0.15); color: #10B981;">{% trans "在籍" %}</span>
+                        {% else %}
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(148,163,184,0.15); color: #94A3B8;">{% trans "退職" %}</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <a href="{% url 'payroll:employee_update' emp.pk %}" style="color: #818CF8;">{% trans "編集" %}</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-dim);">{% trans "社員が登録されていません" %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top: 1.5rem;">
+        <a href="{% url 'payroll:payroll_list' %}" class="btn btn-secondary">← {% trans "給与一覧に戻る" %}</a>
+    </div>
+</div>
+{% endblock %}

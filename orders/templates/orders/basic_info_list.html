@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "発注基本情報一覧" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="padding: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+        <h1 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: clamp(1.2rem, 4vw, 2rem);">
+            <span style="background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">{% trans "発注基本情報" %}</span>
+        </h1>
+        <a href="{% url 'orders:basic_info_create' %}" class="btn" style="padding: 0.5rem 1.2rem;">
+            <i class="fas fa-plus"></i> {% trans "新規登録" %}
+        </a>
+    </div>
+
+    {% if basic_infos %}
+    {% for bi in basic_infos %}
+    <a href="{% url 'orders:basic_info_edit' bi.pk %}" style="display: block; text-decoration: none; color: inherit; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 0.8rem; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem;">
+            <div>
+                <div style="font-weight: 600; font-size: 0.95rem;">{{ bi.project.name }}</div>
+                <div style="font-size: 0.8rem; color: var(--text-dim);">{{ bi.partner.name }}</div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 0.8rem; color: var(--text-dim);">{{ bi.project_start_date|date:"Y/m/d" }} 〜 {{ bi.project_end_date|date:"Y/m/d" }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">作業者 {{ bi.template_items.count }}名</div>
+            </div>
+        </div>
+        {% if bi.template_items.all %}
+        <div style="margin-top: 0.5rem; display: flex; gap: 0.4rem; flex-wrap: wrap;">
+            {% for item in bi.template_items.all %}
+            <span style="background: rgba(79,70,229,0.1); color: #818CF8; padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.7rem;">{{ item.person_name }} {{ item.base_fee|floatformat:0 }}円</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </a>
+    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: -0.5rem; margin-bottom: 0.8rem;">
+        <form method="post" action="{% url 'orders:create_order_from_basic_info' bi.pk %}" style="display: inline;" data-no-double-submit onsubmit="return confirm('翌月分の注文書ドラフトを作成しますか？')">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: linear-gradient(135deg, #10b981, #059669);">
+                <i class="fas fa-file-invoice"></i> 注文書作成
+            </button>
+        </form>
+        <form method="post" action="{% url 'invoices:invoice_create_from_basic_info' bi.pk %}" style="display: inline;" data-no-double-submit onsubmit="return confirm('翌月分の請求書ドラフトを作成しますか？')">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                <i class="fas fa-file-invoice-dollar"></i> 請求書作成
+            </button>
+        </form>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-dim);">
+        <i class="fas fa-folder-open" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+        <p>{% trans "登録済みの発注基本情報はありません" %}</p>
+        <a href="{% url 'orders:basic_info_create' %}" class="btn" style="margin-top: 1rem;">{% trans "新規登録する" %}</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

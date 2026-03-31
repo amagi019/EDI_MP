@@ -15,6 +15,7 @@ urlpatterns = [
     path('contract-progress/', views.ContractProgressListView.as_view(), name='contract_progress_list'),
     # 基本契約書関連
     path('contract/<str:partner_id>/generate/', views.ContractGenerateView.as_view(), name='contract_generate'),
+    path('contract/<str:partner_id>/regenerate/', views.ContractRegenerateView.as_view(), name='contract_regenerate'),
     path('contract/<str:partner_id>/preview/', views.ContractPreviewView.as_view(), name='contract_preview'),
     path('contract/<str:partner_id>/send/', views.ContractSendView.as_view(), name='contract_send'),
     path('contract/<str:partner_id>/approve/', views.ContractApproveView.as_view(), name='contract_approve'),

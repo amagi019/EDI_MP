@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% load i18n %}{% load humanize %}
+{% block title %}{% trans "マイ給与明細" %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <div style="margin-bottom: 2rem;">
+        <h1>📋 {% trans "マイ給与明細" %}</h1>
+        {% if employee %}
+        <p style="color: var(--text-dim);">{{ employee.name }}{% trans "さんの給与明細一覧です。" %}</p>
+        {% else %}
+        <div class="card" style="padding: 2rem; text-align: center;">
+            <p style="color: #F59E0B; font-size: 1.1rem;">⚠ {% trans "ユーザーアカウントに社員情報が紐付けられていません。" %}</p>
+            <p style="color: var(--text-dim);">{% trans "管理者に連絡して、アカウントと社員情報を紐付けてもらってください。" %}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if payrolls %}
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "対象月" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "支給合計" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "控除合計" %}</th>
+                    <th style="text-align: right; padding: 0.75rem; color: var(--text-dim);">{% trans "差引支給額" %}</th>
+                    <th style="text-align: center; padding: 0.75rem; color: var(--text-dim);">{% trans "明細" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payrolls %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 0.75rem; font-weight: 500;">{{ p.year_month|date:"Y年m月" }}</td>
+                    <td style="padding: 0.75rem; text-align: right;">¥{{ p.gross_pay|intcomma }}</td>
+                    <td style="padding: 0.75rem; text-align: right; color: #F59E0B;">¥{{ p.deduction_total|intcomma }}</td>
+                    <td style="padding: 0.75rem; text-align: right; font-weight: 700; color: #818CF8;">¥{{ p.net_pay|intcomma }}</td>
+                    <td style="padding: 0.75rem; text-align: center;">
+                        <a href="{% url 'payroll:payslip_pdf' p.pk %}" target="_blank" style="color: #818CF8; text-decoration: none;" title="{% trans 'PDF表示' %}">📄 PDF</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% elif employee %}
+    <div class="card" style="padding: 2rem; text-align: center; color: var(--text-dim);">
+        {% trans "給与データがまだありません。" %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -9,7 +9,7 @@ class Invoice(models.Model):
         ('PENDING_REVIEW', _('確認待ち')),
         ('ISSUED', _('発行済')),
         ('SENT', _('送付済')),
-        ('CONFIRMED', _('パートナー承認済')),
+        ('CONFIRMED', _('パートナー承諾済')),
         ('PAID', _('支払済')),
     ]
 
@@ -100,3 +100,138 @@ class InvoiceItem(models.Model):
 
     def __str__(self):
         return f"{self.invoice.invoice_no} - {self.person_name}"
+
+
+class WorkReport(models.Model):
+    """稼働報告書（パートナーの作業責任者がアップロード）"""
+    STATUS_CHOICES = [
+        ('UPLOADED', _('受領済')),
+        ('PARSED', _('解析済')),
+        ('ALERT', _('要確認')),
+        ('APPROVED', _('確定済')),
+        ('ERROR', _('解析エラー')),
+    ]
+
+    order = models.ForeignKey(
+        Order, on_delete=models.CASCADE,
+        verbose_name=_("注文"), related_name='work_reports'
+    )
+    target_month = models.DateField(_("対象年月"), null=True, blank=True,
+        help_text="B列の日付データから自動検出")
+    worker_name = models.CharField(_("作業者氏名"), max_length=128, blank=True,
+        help_text="オートシェイプまたはファイル名から自動取得")
+    uploaded_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True,
+        verbose_name=_("アップロード者")
+    )
+    uploaded_at = models.DateTimeField(_("アップロード日時"), auto_now_add=True)
+    file = models.FileField(_("報告書ファイル"), upload_to='work_reports/')
+    original_filename = models.CharField(_("元ファイル名"), max_length=512, blank=True)
+    status = models.CharField(
+        _("ステータス"), max_length=20,
+        choices=STATUS_CHOICES, default='UPLOADED'
+    )
+
+    # パース結果
+    total_hours = models.DecimalField(
+        _("合計時間"), max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    work_days = models.IntegerField(_("稼働日数"), null=True, blank=True)
+    daily_data_json = models.JSONField(
+        _("日別データ"), null=True, blank=True,
+        help_text='[{"date": "2026-02-02", "hours": 8.0, "start": "9:00", "end": "18:00"}, ...]'
+    )
+
+    # チェック結果
+    alerts_json = models.JSONField(
+        _("警告データ"), null=True, blank=True,
+        help_text='[{"date": "2026-02-08", "type": "weekend", "hours": 8.0, "day_name": "土"}, ...]'
+    )
+    error_message = models.TextField(_("エラーメッセージ"), blank=True)
+
+    # Google Drive
+    drive_file_id = models.CharField(
+        _("DriveファイルID"), max_length=200, blank=True
+    )
+
+    class Meta:
+        verbose_name = _("稼働報告書")
+        verbose_name_plural = _("稼働報告書")
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        name = self.worker_name or self.original_filename
+        month = self.target_month.strftime('%Y年%m月') if self.target_month else '不明'
+        return f"{name} - {month}"
+
+    @property
+    def has_alerts(self):
+        return bool(self.alerts_json)
+
+
+class ReceivedEmail(models.Model):
+    """受信メールログ（稼働報告メール取込用）"""
+    STATUS_CHOICES = [
+        ('NEW', _('新規')),
+        ('IMPORTED', _('取込済')),
+        ('FORWARDED', _('転送済')),
+        ('IGNORED', _('対象外')),
+        ('ERROR', _('エラー')),
+    ]
+
+    message_id = models.CharField(_("Message-ID"), max_length=512, unique=True)
+    from_email = models.EmailField(_("送信元"))
+    from_name = models.CharField(_("送信者名"), max_length=255, blank=True)
+    subject = models.CharField(_("件名"), max_length=512)
+    received_at = models.DateTimeField(_("受信日時"))
+    body_text = models.TextField(_("本文"), blank=True)
+
+    # パートナー照合
+    partner = models.ForeignKey(
+        'core.Partner', on_delete=models.SET_NULL,
+        null=True, blank=True, verbose_name=_("照合パートナー"),
+        related_name='received_emails'
+    )
+
+    # 処理結果
+    status = models.CharField(
+        _("ステータス"), max_length=20,
+        choices=STATUS_CHOICES, default='NEW'
+    )
+    work_report = models.ForeignKey(
+        WorkReport, on_delete=models.SET_NULL,
+        null=True, blank=True, verbose_name=_("稼働報告書"),
+        related_name='source_emails'
+    )
+    error_message = models.TextField(_("エラーメッセージ"), blank=True)
+
+    # 添付ファイル情報
+    attachment_filename = models.CharField(
+        _("添付ファイル名"), max_length=512, blank=True
+    )
+    attachment_file = models.FileField(
+        _("添付ファイル"), upload_to='received_emails/',
+        blank=True, null=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(_("処理日時"), null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("受信メール")
+        verbose_name_plural = _("受信メール")
+        ordering = ['-received_at']
+
+    def __str__(self):
+        return f"{self.from_name or self.from_email} - {self.subject[:50]}"
+
+    @property
+    def status_badge_style(self):
+        styles = {
+            'NEW': 'background: rgba(245,158,11,0.15); color: #F59E0B;',
+            'IMPORTED': 'background: rgba(16,185,129,0.15); color: #10B981;',
+            'FORWARDED': 'background: rgba(79,70,229,0.15); color: #818CF8;',
+            'IGNORED': 'background: rgba(148,163,184,0.15); color: #94A3B8;',
+            'ERROR': 'background: rgba(239,68,68,0.15); color: #EF4444;',
+        }
+        return styles.get(self.status, styles['NEW'])

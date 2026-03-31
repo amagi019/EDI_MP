@@ -7,6 +7,25 @@ class OrderBasicInfoAdmin(admin.ModelAdmin):
     list_display = ('project', 'partner', 'project_start_date', 'project_end_date', 'order_issuance_timing', 'invoice_issuance_timing')
     list_filter = ('partner', 'order_issuance_timing', 'invoice_issuance_timing')
     search_fields = ('project__name', 'partner__name')
+    fieldsets = (
+        (None, {
+            'fields': ('partner', 'project', 'project_start_date', 'project_end_date',
+                       'order_issuance_timing', 'invoice_issuance_timing')
+        }),
+        ('期限ルール設定', {
+            'fields': (
+                'order_create_deadline_day', 'order_approve_deadline_days_before',
+                'report_upload_deadline_days_before',
+                'invoice_create_deadline_day', 'invoice_approve_deadline_day',
+                'reminder_days_before', 'alert_days_after',
+            ),
+            'classes': ('collapse',),
+            'description': 'デフォルト値が設定されています。プロジェクトごとに変更が必要な場合のみ編集してください。',
+        }),
+    )
+
+
+
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem

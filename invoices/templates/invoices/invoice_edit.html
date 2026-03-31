@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load i18n humanize %}
+
+{% block title %}{% trans "請求書編集" %} | {{ invoice.invoice_no }}{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="max-width: 1000px; margin: 0 auto; padding: 2.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1 style="margin: 0; font-family: 'Outfit', sans-serif;">
+                <span style="background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">{% trans "請求書編集" %}</span>
+            </h1>
+            <p style="color: var(--text-dim); margin: 0.5rem 0 0;">{{ invoice.invoice_no }} — {{ invoice.order.partner.name }} / {{ invoice.order.project.name }}</p>
+        </div>
+        <span class="status-badge status-{{ invoice.status|lower }}" style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(156, 163, 175, 0.2); color: #d1d5db;">{{ invoice.get_status_display }}</span>
+    </div>
+
+    {# 基本情報 #}
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 1.25rem;">
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.2rem;">{% trans "対象年月" %}</p>
+            <p style="margin: 0; font-weight: 500;">{{ invoice.target_month|date:"Y年n月" }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.2rem;">{% trans "注文番号" %}</p>
+            <p style="margin: 0; font-family: monospace;">{{ invoice.order.order_id }}</p>
+        </div>
+        <div>
+            <p style="color: var(--text-dim); font-size: 0.8rem; margin-bottom: 0.2rem;">{% trans "作成日" %}</p>
+            <p style="margin: 0;">{{ invoice.issue_date|date:"Y/m/d" }}</p>
+        </div>
+    </div>
+
+    {# 明細編集フォーム #}
+    <form method="post" id="invoice-edit-form">
+        {% csrf_token %}
+        <h3 style="border-left: 4px solid #10b981; padding-left: 1rem; margin-bottom: 1.5rem;">{% trans "請求明細" %}</h3>
+        <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1.5rem;">{% trans "各作業者の実稼働時間を入力してください。精算金額は自動計算されます。" %}</p>
+
+        {% for item in items %}
+        <div class="item-card" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color, rgba(255,255,255,0.1)); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+            <div style="font-weight: 600; margin-bottom: 0.75rem; font-size: 1rem;">
+                <i class="fas fa-user" style="color: var(--primary-color, #6366f1); margin-right: 0.3rem;"></i>
+                {{ item.person_name }}
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; align-items: end;">
+                <div>
+                    <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 0.3rem;">{% trans "実稼働時間 (h)" %} <span style="color: #ef4444;">*</span></label>
+                    <input type="number" name="work_time_{{ item.pk }}" value="{{ item.work_time }}" step="0.25" min="0" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border-color, rgba(255,255,255,0.2)); border-radius: 6px; background: var(--background, #1a1a2e); color: var(--text-main, #fff); font-size: 1rem; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 0.3rem;">{% trans "月額基本料金" %}</label>
+                    <p style="margin: 0; padding: 0.6rem 0; font-weight: 500;">¥{{ item.base_fee|intcomma }}</p>
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 0.3rem;">{% trans "精算幅" %}</label>
+                    <p style="margin: 0; padding: 0.6rem 0;">{{ item.time_lower_limit }}～{{ item.time_upper_limit }}h</p>
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 0.3rem;">{% trans "超過/控除" %}</label>
+                    <p style="margin: 0; padding: 0.6rem 0;">
+                        {% if item.excess_amount > 0 %}<span style="color: #fca5a5;">+¥{{ item.excess_amount|intcomma }}</span>{% elif item.shortage_amount > 0 %}<span style="color: #93c5fd;">-¥{{ item.shortage_amount|intcomma }}</span>{% else %}—{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 0.3rem;">{% trans "小計" %}</label>
+                    <p style="margin: 0; padding: 0.6rem 0; font-weight: 600;">¥{{ item.item_subtotal|intcomma }}</p>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <p style="color: var(--text-dim); text-align: center; padding: 2rem;">{% trans "明細がありません。" %}</p>
+        {% endfor %}
+
+        {# 合計金額 #}
+        <div style="display: flex; justify-content: flex-end; margin: 2rem 0;">
+            <div style="min-width: 280px; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 1rem;">
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: var(--text-dim);">{% trans "税抜合計" %}</span><span>¥{{ invoice.subtotal_amount|intcomma }}</span></div>
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: var(--text-dim);">{% trans "消費税(10%)" %}</span><span>¥{{ invoice.tax_amount|intcomma }}</span></div>
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; font-size: 1.3rem; font-weight: 700;"><span>{% trans "税込合計" %}</span><span style="color: #86efac;">¥{{ invoice.total_amount|intcomma }}</span></div>
+            </div>
+        </div>
+
+        {# ボタン #}
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; flex-wrap: wrap;">
+            <a href="{% url 'invoices:admin_invoice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none;" target="_blank"><i class="fas fa-file-pdf"></i> {% trans "PDF確認" %}</a>
+            <button type="submit" name="action" value="save" class="btn btn-secondary"><i class="fas fa-save"></i> {% trans "保存" %}</button>
+            {% if invoice.status == 'DRAFT' %}
+            <button type="submit" name="action" value="submit_review" class="btn" style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);" onclick="return confirm('この請求書を確認依頼しますか？')"><i class="fas fa-paper-plane"></i> {% trans "確認依頼" %}</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<style>
+    @media (max-width: 768px) {
+        .item-card > div[style*="grid-template-columns"] {
+            grid-template-columns: 1fr 1fr !important;
+        }
+        .item-card input { font-size: 16px !important; }
+    }
+</style>
+{% endblock %}

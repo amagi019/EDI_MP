@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}{% trans "発注書作成" %} | {% trans "EDIシステム" %}{% endblock %}
+{% block title %}{% if is_edit %}{% trans "注文書編集" %}{% else %}{% trans "注文書作成" %}{% endif %} | {% trans "EDIシステム" %}{% endblock %}
 
 {% block content %}
 <div class="card fade-in" style="max-width: 1000px; margin: 0 auto; padding: 2.5rem;">
     <h1 style="margin-top: 0; font-family: 'Outfit', sans-serif; display: flex; align-items: center; gap: 0.75rem;">
-        <span style="background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">{% trans "発注書作成" %}</span>
+        <span style="background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">{% if is_edit %}{% trans "注文書編集" %}{% else %}{% trans "注文書作成" %}{% endif %}</span>
     </h1>
-    <p style="color: var(--text-dim); margin-bottom: 2rem;">{% trans "発注データを入力して下書きとして保存します。" %}</p>
+    <p style="color: var(--text-dim); margin-bottom: 2rem;">{% if is_edit %}{% trans "注文書の内容を編集します。" %}{% else %}{% trans "発注データを入力して下書きとして保存します。" %}{% endif %}</p>
 
     {% if form.errors or item_formset.errors %}
     <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 2rem; color: #FCA5A5;">
@@ -17,7 +17,7 @@
     </div>
     {% endif %}
 
-    <form method="post" id="order-form">
+    <form method="post" id="order-form" {% if is_edit %}action="{% url 'orders:order_edit' order.order_id %}"{% endif %}>
         {% csrf_token %}
 
         <!-- 基本情報 -->
@@ -143,11 +143,11 @@
                             <label style="font-size: 0.8rem;">{% trans "超過(円/h)" %} <span class="required">*</span></label>
                             {{ item_form.excess_rate }}
                         </div>
-                        <div style="margin-bottom: 0; display: flex; align-items: center;">
+                        <div style="margin-bottom: 0; display: flex; align-items: flex-end; padding-bottom: 0.15rem;">
                             {% if item_form.DELETE %}
                             <span style="display:none;">{{ item_form.DELETE }}</span>
-                            <button type="button" class="delete-btn" onclick="toggleDelete(this)" title="削除" style="background: none; border: 1px solid #ef4444; border-radius: 6px; color: #ef4444; cursor: pointer; padding: 0.4rem 0.6rem; font-size: 1rem; transition: all 0.2s;">
-                                <i class="fas fa-trash"></i>
+                            <button type="button" class="delete-btn" onclick="toggleDelete(this)" title="この行を削除">
+                                🗑️
                             </button>
                             {% endif %}
                         </div>
@@ -171,9 +171,9 @@
         </section>
 
         <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
-            <a href="{% url 'core:dashboard' %}" class="btn btn-secondary">{% trans "キャンセル" %}</a>
+            <a href="{% if is_edit %}{% url 'orders:order_detail' order.order_id %}{% else %}{% url 'core:dashboard' %}{% endif %}" class="btn btn-secondary">{% trans "キャンセル" %}</a>
             <button type="submit" class="btn" style="padding: 0.75rem 3rem;">
-                <i class="fas fa-save"></i> {% trans "下書き保存" %}
+                <i class="fas fa-save"></i> {% if is_edit %}{% trans "変更を保存" %}{% else %}{% trans "下書き保存" %}{% endif %}
             </button>
         </div>
     </form>
@@ -191,6 +191,56 @@
     }
     .item-row input { font-size: 0.85rem; padding: 0.5rem; }
     .required { color: #ef4444; font-weight: bold; margin-left: 2px; }
+    .delete-btn {
+        background: rgba(239, 68, 68, 0.1);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        padding: 0.5rem 0.7rem;
+        font-size: 1.3rem;
+        line-height: 1;
+        transition: all 0.2s;
+    }
+    .delete-btn:hover {
+        background: rgba(239, 68, 68, 0.3);
+        transform: scale(1.1);
+    }
+    .item-row.marked-delete {
+        opacity: 0.4;
+        position: relative;
+    }
+    .item-row.marked-delete::after {
+        content: "削除予定";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(239, 68, 68, 0.8);
+        color: #fff;
+        padding: 0.3rem 1rem;
+        border-radius: 4px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        pointer-events: none;
+    }
+    /* モバイル対応 */
+    @media (max-width: 768px) {
+        .card { padding: 1rem !important; }
+        /* 基本情報・担当者セクションを1列に */
+        section div[style*="grid-template-columns: 1fr 1fr"] {
+            display: block !important;
+        }
+        /* 明細行を2列グリッドに */
+        .item-row > div[style*="grid-template-columns"] {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0.5rem !important;
+        }
+        .item-row input { font-size: 16px !important; padding: 0.6rem !important; }
+        .form-group input, .form-group select, .form-group textarea {
+            font-size: 16px !important;
+        }
+    }
 </style>
 
 <script>
@@ -199,15 +249,7 @@ function toggleDelete(btn) {
     var checkbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
     if (checkbox) {
         checkbox.checked = !checkbox.checked;
-        if (checkbox.checked) {
-            row.style.opacity = '0.4';
-            btn.style.background = '#ef4444';
-            btn.style.color = '#fff';
-        } else {
-            row.style.opacity = '1';
-            btn.style.background = 'none';
-            btn.style.color = '#ef4444';
-        }
+        row.classList.toggle('marked-delete', checkbox.checked);
     }
 }
 

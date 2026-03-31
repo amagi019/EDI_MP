@@ -97,7 +97,7 @@
         <form method="post" action="{% url 'admin:partner_invitation_send' %}">
             {% csrf_token %}
             <button type="submit" class="btn-send" onclick="return confirm('{{ preview_data|length }}件の招待メールを送信します。よろしいですか？');">
-                送信する
+                送信
             </button>
         </form>
         <a href="{% url 'admin:core_partner_changelist' %}" class="btn-cancel">キャンセル</a>

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "受注登録" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 2rem;">{% trans "受注登録" %}</h2>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 8px; {% if message.tags == 'error' %}background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5;{% elif message.tags == 'warning' %}background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); color: #fde047;{% else %}background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #86efac;{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- PDFアップロードセクション -->
+    <div style="margin-bottom: 2rem; padding: 1.5rem; background: rgba(99, 102, 241, 0.08); border: 2px dashed rgba(99, 102, 241, 0.3); border-radius: 12px;">
+        <h3 style="margin: 0 0 1rem; font-size: 1rem; color: var(--text-main);">
+            <i class="fas fa-file-upload" style="color: #818CF8;"></i> {% trans "注文書PDFから自動登録" %}
+        </h3>
+        <form method="post" enctype="multipart/form-data" id="pdf-upload-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="pdf_upload">
+            <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "取引先" %} *</label>
+                    <select name="customer_id" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.95rem;">
+                        <option value="">{% trans "選択してください" %}</option>
+                        {% for c in customers %}
+                        <option value="{{ c.pk }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "注文書PDF" %} *</label>
+                    <input type="file" name="order_pdf" accept=".pdf" required style="width: 100%; padding: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.95rem;">
+                </div>
+                <div>
+                    <button type="submit" class="btn" style="background: linear-gradient(135deg, #6366F1, #8B5CF6); white-space: nowrap;">
+                        <i class="fas fa-magic"></i> {% trans "自動パース" %}
+                    </button>
+                </div>
+            </div>
+            <p style="margin-top: 0.5rem; color: var(--text-dim); font-size: 0.8rem;">
+                {% trans "対応形式: イービジネス、NTP、その他の一般的な注文書PDF" %}
+            </p>
+        </form>
+    </div>
+
+    <!-- 手動入力セクション -->
+    <div style="margin-bottom: 1rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+        <h3 style="margin: 0 0 1rem; font-size: 1rem; color: var(--text-main);">
+            <i class="fas fa-edit" style="color: #10B981;"></i> {% trans "手動登録" %}
+        </h3>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="manual">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "取引先" %} *</label>
+                    <select name="manual_customer_id" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                        <option value="">{% trans "選択" %}</option>
+                        {% for c in customers %}
+                        <option value="{{ c.pk }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "注文番号" %}</label>
+                    <input type="text" name="order_number" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "業務名称" %}</label>
+                    <input type="text" name="project_name" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "対象月" %} *</label>
+                    <input type="month" name="target_month" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "作業開始日" %} *</label>
+                    <input type="date" name="work_start" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                </div>
+                <div>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "作業終了日" %} *</label>
+                    <input type="date" name="work_end" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <a href="{% url 'billing:received_order_list' %}" class="btn btn-secondary" style="text-decoration: none;">{% trans "キャンセル" %}</a>
+                <button type="submit" class="btn" style="background: linear-gradient(135deg, #10B981, #059669);">
+                    <i class="fas fa-save"></i> {% trans "登録" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

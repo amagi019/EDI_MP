@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "稼働報告" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2 style="font-family: 'Outfit', sans-serif; margin: 0;">{% trans "稼働報告" %}</h2>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{% url 'billing:timesheet_excel_upload' %}" class="btn" style="background: linear-gradient(135deg, #34D399, #059669); text-decoration: none;">
+                <i class="fas fa-file-excel"></i> {% trans "Excel取込" %}
+            </a>
+            <a href="{% url 'billing:timesheet_create' %}" class="btn btn-secondary" style="text-decoration: none;">
+                <i class="fas fa-plus"></i> {% trans "手動登録" %}
+            </a>
+        </div>
+    </div>
+
+    {% if timesheets %}
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-main);">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--glass-border);">
+                    <th style="text-align: left; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "作業者" %}</th>
+                    <th style="text-align: left; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "取引先" %}</th>
+                    <th style="text-align: center; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "対象月" %}</th>
+                    <th style="text-align: center; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "種別" %}</th>
+                    <th style="text-align: right; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "稼働時間" %}</th>
+                    <th style="text-align: center; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "ステータス" %}</th>
+                    <th style="text-align: center; padding: 0.8rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "操作" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ts in timesheets %}
+                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <td style="padding: 0.8rem;">{{ ts.worker_name }}</td>
+                    <td style="padding: 0.8rem;">{{ ts.order.customer.name }}</td>
+                    <td style="padding: 0.8rem; text-align: center;">{{ ts.target_month|date:"Y/m" }}</td>
+                    <td style="padding: 0.8rem; text-align: center;">
+                        {% if ts.worker_type == 'INTERNAL' %}
+                        <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: rgba(59, 130, 246, 0.2); color: #93c5fd;">{{ ts.get_worker_type_display }}</span>
+                        {% else %}
+                        <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: rgba(168, 85, 247, 0.2); color: #c4b5fd;">{{ ts.get_worker_type_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.8rem; text-align: right;">{{ ts.total_hours }}h</td>
+                    <td style="padding: 0.8rem; text-align: center;">
+                        {% if ts.status == 'DRAFT' %}
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(156, 163, 175, 0.2); color: #d1d5db;">{{ ts.get_status_display }}</span>
+                        {% elif ts.status == 'SUBMITTED' %}
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(245, 158, 11, 0.2); color: #fde047;">{{ ts.get_status_display }}</span>
+                        {% elif ts.status == 'SENT' %}
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(79, 70, 229, 0.2); color: #818CF8;">{{ ts.get_status_display }}</span>
+                        {% elif ts.status == 'APPROVED' %}
+                        <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">{{ ts.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.8rem; text-align: center;">
+                        <div style="display: flex; gap: 0.4rem; justify-content: center; flex-wrap: wrap;">
+                            {% if ts.status != 'SENT' and ts.status != 'APPROVED' %}
+                            <a href="{% url 'billing:timesheet_send' ts.pk %}" class="btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; background: linear-gradient(135deg, #10B981, #059669); text-decoration: none;">
+                                <i class="fas fa-paper-plane"></i> {% trans "送信" %}
+                            </a>
+                            <form method="post" action="{% url 'billing:timesheet_approve' ts.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="sent">
+                                <button type="submit" class="btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; background: rgba(79, 70, 229, 0.3); border: 1px solid rgba(79, 70, 229, 0.5);" onclick="return confirm('手動で送付済みにしますか？')">
+                                    <i class="fas fa-check"></i> {% trans "送付済み" %}
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% if ts.status == 'SENT' %}
+                            <form method="post" action="{% url 'billing:generate_invoice_from_order' ts.order.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; background: linear-gradient(135deg, #818CF8, #6366F1);" onclick="return confirm('この受注の請求書を作成しますか？')">
+                                    <i class="fas fa-file-invoice"></i> {% trans "請求書作成" %}
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-dim);">
+        <i class="fas fa-clock" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+        <p>{% trans "勤怠データがありません" %}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

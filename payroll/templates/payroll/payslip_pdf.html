@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: A4; margin: 15mm 20mm; }
+    body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.4; margin: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    td, th { border: 1px solid #333; padding: 4px 8px; }
+
+    .header-table td { text-align: center; font-size: 10pt; }
+    .header-table .title { font-size: 14pt; font-weight: bold; }
+    .header-table .name { font-size: 12pt; font-weight: bold; }
+    .header-table .company { font-size: 10pt; }
+
+    .section-label { background: #d6e4f0; font-weight: bold; text-align: center; width: 30px; writing-mode: vertical-rl; font-size: 11pt; }
+    .item-header { background: #eef3f8; font-size: 9pt; text-align: center; }
+    .item-value { text-align: right; font-size: 10pt; font-family: 'Courier New', monospace; }
+    .total-header { background: #eef3f8; font-weight: bold; text-align: center; }
+    .total-value { text-align: right; font-weight: bold; font-size: 11pt; font-family: 'Courier New', monospace; }
+    .paren { color: #333; }
+
+    .net-row td { background: #d6e4f0; }
+    .net-label { font-weight: bold; font-size: 12pt; text-align: center; }
+    .net-value { font-weight: bold; font-size: 14pt; text-align: right; font-family: 'Courier New', monospace; }
+</style>
+</head>
+<body>
+    <table class="header-table" style="margin-bottom: 0;">
+        <tr>
+            <td colspan="3" class="title">{{ payroll.year_month|date:"Y年n月" }} 給与明細書</td>
+            <td colspan="2" class="name">{{ employee.name }} 様</td>
+        </tr>
+        <tr>
+            <td colspan="3">{% if payroll.payment_date %}{{ payroll.payment_date|date:"Y年n月j日" }}支給{% endif %}</td>
+            <td colspan="2" class="company">{{ company.name }}</td>
+        </tr>
+    </table>
+
+    <!-- 勤務 -->
+    <table style="margin-top: -1px;">
+        <tr>
+            <td rowspan="2" class="section-label">勤<br>務</td>
+            <td class="item-header">勤務日数</td>
+            <td class="item-header">欠勤日数</td>
+            <td class="item-header">有給日数</td>
+            <td class="item-header">総労働時間</td>
+            <td class="item-header">残業時間</td>
+        </tr>
+        <tr>
+            <td class="item-value">{{ payroll.work_days }}日</td>
+            <td class="item-value">{{ payroll.absence_days }}日</td>
+            <td class="item-value">{{ payroll.paid_leave_days }}日</td>
+            <td class="item-value">{{ payroll.total_hours }}h</td>
+            <td class="item-value">{{ payroll.overtime_hours }}h</td>
+        </tr>
+    </table>
+
+    <!-- 支給 -->
+    <table style="margin-top: -1px;">
+        <tr>
+            <td rowspan="4" class="section-label">支<br>給</td>
+            <td class="item-header">基本給</td>
+            <td class="item-header">役職手当</td>
+            <td class="item-header">住宅手当</td>
+            <td class="item-header">残業手当</td>
+            <td class="item-header"></td>
+        </tr>
+        <tr>
+            <td class="item-value">{{ payroll.base_salary|floatformat:0 }}</td>
+            <td class="item-value">{{ payroll.position_allowance|floatformat:0 }}</td>
+            <td class="item-value">{{ payroll.housing_allowance|floatformat:0 }}</td>
+            <td class="item-value">{{ payroll.overtime_pay|floatformat:0 }}</td>
+            <td class="item-value"></td>
+        </tr>
+        <tr>
+            <td class="item-header" colspan="2">通勤手当（非課税）</td>
+            <td class="item-header">深夜手当</td>
+            <td class="item-header">休日出勤手当</td>
+            <td class="total-header">支給額合計</td>
+        </tr>
+        <tr>
+            <td class="item-value" colspan="2">{{ payroll.commuting_allowance|floatformat:0 }}</td>
+            <td class="item-value">{{ payroll.night_pay|floatformat:0 }}</td>
+            <td class="item-value">{{ payroll.holiday_pay|floatformat:0 }}</td>
+            <td class="total-value">{{ payroll.gross_pay|floatformat:0 }}</td>
+        </tr>
+    </table>
+
+    <!-- 控除 -->
+    <table style="margin-top: -1px;">
+        <tr>
+            <td rowspan="4" class="section-label">控<br>除</td>
+            <td class="item-header">健康保険</td>
+            <td class="item-header">厚生年金</td>
+            <td class="item-header">雇用保険</td>
+            <td class="item-header">社会保険計</td>
+            <td class="item-header">課税対象額</td>
+        </tr>
+        <tr>
+            <td class="item-value">{{ payroll.health_premium|floatformat:0 }}</td>
+            <td class="item-value">{{ payroll.pension_premium|floatformat:0 }}</td>
+            <td class="item-value">{{ payroll.employment_premium|floatformat:0 }}</td>
+            <td class="item-value paren">（{{ payroll.social_insurance_total|floatformat:0 }}）</td>
+            <td class="item-value paren">（{{ payroll.taxable_total|floatformat:0 }}）</td>
+        </tr>
+        <tr>
+            <td class="item-header">所得税</td>
+            <td class="item-header">住民税</td>
+            <td class="item-header">介護保険</td>
+            <td class="item-header"></td>
+            <td class="total-header">控除計</td>
+        </tr>
+        <tr>
+            <td class="item-value">{{ payroll.income_tax|floatformat:0 }}</td>
+            <td class="item-value">{{ payroll.resident_tax|floatformat:0 }}</td>
+            <td class="item-value">{{ payroll.nursing_premium|floatformat:0 }}</td>
+            <td class="item-value"></td>
+            <td class="total-value">{{ payroll.deduction_total|floatformat:0 }}</td>
+        </tr>
+    </table>
+
+    <!-- 差引支給額 -->
+    <table style="margin-top: -1px;">
+        <tr class="net-row">
+            <td colspan="3" class="net-label">差引支給額</td>
+            <td colspan="2" class="net-value">{{ payroll.net_pay|floatformat:0 }}</td>
+        </tr>
+    </table>
+</body>
+</html>

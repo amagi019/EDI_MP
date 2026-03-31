@@ -1,0 +1,36 @@
+{% extends "base.html" %}{% load i18n %}
+{% block title %}{% if object %}{% trans "社員編集" %}{% else %}{% trans "社員登録" %}{% endif %}{% endblock %}
+{% block content %}
+<div class="fade-in">
+    <h1>{% if object %}✏️ {{ object.name }} {% trans "編集" %}{% else %}➕ {% trans "社員登録" %}{% endif %}</h1>
+
+    <div class="card" style="padding: 2rem; max-width: 800px;">
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div style="margin-bottom: 1rem;">
+                <label for="{{ field.id_for_label }}" style="display: block; margin-bottom: 0.3rem; color: var(--text-dim); font-size: 0.9rem;">{{ field.label }}{% if field.field.required %} <span style="color: #EF4444;">*</span>{% endif %}</label>
+                {% if field.field.widget.input_type == 'checkbox' %}
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    {{ field }}
+                    <span>{{ field.label }}</span>
+                </label>
+                {% else %}
+                {{ field }}
+                {% endif %}
+                {% if field.help_text %}
+                <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.2rem;">{{ field.help_text }}</div>
+                {% endif %}
+                {% for error in field.errors %}
+                <div style="font-size: 0.8rem; color: #EF4444; margin-top: 0.2rem;">{{ error }}</div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="submit" class="btn" style="padding: 0.75rem 2rem;">💾 {% trans "保存" %}</button>
+                <a href="{% url 'payroll:employee_list' %}" class="btn btn-secondary" style="padding: 0.75rem 2rem;">{% trans "キャンセル" %}</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

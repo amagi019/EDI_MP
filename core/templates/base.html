@@ -5,6 +5,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/static/core/pwa/icon-192.png">
     <title>{% block title %}{% trans "EDIシステム" %}{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -133,6 +138,8 @@
         input[type="text"],
         input[type="password"],
         input[type="email"],
+        input[type="date"],
+        input[type="number"],
         select,
         textarea {
             width: 100%;
@@ -145,6 +152,44 @@
             box-sizing: border-box;
             font-size: 1rem;
             transition: border-color 0.2s;
+        }
+
+        /* 日付入力のカレンダーアイコン: ダークテーマ対応 */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1) brightness(1.5);
+            cursor: pointer;
+        }
+
+        .date-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .date-input-wrapper::after {
+            content: '📅';
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-65%);
+            font-size: 1.25rem;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .date-input-wrapper input[type="date"] {
+            padding-right: 2.5rem;
+        }
+
+        .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: none;
+            opacity: 0;
+            position: absolute;
+            right: 0;
+            width: 2.5rem;
+            height: 100%;
+            cursor: pointer;
+            z-index: 2;
         }
 
         input:focus {
@@ -224,6 +269,26 @@
             display: flex;
             flex-direction: column;
             gap: 0.15rem;
+            /* 独立スクロール対応 */
+            position: sticky;
+            top: 73px;
+            height: calc(100vh - 73px);
+            overflow-y: auto;
+        }
+
+        /* スクロールバーのカスタマイズ（サイドバー用） */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
         }
 
         .sidebar-link {
@@ -261,13 +326,59 @@
 
         /* Font Awesome for icons */
         @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css');
+
+        /* モバイル対応 */
+        .hamburger-btn { display: none; }
+        .sidebar-overlay { display: none; }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+                position: fixed;
+                top: 0; left: 0;
+                width: 260px; height: 100vh;
+                z-index: 200;
+                padding-top: 3.5rem;
+                transition: transform 0.3s ease;
+            }
+            .sidebar.open { display: flex; }
+            .sidebar-overlay.open {
+                display: block;
+                position: fixed;
+                top: 0; left: 0;
+                width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 199;
+            }
+            .hamburger-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: none;
+                border: 1px solid var(--border);
+                color: var(--text-main);
+                font-size: 1.3rem;
+                width: 36px; height: 36px;
+                border-radius: 8px;
+                cursor: pointer;
+            }
+            .shortcut-buttons { display: none !important; }
+            .content { padding: 1rem !important; }
+            header { padding: 0.5rem 1rem; }
+            .brand { font-size: 1.2rem; }
+            nav ul { gap: 0.8rem; }
+            nav a, nav span { font-size: 0.85rem; }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 
 <body>
     <header>
-        <a href="/" class="brand">{% trans "EDIシステム" %}</a>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="メニュー"><i class="fas fa-bars"></i></button>
+            <a href="/" class="brand">{% trans "EDIシステム" %}</a>
+        </div>
         <nav>
             <ul>
                 {% if user.is_authenticated %}
@@ -291,6 +402,7 @@
         </nav>
     </header>
 
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <div class="app-container">
         {% if user.is_authenticated %}
         <aside class="sidebar">
@@ -316,47 +428,66 @@
                 class="sidebar-link {% if 'partner_manual' in request.path %}active{% endif %}">
                 <i class="fas fa-book-open"></i> {% trans "操作マニュアル" %}
             </a>
+
             {% endif %}
 
             {% if user.is_staff %}
             <!-- 1. パートナー管理 -->
+            <div style="margin: 0.5rem 0; border-top: 1px solid var(--border);"></div>
+            <div style="padding: 0.25rem 1rem; color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">{% trans "ダッシュボード" %}</div>
+            <a href="{% url 'orders:partner_monthly_progress' %}" class="sidebar-link {% if 'monthly-progress' in request.path %}active{% endif %}">
+                <i class="fas fa-chart-line"></i> {% trans "月次進捗状況" %}
+            </a>
             <div style="margin: 0.5rem 0; border-top: 1px solid var(--border);"></div>
             <div style="padding: 0.25rem 1rem; color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">{% trans "パートナー管理" %}</div>
             <a href="{% url 'core:quick_partner_registration' %}" class="sidebar-link {% if 'register-partner' in request.path %}active{% endif %}">
                 <i class="fas fa-user-plus"></i> {% trans "パートナー登録" %}
             </a>
             <a href="{% url 'core:contract_progress_list' %}" class="sidebar-link {% if 'contract-progress' in request.path %}active{% endif %}">
-                <i class="fas fa-file-signature"></i> {% trans "基本契約進捗" %}
+                <i class="fas fa-file-signature"></i> {% trans "基本契約" %}
             </a>
-            <!-- 2. 発注管理 -->
-            <div style="margin: 0.5rem 0; border-top: 1px solid var(--border);"></div>
-            <div style="padding: 0.25rem 1rem; color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">{% trans "発注管理" %}</div>
+            <a href="{% url 'orders:basic_info_list' %}" class="sidebar-link {% if 'basic-info' in request.path %}active{% endif %}">
+                <i class="fas fa-database"></i> {% trans "発注基本情報" %}
+            </a>
             <a href="{% url 'orders:order_create' %}" class="sidebar-link {% if 'staff/create' in request.path %}active{% endif %}">
-                <i class="fas fa-pen-to-square"></i> {% trans "発注書作成" %}
+                <i class="fas fa-pen-to-square"></i> {% trans "注文書作成" %}
             </a>
             <a href="{% url 'orders:order_list' %}" class="sidebar-link {% if 'my/orders' in request.path %}active{% endif %}">
                 <i class="fas fa-list"></i> {% trans "注文書一覧" %}
             </a>
-            <!-- 3. 請求管理 -->
-            <div style="margin: 0.5rem 0; border-top: 1px solid var(--border);"></div>
-            <div style="padding: 0.25rem 1rem; color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">{% trans "請求管理" %}</div>
-            <a href="{% url 'invoices:invoice_list' %}" class="sidebar-link {% if 'invoices/my' in request.path %}active{% endif %}">
-                <i class="fas fa-file-invoice-dollar"></i> {% trans "支払通知一覧" %}
+            <a href="{% url 'invoices:received_email_list' %}" class="sidebar-link {% if 'received-emails' in request.path %}active{% endif %}">
+                <i class="fas fa-inbox"></i> {% trans "受信メール管理" %}
             </a>
-            <!-- 4. 請求書発行（billing） -->
+            <a href="{% url 'invoices:work_report_upload' %}" class="sidebar-link {% if 'work-report' in request.path %}active{% endif %}">
+                <i class="fas fa-chart-bar"></i> {% trans "稼働報告" %}
+            </a>
+            <a href="{% url 'invoices:invoice_list' %}" class="sidebar-link {% if 'invoices/my' in request.path and 'work-report' not in request.path %}active{% endif %}">
+                <i class="fas fa-file-invoice-dollar"></i> {% trans "支払通知" %}
+            </a>
+            <!-- 2. クライアント管理 -->
             <div style="margin: 0.5rem 0; border-top: 1px solid var(--border);"></div>
-            <div style="padding: 0.25rem 1rem; color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">{% trans "請求書発行" %}</div>
-            <a href="{% url 'billing:dashboard' %}" class="sidebar-link {% if 'billing' in request.path and request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                <i class="fas fa-file-invoice"></i> {% trans "売上管理" %}
+            <div style="padding: 0.25rem 1rem; color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">{% trans "クライアント管理" %}</div>
+            <a href="{% url 'billing:customer_list' %}" class="sidebar-link {% if 'billing/customers' in request.path %}active{% endif %}">
+                <i class="fas fa-building"></i> {% trans "取引先登録" %}
+            </a>
+            <a href="{% url 'billing:received_order_list' %}" class="sidebar-link {% if request.path == '/billing/received-orders/' %}active{% endif %}">
+                <i class="fas fa-file-import"></i> {% trans "受注基本情報" %}
+            </a>
+            <a href="{% url 'billing:received_order_monthly_list' %}" class="sidebar-link {% if 'received-orders/monthly' in request.path %}active{% endif %}">
+                <i class="fas fa-file-contract"></i> {% trans "注文書一覧" %}
+            </a>
+            <a href="{% url 'billing:timesheet_list' %}" class="sidebar-link {% if 'timesheets' in request.path %}active{% endif %}">
+                <i class="fas fa-clock"></i> {% trans "稼働報告" %}
             </a>
             <a href="{% url 'billing:invoice_list' %}" class="sidebar-link {% if 'billing/invoices' in request.path %}active{% endif %}">
-                <i class="fas fa-file-alt"></i> {% trans "請求書" %}
+                <i class="fas fa-file-alt"></i> {% trans "請求書一覧" %}
             </a>
-            <a href="{% url 'billing:customer_list' %}" class="sidebar-link {% if 'billing/customers' in request.path %}active{% endif %}">
-                <i class="fas fa-building"></i> {% trans "請求先" %}
-            </a>
-            <a href="{% url 'billing:product_list' %}" class="sidebar-link {% if 'billing/products' in request.path %}active{% endif %}">
-                <i class="fas fa-box"></i> {% trans "商品" %}
+
+            <!-- 3. スケジュール -->
+            <div style="margin: 0.5rem 0; border-top: 1px solid var(--border);"></div>
+            <div style="padding: 0.25rem 1rem; color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">{% trans "スケジュール" %}</div>
+            <a href="{% url 'tasks:calendar' %}" class="sidebar-link {% if 'tasks/calendar' in request.path %}active{% endif %}">
+                <i class="fas fa-calendar-alt"></i> {% trans "リマインドカレンダー" %}
             </a>
             <!-- 管理画面 -->
             <div style="margin: 0.5rem 0; border-top: 1px solid var(--border);"></div>
@@ -401,6 +532,8 @@
                 e.preventDefault();
                 return;
             }
+            // data-no-double-submit 属性があるフォームは独自処理に任せる
+            if (form.hasAttribute('data-no-double-submit')) return;
             form.dataset.submitted = 'true';
 
             // confirm() でキャンセルされた場合はリセット
@@ -436,6 +569,65 @@
             }
         }, true);
     })();
+
+    // 📅 日付入力フィールドを自動で date-input-wrapper で囲む
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('input[type="date"]').forEach(function(input) {
+            if (input.parentElement.classList.contains('date-input-wrapper')) return;
+            var wrapper = document.createElement('div');
+            wrapper.className = 'date-input-wrapper';
+            input.parentNode.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+        });
+    });
+    </script>
+
+    <!-- モバイル: サイドバー開閉 -->
+    <script>
+    function toggleSidebar() {
+        var sidebar = document.querySelector('.sidebar');
+        var overlay = document.querySelector('.sidebar-overlay');
+        if (sidebar && overlay) {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+    }
+    </script>
+
+    <!-- PWA: Service Worker登録 -->
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(function(reg) {
+                    console.log('Service Worker registered:', reg.scope);
+                })
+                .catch(function(err) {
+                    console.warn('Service Worker registration failed:', err);
+                });
+        });
+    }
+    </script>
+    <!-- サイドバー スクロール位置保持 -->
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            // リロード時に位置を復元
+            const scrollPos = sessionStorage.getItem('sidebar-scroll-pos');
+            if (scrollPos) {
+                sidebar.scrollTop = parseInt(scrollPos, 10);
+            }
+            // スクロール時に位置を保存（負荷軽減のためタイマー使用）
+            let scrollTimeout;
+            sidebar.addEventListener('scroll', function () {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    sessionStorage.setItem('sidebar-scroll-pos', sidebar.scrollTop);
+                }, 100);
+            });
+        }
+    });
     </script>
 </body>
 

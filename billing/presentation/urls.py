@@ -41,4 +41,25 @@ urlpatterns = [
 
     # メール
     path('invoices/<uuid:pk>/mail/', views.InvoiceMailView.as_view(), name='invoice_mail'),
+
+    # 受注管理
+    path('received-orders/', views.ReceivedOrderListView.as_view(), name='received_order_list'),
+    path('received-orders/monthly/', views.ReceivedOrderMonthlyListView.as_view(), name='received_order_monthly_list'),
+    path('received-orders/new/', views.ReceivedOrderCreateView.as_view(), name='received_order_create'),
+    path('received-orders/<int:pk>/', views.ReceivedOrderDetailView.as_view(), name='received_order_detail'),
+    path('received-orders/<int:pk>/edit/', views.ReceivedOrderEditView.as_view(), name='received_order_edit'),
+    path('received-orders/<int:pk>/generate-invoice/', views.GenerateInvoiceFromOrderView.as_view(), name='generate_invoice_from_order'),
+    path('received-orders/<int:pk>/rollforward/', views.RollforwardOrderView.as_view(), name='rollforward_order'),
+    path('received-orders/rollforward-all/', views.RollforwardAllView.as_view(), name='rollforward_all'),
+
+    # 勤怠報告
+    path('timesheets/', views.TimesheetListView.as_view(), name='timesheet_list'),
+    path('timesheets/new/', views.TimesheetCreateView.as_view(), name='timesheet_create'),
+    path('timesheets/excel-upload/', views.TimesheetExcelUploadView.as_view(), name='timesheet_excel_upload'),
+    path('timesheets/excel-confirm/', views.TimesheetExcelConfirmView.as_view(), name='timesheet_excel_confirm'),
+    path('timesheets/<int:pk>/action/', views.TimesheetApproveView.as_view(), name='timesheet_approve'),
+    path('timesheets/<int:pk>/send/', views.TimesheetSendView.as_view(), name='timesheet_send'),
+    # === API（PayrollSystem連携）===
+    path('api/timesheets/', views.TimesheetAPIView.as_view(), name='api_timesheets'),
+    path('api/sync-employees/', views.EmployeeSyncView.as_view(), name='api_sync_employees'),
 ]

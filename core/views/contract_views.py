@@ -13,6 +13,7 @@ from core.permissions import (
     Role, get_user_role, get_user_partner, is_owner_of_partner,
     StaffRequiredMixin,
 )
+from core.utils import get_notify_email
 
 
 class ContractProgressListView(LoginRequiredMixin, TemplateView):
@@ -67,6 +68,34 @@ class ContractGenerateView(StaffRequiredMixin, View):
         progress.save()
 
         messages.success(request, f"{partner.name} の基本契約書PDFを生成しました。")
+        return redirect('core:contract_progress_list')
+
+
+class ContractRegenerateView(StaffRequiredMixin, View):
+    """基本契約書PDFをステータス維持のまま再生成する（パートナー情報修正後の反映用）"""
+
+    def post(self, request, partner_id):
+        import hashlib
+        from django.core.files.base import ContentFile
+        from core.services.contract_pdf_generator import generate_contract_pdf
+
+        partner = get_object_or_404(Partner, partner_id=partner_id)
+        progress = get_object_or_404(MasterContractProgress, partner=partner)
+
+        # 承認済みの場合は承認日時を引き継いでPDF再生成
+        buffer = generate_contract_pdf(partner, signed_at=progress.signed_at)
+        pdf_content = buffer.getvalue()
+        pdf_hash = hashlib.sha256(pdf_content).hexdigest()
+
+        if progress.contract_pdf:
+            progress.contract_pdf.delete(save=False)
+
+        filename = f'contract_{partner_id}_signed.pdf' if progress.signed_at else f'contract_{partner_id}.pdf'
+        progress.contract_pdf.save(filename, ContentFile(pdf_content), save=False)
+        progress.pdf_hash = pdf_hash
+        progress.save()
+
+        messages.success(request, f"{partner.name} の基本契約書PDFを再作成しました。")
         return redirect('core:contract_progress_list')
 
 
@@ -160,80 +189,20 @@ class ContractApproveView(LoginRequiredMixin, View):
         return render(request, 'core/contract_approve.html', context)
 
     def post(self, request, partner_id):
-        """承認処理（パートナー本人のみ実行可能）"""
-        import hashlib
-        from django.utils import timezone
-        from django.core.files.base import ContentFile
-        from django.core.mail import send_mail
-        from django.conf import settings as django_settings
-        from core.services.contract_pdf_generator import generate_contract_pdf
-        from core.domain.models import SentEmailLog
+        """承諾処理（パートナー本人のみ実行可能）"""
+        from core.services.contract_service import approve_contract
 
         partner = get_object_or_404(Partner, partner_id=partner_id)
         progress = get_object_or_404(MasterContractProgress, partner=partner)
 
         if not is_owner_of_partner(request.user, partner):
-            raise PermissionDenied("承認はパートナーご自身で行ってください。")
+            raise PermissionDenied("承諾はパートナーご自身で行ってください。")
 
         if progress.status == 'COMPLETED':
             messages.info(request, "この契約書は既に締結済みです。")
             return redirect('core:dashboard')
 
-        # 承認処理
-        now = timezone.now()
-        progress.signed_at = now
-        progress.signed_by = request.user
-        progress.status = 'COMPLETED'
+        approve_contract(partner, progress, request.user, request)
 
-        # 承認日時入りのPDFを再生成
-        buffer = generate_contract_pdf(partner, signed_at=now)
-        pdf_content = buffer.getvalue()
-        pdf_hash = hashlib.sha256(pdf_content).hexdigest()
-
-        if progress.contract_pdf:
-            progress.contract_pdf.delete(save=False)
-        progress.contract_pdf.save(
-            f'contract_{partner_id}_signed.pdf',
-            ContentFile(pdf_content),
-            save=False
-        )
-        progress.pdf_hash = pdf_hash
-        progress.save()
-
-        # 自社担当者に承認通知メール
-        try:
-            if partner.staff_contact and partner.staff_contact.email:
-                notify_email = partner.staff_contact.email
-            else:
-                notify_email = django_settings.DEFAULT_FROM_EMAIL
-
-            contract_url = request.build_absolute_uri(
-                reverse('core:contract_approve', kwargs={'partner_id': partner_id})
-            )
-            local_now = timezone.localtime(now)
-
-            from core.utils import compose_contract_approve_email
-            subject, body = compose_contract_approve_email(
-                partner, contract_url,
-                signed_at=local_now.strftime('%Y年%m月%d日 %H:%M'),
-                signed_by=request.user.get_full_name() or request.user.username,
-            )
-
-            print(f"[通知メール] 宛先: {notify_email}, 件名: {subject}")
-            send_mail(subject, body, django_settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
-            print(f"[通知メール] 送信成功")
-            SentEmailLog.objects.create(
-                partner=partner, subject=subject, body=body, recipient=notify_email,
-            )
-        except Exception as e:
-            print(f"[通知メール] 送信エラー: {e}")
-
-        # Google Driveに承認済みPDFをアップロード
-        try:
-            from core.services.google_drive_service import upload_contract_pdf as drive_upload
-            drive_upload(partner, pdf_content, now)
-        except Exception as e:
-            print(f"[Google Drive] アップロードスキップ: {e}")
-
-        messages.success(request, "基本契約書を承認しました。契約が締結されました。")
+        messages.success(request, "基本契約書を承諾しました。契約が締結されました。")
         return redirect('core:dashboard')

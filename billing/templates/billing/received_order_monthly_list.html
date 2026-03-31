@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "注文書一覧" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="padding: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
+        <h1 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: clamp(1.2rem, 4vw, 2rem);">
+            <span style="background: linear-gradient(135deg, #10B981, #059669); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">{% trans "注文書一覧" %}</span>
+        </h1>
+    </div>
+
+    {% if orders %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border);">
+                <th style="text-align: left; padding: 0.75rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "対象月" %}</th>
+                <th style="text-align: left; padding: 0.75rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "取引先" %}</th>
+                <th style="text-align: left; padding: 0.75rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "業務名" %}</th>
+                <th style="text-align: left; padding: 0.75rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "注文番号" %}</th>
+                <th style="text-align: left; padding: 0.75rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "作業期間" %}</th>
+                <th style="text-align: center; padding: 0.75rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "ステータス" %}</th>
+                <th style="text-align: center; padding: 0.75rem; color: var(--text-dim); font-size: 0.85rem;">{% trans "操作" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 0.75rem; font-weight: 600;">{{ order.target_month|date:"Y年m月" }}</td>
+                <td style="padding: 0.75rem;">{{ order.customer.name }}</td>
+                <td style="padding: 0.75rem; font-size: 0.9rem;">{{ order.project_name|truncatechars:30 }}</td>
+                <td style="padding: 0.75rem; font-family: monospace; font-size: 0.85rem; color: var(--text-dim);">{{ order.order_number|default:"-" }}</td>
+                <td style="padding: 0.75rem; font-size: 0.8rem; color: var(--text-dim);">{{ order.work_start|date:"m/d" }}〜{{ order.work_end|date:"m/d" }}</td>
+                <td style="padding: 0.75rem; text-align: center;">
+                    {% if order.status == 'REGISTERED' %}
+                    <span style="padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; background: rgba(59, 130, 246, 0.2); color: #93c5fd;">{{ order.get_status_display }}</span>
+                    {% elif order.status == 'ACTIVE' %}
+                    <span style="padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">{{ order.get_status_display }}</span>
+                    {% elif order.status == 'COMPLETED' %}
+                    <span style="padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; background: rgba(156, 163, 175, 0.2); color: #d1d5db;">{{ order.get_status_display }}</span>
+                    {% else %}
+                    <span style="padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; background: rgba(239, 68, 68, 0.2); color: #fca5a5;">{{ order.get_status_display }}</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem; text-align: center;">
+                    <div style="display: flex; gap: 0.3rem; justify-content: center;">
+                        <a href="{% url 'billing:received_order_detail' order.pk %}" style="color: #818CF8; font-size: 0.8rem;">{% trans "詳細" %}</a>
+                        <form method="post" action="{% url 'billing:generate_invoice_from_order' order.pk %}" style="display:inline;" onsubmit="return confirm('この注文から請求書を生成しますか？')">
+                            {% csrf_token %}
+                            <button type="submit" style="background: none; border: none; color: #FBBF24; cursor: pointer; font-size: 0.8rem; padding: 0;">{% trans "請求書" %}</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 3rem; color: var(--text-dim);">
+        <i class="fas fa-file-alt" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+        <p>{% trans "注文書はまだありません" %}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

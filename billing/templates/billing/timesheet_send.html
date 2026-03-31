@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "作業報告書送信" %} | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="max-width: 720px; margin: 0 auto;">
+    <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 1.5rem;">
+        <i class="fas fa-paper-plane" style="color: #10B981;"></i> {% trans "作業報告書送信" %}
+    </h2>
+
+    {% if messages %}
+    {% for message in messages %}
+    <div style="padding: 1rem; margin-bottom: 1rem; border-radius: 8px; {% if message.tags == 'error' %}background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5;{% else %}background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #86efac;{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- 稼働報告情報 -->
+    <div style="padding: 1rem; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--glass-border);">
+        <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; font-size: 0.9rem;">
+            <span style="color: var(--text-dim);">{% trans "取引先" %}</span>
+            <span>{{ timesheet.order.customer.name }}</span>
+            <span style="color: var(--text-dim);">{% trans "注文番号" %}</span>
+            <span style="font-family: monospace;">{{ timesheet.order.order_number|default:"—" }}</span>
+            <span style="color: var(--text-dim);">{% trans "業務名" %}</span>
+            <span>{{ timesheet.order.project_name }}</span>
+            <span style="color: var(--text-dim);">{% trans "作業期間" %}</span>
+            <span>{{ timesheet.order.work_start|date:"Y年m月d日" }} ～ {{ timesheet.order.work_end|date:"Y年m月d日" }}</span>
+            <span style="color: var(--text-dim);">{% trans "作業者" %}</span>
+            <span style="font-weight: 600;">{{ timesheet.worker_name }}</span>
+            <span style="color: var(--text-dim);">{% trans "稼働時間" %}</span>
+            <span>{{ timesheet.total_hours }}h（{{ timesheet.work_days }}日）</span>
+            <span style="color: var(--text-dim);">{% trans "添付ファイル" %}</span>
+            {% if timesheet.excel_file %}
+            <span style="color: #34D399;"><i class="fas fa-file-excel"></i> {{ timesheet.original_filename|default:"Excel添付あり" }}</span>
+            {% else %}
+            <span style="color: #FBBF24;"><i class="fas fa-exclamation-triangle"></i> {% trans "Excelファイルなし（テキストのみ送信）" %}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not timesheet.order.report_to_email and not timesheet.order.customer.email %}
+    <div style="padding: 1rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; margin-bottom: 1.5rem; color: #fca5a5;">
+        <i class="fas fa-exclamation-triangle"></i> {% trans "メールアドレスが未設定です。受注の編集画面で報告書送信先を設定してください。" %}
+    </div>
+    {% else %}
+    <form method="post">
+        {% csrf_token %}
+        <!-- 送信先 -->
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "送信先(TO)" %}</label>
+            <input type="text" value="{{ timesheet.order.report_to_email|default:timesheet.order.customer.email }}" disabled style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+        </div>
+        {% if timesheet.order.report_cc_emails or timesheet.order.customer.cc_email %}
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "CC" %}</label>
+            <input type="text" value="{{ timesheet.order.report_cc_emails|default:timesheet.order.customer.cc_email }}" disabled style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-dim);">
+        </div>
+        {% endif %}
+        <!-- 件名 -->
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "メール件名" %}</label>
+            <input type="text" name="email_subject" value="{{ default_subject }}" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+        </div>
+        <!-- 本文 -->
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "メール本文" %}</label>
+            <textarea name="email_body" rows="16" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); resize: vertical; font-size: 0.85rem; white-space: pre-wrap;">{{ default_body }}</textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+            <a href="{% url 'billing:timesheet_list' %}" class="btn btn-secondary" style="text-decoration: none;">{% trans "キャンセル" %}</a>
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #10B981, #059669);" onclick="return confirm('この作業報告書をメール送信しますか？')">
+                <i class="fas fa-paper-plane"></i> {% trans "送信する" %}
+            </button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
