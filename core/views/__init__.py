@@ -13,6 +13,7 @@ from .auth_views import (  # noqa: F401
 from .partner_views import (  # noqa: F401
     PartnerOnboardingView,
     PartnerManualView,
+    SecurityInfoView,
     QuickPartnerRegistrationView,
     RegistrationSuccessView,
     PartnerEmailLogView,

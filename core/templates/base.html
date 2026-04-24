@@ -428,6 +428,10 @@
                 class="sidebar-link {% if 'partner_manual' in request.path %}active{% endif %}">
                 <i class="fas fa-book-open"></i> {% trans "操作マニュアル" %}
             </a>
+            <a href="{% url 'core:security_info' %}"
+                class="sidebar-link {% if 'security' in request.path %}active{% endif %}">
+                <i class="fas fa-shield-alt"></i> {% trans "セキュリティ" %}
+            </a>
 
             {% endif %}
 

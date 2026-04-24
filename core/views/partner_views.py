@@ -72,6 +72,11 @@ class PartnerManualView(LoginRequiredMixin, TemplateView):
     template_name = 'core/partner_manual.html'
 
 
+class SecurityInfoView(LoginRequiredMixin, TemplateView):
+    """パートナー向けセキュリティ情報ページ"""
+    template_name = 'core/security_info.html'
+
+
 class QuickPartnerRegistrationView(StaffRequiredMixin, FormView):
     """自社担当者によるクイック取引先登録"""
     form_class = QuickPartnerRegistrationForm
