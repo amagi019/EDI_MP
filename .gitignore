@@ -32,3 +32,7 @@ data_dump.json
 *.pot
 *.mo
 test.sqlite3
+db_test.sqlite3
+test_e2e.db
+*.xlsm
+logs/
