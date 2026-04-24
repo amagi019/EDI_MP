@@ -34,7 +34,7 @@ class MockSignatureProvider(BaseSignatureProvider):
         token = self._authenticate()
         
         signature_id = f"sig_{uuid.uuid4().hex[:8]}"
-        logger.info(f"Mock: Document sent for signature using token {token}. ID: {signature_id}")
+        logger.info(f"Mock: Document sent for signature. ID: {signature_id}")
         return {
             'signature_id': signature_id,
             'status': 'SENT',

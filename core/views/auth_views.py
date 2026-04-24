@@ -35,7 +35,7 @@ class MFALoginView(auth_views.LoginView):
         return response
 
 
-class AdminSignUpView(CreateView):
+class AdminSignUpView(StaffRequiredMixin, CreateView):
     template_name = 'core/admin_signup.html'
     form_class = AdminCreationForm
     success_url = reverse_lazy('login')

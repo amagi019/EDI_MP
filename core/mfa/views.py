@@ -156,9 +156,23 @@ class TOTPVerifyView(View):
             return redirect("login")
         return render(request, "mfa/totp_verify.html")
 
+    MAX_TOTP_ATTEMPTS = 5
+
     def post(self, request):
         user_id = request.session.get("_2fa_user_id")
         if not user_id:
+            return redirect("login")
+
+        # ブルートフォース対策: 試行回数チェック
+        attempts = request.session.get("_2fa_attempts", 0)
+        if attempts >= self.MAX_TOTP_ATTEMPTS:
+            # セッションから2FA情報を破棄してログイン画面へ
+            request.session.pop("_2fa_user_id", None)
+            request.session.pop("_2fa_backend", None)
+            request.session.pop("_2fa_next", None)
+            request.session.pop("_2fa_attempts", None)
+            logger.warning(f"[MFA] TOTP試行回数超過によりロックアウト: user_id={user_id}")
+            messages.error(request, "認証コードの試行回数が上限に達しました。再度ログインしてください。")
             return redirect("login")
 
         code = request.POST.get("code", "").strip()
@@ -173,7 +187,8 @@ class TOTPVerifyView(View):
 
         totp = pyotp.TOTP(device.get_secret())
         if totp.verify(code, valid_window=1):
-            # 2FA成功 → 本ログイン
+            # 2FA成功 → 試行カウンタをリセットして本ログイン
+            request.session.pop("_2fa_attempts", None)
             del request.session["_2fa_user_id"]
             backend = request.session.pop("_2fa_backend", None)
             login(request, user, backend=backend)
@@ -181,7 +196,18 @@ class TOTPVerifyView(View):
             logger.info(f"[MFA] TOTP認証成功: {user.username}")
             return redirect(next_url)
         else:
-            messages.error(request, "認証コードが正しくありません")
+            # 失敗回数をインクリメント
+            request.session["_2fa_attempts"] = attempts + 1
+            remaining = self.MAX_TOTP_ATTEMPTS - (attempts + 1)
+            if remaining > 0:
+                messages.error(request, f"認証コードが正しくありません（残り{remaining}回）")
+            else:
+                messages.error(request, "認証コードの試行回数が上限に達しました。再度ログインしてください。")
+                request.session.pop("_2fa_user_id", None)
+                request.session.pop("_2fa_backend", None)
+                request.session.pop("_2fa_next", None)
+                request.session.pop("_2fa_attempts", None)
+                return redirect("login")
             return render(request, "mfa/totp_verify.html")
 
 
