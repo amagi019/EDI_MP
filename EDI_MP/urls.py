@@ -34,6 +34,8 @@ urlpatterns = [
     path('billing/', include('billing.presentation.urls')),
     path('tasks/', include('tasks.urls')),
     path('payroll/', include('payroll.presentation.urls')),
+    path('accounts/', include('core.mfa.urls')),
+    path('accounts/login/', core_views.MFALoginView.as_view(), name='login'),
     path('accounts/password_change/', core_views.CustomPasswordChangeView.as_view(), name='password_change'),
     path('accounts/logout/', auth_views.LogoutView.as_view(http_method_names=['get', 'post', 'options']), name='logout'),
     path('accounts/', include('django.contrib.auth.urls')),

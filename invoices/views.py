@@ -175,12 +175,9 @@ class InvoiceCreateFromBasicInfoView(StaffRequiredMixin, View):
 
         basic_info = get_object_or_404(OrderBasicInfo, pk=pk)
 
-        # 翌月分の注文書を検索
+        # 当月分の注文書を検索（4月に作成 → 4月分の請求書）
         today = datetime.date.today()
-        if today.month == 12:
-            target_year, target_month = today.year + 1, 1
-        else:
-            target_year, target_month = today.year, today.month + 1
+        target_year, target_month = today.year, today.month
         target_ym = datetime.date(target_year, target_month, 1)
 
         order = Order.objects.filter(
@@ -252,16 +249,46 @@ class InvoiceCreateFromOrderView(StaffRequiredMixin, View):
         messages.success(request, f'請求書 {invoice.invoice_no} を作成しました。稼働時間を入力してください。')
         return redirect('invoices:invoice_edit', invoice_id=invoice.pk)
 
+class InvoiceDeleteView(StaffRequiredMixin, View):
+    """下書き請求書の削除"""
+
+    def post(self, request, invoice_id):
+        invoice = get_object_or_404(Invoice, pk=invoice_id)
+        if invoice.status != 'DRAFT':
+            messages.error(request, '下書き状態の請求書のみ削除できます。')
+            return redirect('invoices:invoice_list')
+        invoice_no = invoice.invoice_no
+        invoice.delete()
+        messages.success(request, f'請求書 {invoice_no} を削除しました。')
+        return redirect('invoices:invoice_list')
+
 
 class InvoiceEditView(StaffRequiredMixin, View):
     """DRAFT請求書の編集（稼働時間入力・金額再計算）"""
 
     def get(self, request, invoice_id):
+        from .models import WorkReport
+
         invoice = get_object_or_404(Invoice, pk=invoice_id)
         items = invoice.items.all()
+
+        # 稼働報告書の連携状況を取得
+        work_reports = []
+        all_approved = False
+        if invoice.order and invoice.target_month:
+            work_reports = list(WorkReport.objects.filter(
+                order=invoice.order,
+                target_month=invoice.target_month,
+            ).order_by('worker_name'))
+            all_approved = len(work_reports) > 0 and all(
+                r.status == 'APPROVED' for r in work_reports
+            )
+
         return render(request, 'invoices/invoice_edit.html', {
             'invoice': invoice,
             'items': items,
+            'work_reports': work_reports,
+            'all_reports_approved': all_approved,
         })
 
     def post(self, request, invoice_id):
@@ -293,6 +320,10 @@ class InvoiceEditView(StaffRequiredMixin, View):
             messages.success(request, f'請求書 {invoice.invoice_no} を確認依頼しました。')
             return redirect('invoices:staff_invoice_review', invoice_id=invoice.pk)
 
+        if action == 'preview_send':
+            # 保存後、送付プレビュー画面へ
+            return redirect('invoices:invoice_send_preview', invoice_id=invoice.pk)
+
         messages.success(request, f'請求書 {invoice.invoice_no} を保存しました。')
         return redirect('invoices:invoice_edit', invoice_id=invoice.pk)
 
@@ -318,30 +349,11 @@ class StaffInvoiceReviewView(StaffRequiredMixin, View):
         action = request.POST.get('action')
 
         if action == 'approve':
-            # 承認 → ISSUED に変更
+            # 承認 → ISSUED に変更し、プレビュー画面へリダイレクト
             invoice.status = 'ISSUED'
             invoice.save()
-
-            # パートナーへ支払通知書メール送信
-            partner = invoice.order.partner if invoice.order else None
-            if partner and partner.email:
-                login_url = request.build_absolute_uri(reverse('login'))
-                invoice_url = request.build_absolute_uri(
-                    reverse('invoices:invoice_detail', kwargs={'invoice_id': invoice.pk})
-                )
-
-                from core.utils import compose_invoice_send_email
-                subject, message = compose_invoice_send_email(invoice, partner, login_url, invoice_url)
-
-                try:
-                    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [partner.email], fail_silently=False)
-                    messages.success(request, f"請求書 {invoice.invoice_no} を承認し、パートナー ({partner.email}) へ送付メールを送信しました。")
-                except Exception as e:
-                    messages.warning(request, f"請求書 {invoice.invoice_no} を承認しましたが、パートナーへのメール送信に失敗しました。")
-            else:
-                messages.success(request, f"請求書 {invoice.invoice_no} を承認しました。（パートナーのメールアドレスが未設定のため、メール通知は送信されませんでした）")
-
-            return redirect('invoices:staff_invoice_review', invoice_id=invoice.pk)
+            messages.success(request, f"請求書 {invoice.invoice_no} を承認しました。送付内容を確認してください。")
+            return redirect('invoices:invoice_send_preview', invoice_id=invoice.pk)
 
         elif action == 'reject':
             # 差戻し → DRAFT に変更
@@ -367,6 +379,114 @@ class StaffInvoiceReviewView(StaffRequiredMixin, View):
 
         messages.error(request, "不正な操作です。")
         return redirect('invoices:staff_invoice_review', invoice_id=invoice.pk)
+
+
+class InvoiceSendPreviewView(StaffRequiredMixin, View):
+    """
+    支払通知・請求書の送付プレビュー画面。
+    メール本文の確認・編集、PDFプレビュー、送信を1画面で行う。
+    """
+
+    def _build_email_content(self, invoice, request):
+        """メールテンプレートをレンダリングして件名・本文を返す。"""
+        partner = invoice.order.partner if invoice.order else None
+        if not partner:
+            return '', ''
+
+        login_url = request.build_absolute_uri(reverse('login'))
+        invoice_url = request.build_absolute_uri(
+            reverse('invoices:invoice_detail', kwargs={'invoice_id': invoice.pk})
+        )
+
+        from core.utils import compose_invoice_send_email
+        subject, body = compose_invoice_send_email(invoice, partner, login_url, invoice_url)
+        return subject, body
+
+    def get(self, request, invoice_id):
+        invoice = get_object_or_404(Invoice, pk=invoice_id)
+        partner = invoice.order.partner if invoice.order else None
+        partner_email = partner.email if partner else ''
+
+        subject, body = self._build_email_content(invoice, request)
+
+        return render(request, 'invoices/invoice_send_preview.html', {
+            'invoice': invoice,
+            'partner': partner,
+            'partner_email': partner_email,
+            'email_subject': subject,
+            'email_body': body,
+        })
+
+    def post(self, request, invoice_id):
+        from core.domain.models import SentEmailLog
+        from tasks.services import complete_invoice_create
+
+        invoice = get_object_or_404(Invoice, pk=invoice_id)
+        partner = invoice.order.partner if invoice.order else None
+
+        if not partner or not partner.email:
+            messages.error(request, "パートナーのメールアドレスが設定されていません。")
+            return redirect('invoices:invoice_send_preview', invoice_id=invoice.pk)
+
+        # フォームから件名・本文を取得（編集されていれば編集後の内容を使用）
+        subject = request.POST.get('email_subject', '')
+        body = request.POST.get('email_body', '')
+
+        if not subject or not body:
+            messages.error(request, "件名・本文が空です。")
+            return redirect('invoices:invoice_send_preview', invoice_id=invoice.pk)
+
+        # ステータスがDRAFTの場合は直接ISSUEDに（ワンクリック送付用）
+        original_status = invoice.status
+        if invoice.status == 'DRAFT':
+            invoice.status = 'ISSUED'
+            invoice.save()
+
+        # メール送信
+        try:
+            # CC/BCC対応
+            cc_list = [addr.strip() for addr in (partner.cc or '').split(',') if addr.strip()]
+            bcc_list = [addr.strip() for addr in (partner.bcc or '').split(',') if addr.strip()]
+            # 自社にもBCC
+            if settings.DEFAULT_FROM_EMAIL not in bcc_list:
+                bcc_list.append(settings.DEFAULT_FROM_EMAIL)
+
+            from django.core.mail import EmailMessage
+            email = EmailMessage(
+                subject=subject,
+                body=body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[partner.email],
+                cc=cc_list if cc_list else None,
+                bcc=bcc_list if bcc_list else None,
+            )
+            email.send(fail_silently=False)
+
+            # メール送信ログを記録
+            SentEmailLog.objects.create(
+                partner=partner,
+                subject=subject,
+                body=body,
+                recipient=partner.email,
+            )
+
+            # タスク完了処理
+            try:
+                complete_invoice_create(invoice)
+            except Exception as e:
+                logger.warning(f"タスク完了処理失敗: {e}")
+
+            messages.success(request, f"請求書 {invoice.invoice_no} をパートナー ({partner.email}) へ送付しました。")
+            return redirect('invoices:staff_invoice_review', invoice_id=invoice.pk)
+
+        except Exception as e:
+            # メール送信失敗時はステータスを元に戻す
+            if original_status == 'DRAFT':
+                invoice.status = 'DRAFT'
+                invoice.save()
+            logger.error(f"パートナーメール送信失敗: {e}")
+            messages.error(request, f"メール送信に失敗しました。ステータスは元に戻されました。エラー: {e}")
+            return redirect('invoices:invoice_send_preview', invoice_id=invoice.pk)
 
 
 # ──────────────────────────────────────────

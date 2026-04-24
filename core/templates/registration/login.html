@@ -5,6 +5,15 @@
 
 {% block content %}
 <div style="max-width: 400px; margin: 4rem auto;">
+    {# セキュリティ強化案内 #}
+    <div style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(96,165,250,0.1)); border: 1px solid rgba(99,102,241,0.3); border-radius: 0.75rem; padding: 1rem 1.25rem; margin-bottom: 1.5rem; animation: fadeIn 0.5s ease;">
+        <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem;">🔐 セキュリティが強化されました</div>
+        <p style="color: var(--text-dim); font-size: 0.8rem; line-height: 1.7; margin: 0;">
+            <strong style="color: #e2e8f0;">2段階認証</strong>と<strong style="color: #e2e8f0;">パスキー（指紋・顔認証）</strong>に対応しました。<br>
+            ログイン後、サイドバーの「セキュリティ設定」から設定できます。
+        </p>
+    </div>
+
     <div class="card fade-in">
         <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 2rem;">{% trans "ログイン" %}</h2>
         <form method="post">
@@ -35,6 +44,19 @@
 
             <button type="submit" class="btn" style="width: 100%; padding: 0.8rem;">{% trans "ログイン" %}</button>
         </form>
+
+        {# パスキーログイン #}
+        <div id="passkey-section" style="display: none; margin-top: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                <div style="flex: 1; height: 1px; background: var(--border);"></div>
+                <span style="color: var(--text-dim); font-size: 0.8rem;">または</span>
+                <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            </div>
+            <button type="button" id="passkey-login-btn" style="width: 100%; padding: 0.8rem; background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 0.5rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                🗝️ {% trans "パスキーでログイン" %}
+            </button>
+        </div>
+
         <div class="text-center mt-4">
             <a href="{% url 'password_reset' %}" style="color: var(--accent); text-decoration: none;">{% trans "パスワードを忘れた場合" %}</a>
         </div>
@@ -53,5 +75,81 @@ document.getElementById('toggle-password').addEventListener('click', function() 
         this.setAttribute('aria-label', 'パスワードを表示');
     }
 });
+
+// パスキー対応ブラウザならボタンを表示
+if (window.PublicKeyCredential) {
+    document.getElementById('passkey-section').style.display = 'block';
+}
+
+document.getElementById('passkey-login-btn').addEventListener('click', async function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = '認証中...';
+
+    try {
+        // 1. サーバーからチャレンジ取得
+        var beginRes = await fetch('{% url "mfa-passkey-login-begin" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+        });
+        var options = await beginRes.json();
+
+        // Base64URL → ArrayBuffer
+        options.challenge = base64urlToBuffer(options.challenge);
+        if (options.allowCredentials) {
+            options.allowCredentials = options.allowCredentials.map(function(c) {
+                return Object.assign({}, c, { id: base64urlToBuffer(c.id) });
+            });
+        }
+
+        // 2. ブラウザの WebAuthn API
+        var assertion = await navigator.credentials.get({ publicKey: options });
+
+        // 3. サーバーに送信
+        var completeRes = await fetch('{% url "mfa-passkey-login-complete" %}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: assertion.id,
+                rawId: bufferToBase64url(assertion.rawId),
+                response: {
+                    authenticatorData: bufferToBase64url(assertion.response.authenticatorData),
+                    clientDataJSON: bufferToBase64url(assertion.response.clientDataJSON),
+                    signature: bufferToBase64url(assertion.response.signature),
+                    userHandle: assertion.response.userHandle ? bufferToBase64url(assertion.response.userHandle) : null,
+                },
+                type: assertion.type,
+            }),
+        });
+
+        var result = await completeRes.json();
+        if (result.status === 'ok') {
+            window.location.href = '/';
+        } else {
+            alert('ログインに失敗しました: ' + (result.error || '不明なエラー'));
+        }
+    } catch (e) {
+        if (e.name !== 'NotAllowedError') {
+            alert('エラー: ' + e.message);
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '🗝️ パスキーでログイン';
+    }
+});
+
+function base64urlToBuffer(base64url) {
+    var base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    var pad = base64.length % 4 === 0 ? '' : '='.repeat(4 - (base64.length % 4));
+    var binary = atob(base64 + pad);
+    return Uint8Array.from(binary, function(c) { return c.charCodeAt(0); }).buffer;
+}
+
+function bufferToBase64url(buffer) {
+    var bytes = new Uint8Array(buffer);
+    var binary = '';
+    for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 </script>
 {% endblock %}

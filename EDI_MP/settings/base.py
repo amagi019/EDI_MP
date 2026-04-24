@@ -22,12 +22,12 @@ if os.path.exists(BASE_DIR / ".env"):
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY', default='django-insecure-k2o(4=**v96=jb80yn7+^bj^*^vx=mh%+7p_21m3%)kc%!52eh')
+SECRET_KEY = env('SECRET_KEY')  # .envファイルで設定必須
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')  # .envファイルで設定必須
 
 # CSRF設定（プロキシ経由のアクセスを許可）
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     'core.apps.CoreConfig',
+    'core.mfa.apps.MfaConfig',
     'orders',
     'invoices',
     'billing',
@@ -63,6 +64,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.MaintenanceMiddleware',
     'core.middleware.FirstLoginMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -166,6 +168,12 @@ SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
+# セッション設定
+SESSION_COOKIE_AGE = 8 * 60 * 60  # 8時間
+SESSION_COOKIE_NAME = 'edi_sessionid'
+CSRF_COOKIE_NAME = 'edi_csrftoken'
+SESSION_SAVE_EVERY_REQUEST = True  # リクエスト毎にセッション更新（アクティブなら延長）
+
 # ============================================================
 # システム間API連携設定
 # ============================================================
@@ -175,3 +183,10 @@ EDI_API_KEY = env('EDI_API_KEY', default='')
 EDI_API_URL = env('EDI_API_URL', default='')
 # PayrollSystem APIのURL（EDI側で設定）
 PAYROLL_API_URL = env('PAYROLL_API_URL', default='')
+
+# ============================================================
+# Webhook セキュリティ設定
+# ============================================================
+# 外部サービスからのWebhookリクエストの HMAC-SHA256 署名検証用シークレット
+WEBHOOK_SECRET = env('WEBHOOK_SECRET', default='')
+

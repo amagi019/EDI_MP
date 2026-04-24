@@ -40,6 +40,13 @@ class MonthlyTask(models.Model):
         _("作業対象月"), help_text="YYYY-MM-01形式"
     )
 
+    # ── 月次発注サイクルへの紐付け ──
+    cycle = models.ForeignKey(
+        'orders.OrderCycle', on_delete=models.CASCADE,
+        verbose_name=_("発注サイクル"), related_name='tasks',
+        null=True, blank=True,
+    )
+
     # ── タスク情報 ──
     task_type = models.CharField(
         _("タスク種別"), max_length=20, choices=TASK_TYPES

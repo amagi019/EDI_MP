@@ -105,6 +105,64 @@ def publish_order(order, request):
     return email_sent
 
 
+def republish_order(order, request):
+    """
+    注文書の訂正再送付。
+    - PDFを最新データで再生成・保存
+    - パートナーへ「訂正版」としてメール再送
+    Returns: (email_sent: bool)
+    """
+    # PDFを再生成して上書き保存
+    buffer = generate_order_pdf(order)
+    content = buffer.getvalue()
+    order.order_pdf.save(
+        f"order_{order.order_id}.pdf",
+        ContentFile(content),
+        save=False,
+    )
+    order.save()
+    logger.info(f'[訂正再送付] PDF再生成: {order.order_id} ({order.partner.name})')
+
+    # Google Driveへ再アップロード
+    try:
+        from .google_drive_service import upload_order_pdf
+        result = upload_order_pdf(order)
+        order.drive_file_id = result['file_id']
+        order.save(update_fields=['drive_file_id'])
+    except Exception as e:
+        logger.warning(f"Drive upload failed for {order.order_id}: {e}")
+
+    # パートナーへ訂正通知メール
+    email_sent = False
+    if order.partner and order.partner.email:
+        login_url = request.build_absolute_uri(reverse('login'))
+        order_detail_url = request.build_absolute_uri(
+            reverse('orders:order_detail', kwargs={'order_id': order.order_id})
+        )
+        subject = f"【訂正】注文書 {order.order_id} の訂正版送付のお詫びとご連絡"
+        message = (
+            f"{order.partner.name} 御中\n\n"
+            f"平素より大変お世話になっております。\n"
+            f"マックプランニング株式会社でございます。\n\n"
+            f"先日お送りいたしました注文書（{order.order_id}）の記載内容に\n"
+            f"誤りがございました。大変申し訳ございません。\n\n"
+            f"訂正版を作成いたしましたので、お手数ではございますが\n"
+            f"下記URLより最新版をご確認いただけますようお願い申し上げます。\n\n"
+            f"▼ 注文書の確認\n{order_detail_url}\n\n"
+            f"▼ ログイン\n{login_url}\n\n"
+            f"ご迷惑をおかけしましたことを重ねてお詫び申し上げます。\n"
+            f"ご不明な点がございましたら、お気軽にお問い合わせください。\n\n"
+            f"何卒よろしくお願いいたします。\n"
+        )
+        try:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [order.partner.email], fail_silently=False)
+            email_sent = True
+        except Exception as e:
+            logger.warning(f"Republish email failed for {order.order_id}: {e}")
+
+    return email_sent
+
+
 def _send_approve_notification(order, request):
     """注文承諾通知メールを自社担当者に送信する。"""
     order_url = request.build_absolute_uri(

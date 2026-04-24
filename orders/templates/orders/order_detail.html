@@ -65,6 +65,16 @@
                 </button>
             </form>
             {% endif %}
+            {% if order.status != 'DRAFT' and user.is_staff %}
+            <form action="{% url 'orders:order_republish' order.order_id %}" method="post" style="margin: 0;">
+                {% csrf_token %}
+                <button type="submit" class="btn"
+                    style="background: var(--surface); border: 1px solid #EF4444; color: #EF4444; font-size: 0.9rem;"
+                    onclick="return confirm('訂正版のPDFを再生成し、パートナーへ再送付します。よろしいですか？')">
+                    <i class="fas fa-redo"></i> {% trans "訂正再送付" %}
+                </button>
+            </form>
+            {% endif %}
         </div>
     </div>
 

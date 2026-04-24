@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% load i18n humanize %}
+
+{% block title %}{% trans "送付確認" %} | {{ invoice.invoice_no }}{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="max-width: 900px; margin: 0 auto; padding: 2.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1 style="margin: 0; font-family: 'Outfit', sans-serif;">
+                <span style="background: linear-gradient(135deg, #22c55e, #16a34a); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">{% trans "支払通知・請求書 送付確認" %}</span>
+            </h1>
+            <p style="color: var(--text-dim); margin: 0.5rem 0 0;">{{ invoice.invoice_no }} — {{ invoice.order.partner.name }} / {{ invoice.order.project.name }}</p>
+        </div>
+        <a href="{% url 'invoices:invoice_edit' invoice.pk %}" class="btn btn-secondary" style="font-size: 0.9rem; text-decoration: none;">{% trans "編集に戻る" %}</a>
+    </div>
+
+    {# 送信先情報 #}
+    <div style="margin-bottom: 2rem; padding: 1rem 1.25rem; border-radius: 8px; background: rgba(79, 70, 229, 0.08); border: 1px solid rgba(79, 70, 229, 0.25);">
+        <h3 style="margin: 0 0 0.75rem; font-size: 0.95rem; color: #818CF8;"><i class="fas fa-envelope"></i> {% trans "送信先" %}</h3>
+        {% if partner_email %}
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-weight: 600;">{{ partner.name }}</span>
+            <span style="color: var(--text-dim);">&lt;{{ partner_email }}&gt;</span>
+        </div>
+        {% if partner.cc %}
+        <div style="font-size: 0.85rem; color: var(--text-dim); margin-top: 0.3rem;">CC: {{ partner.cc }}</div>
+        {% endif %}
+        {% else %}
+        <div style="display: flex; align-items: center; gap: 0.5rem; color: #EF4444;">
+            <span style="font-size: 1.1rem;">⚠️</span>
+            <span style="font-weight: 600;">メールアドレスが未設定です。送信できません。</span>
+        </div>
+        {% endif %}
+    </div>
+
+    {# 請求情報サマリ #}
+    <div style="margin-bottom: 2rem; padding: 1rem 1.25rem; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color, rgba(255,255,255,0.1));">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; font-size: 0.9rem;">
+            <div>
+                <span style="color: var(--text-dim);">{% trans "対象月" %}</span>
+                <div style="font-weight: 500; margin-top: 0.2rem;">{{ invoice.target_month|date:"Y年m月" }}</div>
+            </div>
+            <div>
+                <span style="color: var(--text-dim);">{% trans "ステータス" %}</span>
+                <div style="margin-top: 0.2rem;"><span style="padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: rgba(156,163,175,0.2); color: #d1d5db;">{{ invoice.get_status_display }}</span></div>
+            </div>
+            <div>
+                <span style="color: var(--text-dim);">{% trans "税込合計" %}</span>
+                <div style="font-weight: 700; font-size: 1.1rem; margin-top: 0.2rem; color: #86efac;">¥{{ invoice.total_amount|floatformat:0|intcomma }}</div>
+            </div>
+        </div>
+    </div>
+
+    {# PDF確認 #}
+    <div style="margin-bottom: 2rem; padding: 1rem 1.25rem; border-radius: 8px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25);">
+        <h3 style="margin: 0 0 0.75rem; font-size: 0.95rem; color: #FBBF24;"><i class="fas fa-file-pdf"></i> {% trans "PDF確認" %}</h3>
+        <p style="margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--text-dim);">{% trans "送信前にPDFの内容が正しいか確認してください。" %}</p>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <a href="{% url 'invoices:admin_payment_notice_pdf' invoice.pk %}" class="btn" style="text-decoration: none; font-size: 0.9rem; background: linear-gradient(135deg, #f59e0b, #d97706);" target="_blank"><i class="fas fa-file-pdf"></i> {% trans "支払通知書PDF" %}</a>
+            <a href="{% url 'invoices:admin_invoice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none; font-size: 0.9rem;" target="_blank"><i class="fas fa-file-pdf"></i> {% trans "請求書PDF" %}</a>
+        </div>
+    </div>
+
+    {# メールプレビュー + 送信フォーム #}
+    <form method="post" id="send-form">
+        {% csrf_token %}
+
+        <div style="margin-bottom: 2rem; padding: 1.25rem; border-radius: 8px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0; font-size: 0.95rem; color: #10B981;"><i class="fas fa-envelope-open-text"></i> {% trans "メールプレビュー" %}</h3>
+                <button type="button" id="toggle-edit-btn" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.3rem 0.8rem;" onclick="toggleEditMode()">
+                    <i class="fas fa-edit"></i> {% trans "編集" %}
+                </button>
+            </div>
+
+            {# 件名 #}
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 0.3rem;">{% trans "件名" %}</label>
+                <div id="subject-preview" style="padding: 0.6rem 0.8rem; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); font-size: 0.95rem;">{{ email_subject }}</div>
+                <input type="text" name="email_subject" id="subject-edit" value="{{ email_subject }}" style="display: none; width: 100%; padding: 0.6rem 0.8rem; border: 1px solid rgba(16,185,129,0.4); border-radius: 6px; background: rgba(0,0,0,0.3); color: var(--text-main, #fff); font-size: 0.95rem; box-sizing: border-box;">
+            </div>
+
+            {# 本文 #}
+            <div>
+                <label style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 0.3rem;">{% trans "本文" %}</label>
+                <pre id="body-preview" style="padding: 0.8rem; background: rgba(0,0,0,0.2); border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); font-size: 0.85rem; white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; max-height: 400px; overflow-y: auto; line-height: 1.6;">{{ email_body }}</pre>
+                <textarea name="email_body" id="body-edit" rows="16" style="display: none; width: 100%; padding: 0.8rem; border: 1px solid rgba(16,185,129,0.4); border-radius: 6px; background: rgba(0,0,0,0.3); color: var(--text-main, #fff); font-size: 0.85rem; resize: vertical; font-family: inherit; box-sizing: border-box; line-height: 1.6;">{{ email_body }}</textarea>
+            </div>
+        </div>
+
+        {# 送信ボタン #}
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; flex-wrap: wrap;">
+            <a href="{% url 'invoices:invoice_edit' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none;">{% trans "キャンセル" %}</a>
+            {% if partner_email %}
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #22c55e, #16a34a); font-size: 1rem; padding: 0.6rem 2rem;" onclick="return confirm('この内容でパートナーへメール送信します。よろしいですか？')">
+                <i class="fas fa-paper-plane"></i> {% trans "送信する" %}
+            </button>
+            {% else %}
+            <button type="button" class="btn" style="background: rgba(75, 85, 99, 0.5); cursor: not-allowed; font-size: 1rem; padding: 0.6rem 2rem;" disabled>
+                <i class="fas fa-ban"></i> {% trans "メールアドレス未設定のため送信不可" %}
+            </button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<script>
+var isEditMode = false;
+
+function toggleEditMode() {
+    isEditMode = !isEditMode;
+    var subjectPreview = document.getElementById('subject-preview');
+    var subjectEdit = document.getElementById('subject-edit');
+    var bodyPreview = document.getElementById('body-preview');
+    var bodyEdit = document.getElementById('body-edit');
+    var toggleBtn = document.getElementById('toggle-edit-btn');
+
+    if (isEditMode) {
+        subjectPreview.style.display = 'none';
+        subjectEdit.style.display = 'block';
+        bodyPreview.style.display = 'none';
+        bodyEdit.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fas fa-eye"></i> プレビュー';
+        toggleBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+        toggleBtn.style.color = '#10B981';
+    } else {
+        /* 編集内容をプレビューに反映 */
+        subjectPreview.textContent = subjectEdit.value;
+        bodyPreview.textContent = bodyEdit.value;
+        subjectPreview.style.display = 'block';
+        subjectEdit.style.display = 'none';
+        bodyPreview.style.display = 'block';
+        bodyEdit.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-edit"></i> 編集';
+        toggleBtn.style.background = '';
+        toggleBtn.style.color = '';
+    }
+}
+
+/* プレビューモードでも hidden input で値を送信する */
+document.getElementById('send-form').addEventListener('submit', function() {
+    var subjectEdit = document.getElementById('subject-edit');
+    var bodyEdit = document.getElementById('body-edit');
+    /* プレビューモードの場合、hidden input の値を同期 */
+    if (!isEditMode) {
+        subjectEdit.style.display = 'block';
+        bodyEdit.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}

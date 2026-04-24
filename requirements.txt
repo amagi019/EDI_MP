@@ -12,3 +12,7 @@ openpyxl
 jpholiday
 APScheduler
 pdfminer.six>=20221105
+pyotp>=2.9
+webauthn>=2.1
+qrcode>=7.4
+cryptography>=42.0

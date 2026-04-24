@@ -15,6 +15,31 @@
         <span class="status-badge status-{{ invoice.status|lower }}" style="padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; background: rgba(156, 163, 175, 0.2); color: #d1d5db;">{{ invoice.get_status_display }}</span>
     </div>
 
+    {# 稼働報告書 連携状況 #}
+    <div style="margin-bottom: 2rem; padding: 1rem 1.25rem; border-radius: 8px; {% if all_reports_approved %}background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);{% elif work_reports %}background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25);{% else %}background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);{% endif %}">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            {% if all_reports_approved %}
+            <span style="font-size: 1.1rem;">✅</span>
+            <span style="font-weight: 600; color: #10B981;">稼働報告書 — 全て確定済み</span>
+            {% elif work_reports %}
+            <span style="font-size: 1.1rem;">⚠️</span>
+            <span style="font-weight: 600; color: #F59E0B;">稼働報告書 — 未確定あり</span>
+            {% else %}
+            <span style="font-size: 1.1rem;">❌</span>
+            <span style="font-weight: 600; color: #EF4444;">稼働報告書 — 未提出</span>
+            {% endif %}
+        </div>
+        {% if work_reports %}
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem;">
+            {% for wr in work_reports %}
+            <span style="padding: 0.15rem 0.5rem; border-radius: 4px; {% if wr.status == 'APPROVED' %}background: rgba(16,185,129,0.15); color: #10B981;{% else %}background: rgba(245,158,11,0.15); color: #F59E0B;{% endif %}">{{ wr.worker_name|default:"不明" }} ({{ wr.get_status_display }})</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="margin: 0; font-size: 0.85rem; color: var(--text-dim);">対象月の稼働報告書がまだ提出されていません。パートナーに提出を依頼してください。</p>
+        {% endif %}
+    </div>
+
     {# 基本情報 #}
     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 1.25rem;">
         <div>
@@ -83,10 +108,14 @@
 
         {# ボタン #}
         <div style="display: flex; justify-content: flex-end; gap: 1rem; flex-wrap: wrap;">
-            <a href="{% url 'invoices:admin_invoice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none;" target="_blank"><i class="fas fa-file-pdf"></i> {% trans "PDF確認" %}</a>
+            <a href="{% url 'invoices:admin_invoice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none;" target="_blank"><i class="fas fa-file-pdf"></i> {% trans "請求書PDF" %}</a>
+            <a href="{% url 'invoices:admin_payment_notice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none; background: rgba(75, 85, 99, 0.5);" target="_blank"><i class="fas fa-file-pdf"></i> {% trans "支払通知書PDF" %}</a>
             <button type="submit" name="action" value="save" class="btn btn-secondary"><i class="fas fa-save"></i> {% trans "保存" %}</button>
             {% if invoice.status == 'DRAFT' %}
-            <button type="submit" name="action" value="submit_review" class="btn" style="background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);" onclick="return confirm('この請求書を確認依頼しますか？')"><i class="fas fa-paper-plane"></i> {% trans "確認依頼" %}</button>
+            <button type="submit" name="action" value="submit_review" class="btn btn-secondary" onclick="return confirm('この請求書を確認依頼しますか？')"><i class="fas fa-clipboard-check"></i> {% trans "確認依頼" %}</button>
+            {% if all_reports_approved %}
+            <button type="submit" name="action" value="preview_send" class="btn" style="background: linear-gradient(135deg, #22c55e, #16a34a);" onclick="return confirm('内容を保存し、送付プレビュー画面に進みます。よろしいですか？')"><i class="fas fa-paper-plane"></i> {% trans "パートナーへ送付" %}</button>
+            {% endif %}
             {% endif %}
         </div>
     </form>

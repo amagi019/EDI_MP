@@ -63,31 +63,45 @@ class OrderItemForm(forms.ModelForm):
             'excess_rate': forms.NumberInput(attrs={'min': '1'}),
         }
 
+    def _is_marked_for_deletion(self):
+        """削除対象としてマークされているかを判定"""
+        return self.cleaned_data.get('DELETE', False)
+
     def clean_base_fee(self):
+        if self._is_marked_for_deletion():
+            return self.cleaned_data.get('base_fee')
         value = self.cleaned_data.get('base_fee')
         if value is None or value <= 0:
             raise forms.ValidationError("月額基本料金は1以上を入力してください。")
         return value
 
     def clean_time_lower_limit(self):
+        if self._is_marked_for_deletion():
+            return self.cleaned_data.get('time_lower_limit')
         value = self.cleaned_data.get('time_lower_limit')
         if value is None or value <= 0:
             raise forms.ValidationError("基準時間（下限）は1以上を入力してください。")
         return value
 
     def clean_time_upper_limit(self):
+        if self._is_marked_for_deletion():
+            return self.cleaned_data.get('time_upper_limit')
         value = self.cleaned_data.get('time_upper_limit')
         if value is None or value <= 0:
             raise forms.ValidationError("基準時間（上限）は1以上を入力してください。")
         return value
 
     def clean_shortage_rate(self):
+        if self._is_marked_for_deletion():
+            return self.cleaned_data.get('shortage_rate')
         value = self.cleaned_data.get('shortage_rate')
         if value is None or value <= 0:
             raise forms.ValidationError("不足単価（円/h）は1以上を入力してください。")
         return value
 
     def clean_excess_rate(self):
+        if self._is_marked_for_deletion():
+            return self.cleaned_data.get('excess_rate')
         value = self.cleaned_data.get('excess_rate')
         if value is None or value <= 0:
             raise forms.ValidationError("超過単価（円/h）は1以上を入力してください。")
@@ -95,6 +109,9 @@ class OrderItemForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        # 削除予定の行はクロスフィールドバリデーションもスキップ
+        if cleaned_data.get('DELETE', False):
+            return cleaned_data
         lower = cleaned_data.get('time_lower_limit')
         upper = cleaned_data.get('time_upper_limit')
         if lower and upper and lower >= upper:

@@ -146,7 +146,7 @@
                         <div style="margin-bottom: 0; display: flex; align-items: flex-end; padding-bottom: 0.15rem;">
                             {% if item_form.DELETE %}
                             <span style="display:none;">{{ item_form.DELETE }}</span>
-                            <button type="button" class="delete-btn" onclick="toggleDelete(this)" title="この行を削除">
+                            <button type="button" class="delete-btn" onclick="deleteRow(this)" title="この行を削除">
                                 🗑️
                             </button>
                             {% endif %}
@@ -205,24 +205,7 @@
         background: rgba(239, 68, 68, 0.3);
         transform: scale(1.1);
     }
-    .item-row.marked-delete {
-        opacity: 0.4;
-        position: relative;
-    }
-    .item-row.marked-delete::after {
-        content: "削除予定";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(239, 68, 68, 0.8);
-        color: #fff;
-        padding: 0.3rem 1rem;
-        border-radius: 4px;
-        font-weight: bold;
-        font-size: 0.9rem;
-        pointer-events: none;
-    }
+
     /* モバイル対応 */
     @media (max-width: 768px) {
         .card { padding: 1rem !important; }
@@ -244,12 +227,34 @@
 </style>
 
 <script>
-function toggleDelete(btn) {
+function deleteRow(btn) {
     var row = btn.closest('.item-row');
-    var checkbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
-    if (checkbox) {
-        checkbox.checked = !checkbox.checked;
-        row.classList.toggle('marked-delete', checkbox.checked);
+    var hiddenId = row.querySelector('input[name$="-id"]');
+    var isExisting = hiddenId && hiddenId.value;
+
+    if (isExisting) {
+        // 既存行：DELETEフラグを立てて非表示（保存時にDBから削除）
+        var checkbox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if (checkbox) checkbox.checked = true;
+        row.style.display = 'none';
+    } else {
+        // 新規行：DOMから除去してTOTAL_FORMSをデクリメント
+        row.remove();
+        var totalForms = document.getElementById('id_items-TOTAL_FORMS');
+        totalForms.value = parseInt(totalForms.value) - 1;
+        // name属性のインデックスを振り直す
+        var rows = document.querySelectorAll('#item-formset-container .item-row');
+        for (var i = 0; i < rows.length; i++) {
+            var inputs = rows[i].querySelectorAll('input, select, textarea');
+            for (var j = 0; j < inputs.length; j++) {
+                if (inputs[j].name) {
+                    inputs[j].name = inputs[j].name.replace(/items-\d+-/, 'items-' + i + '-');
+                }
+                if (inputs[j].id) {
+                    inputs[j].id = inputs[j].id.replace(/id_items-\d+-/, 'id_items-' + i + '-');
+                }
+            }
+        }
     }
 }
 

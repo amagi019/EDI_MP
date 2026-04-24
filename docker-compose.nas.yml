@@ -42,6 +42,13 @@ services:
     volumes:
       - edi-media:/app/media
       - ./credentials:/app/credentials:ro
+      - ./core:/app/core:ro
+      - ./tasks:/app/tasks:ro
+      - ./orders:/app/orders:ro
+      - ./invoices:/app/invoices:ro
+      - ./billing:/app/billing:ro
+      - ./EDI_MP:/app/EDI_MP:ro
+      - ./logs:/app/logs
     env_file:
       - .env.nas
     depends_on:

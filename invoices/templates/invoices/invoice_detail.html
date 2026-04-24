@@ -73,8 +73,11 @@
         </div>
     </div>
 
-    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-        <a href="{% url 'invoices:partner_invoice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none;" target="_blank">{% trans "PDF表示" %}</a>
+    <div style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap; align-items: center;">
+        <a href="{% url 'invoices:partner_payment_notice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none; background: rgba(75, 85, 99, 0.5);" target="_blank"><i class="fas fa-file-pdf"></i> {% trans "支払通知書PDF" %}</a>
+        <a href="{% url 'invoices:partner_invoice_pdf' invoice.pk %}" class="btn btn-secondary" style="text-decoration: none;" target="_blank"><i class="fas fa-file-pdf"></i> {% trans "請求書PDF" %}</a>
+        <a href="{% url 'invoices:invoice_xml' invoice.pk %}" class="btn" style="background: var(--surface, #1e1e3a); border: 1px solid #10B981; color: #10B981; font-size: 0.9rem; text-decoration: none;"><i class="fas fa-file-code"></i> XML</a>
+        <a href="{% url 'invoices:invoice_json' invoice.pk %}" class="btn" style="background: var(--surface, #1e1e3a); border: 1px solid #F59E0B; color: #F59E0B; font-size: 0.9rem; text-decoration: none;"><i class="fas fa-file-alt"></i> JSON</a>
         {% if invoice.status == 'ISSUED' or invoice.status == 'SENT' %}<form method="post" action="{% url 'invoices:invoice_confirm' invoice.pk %}" style="margin: 0;">{% csrf_token %}<button type="submit" class="btn" onclick="return confirm('この支払通知書を承諾しますか？')">{% trans "承諾" %}</button></form>{% endif %}
     </div>
 </div>

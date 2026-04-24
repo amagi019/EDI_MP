@@ -55,8 +55,41 @@ class Deliverable(models.Model):
         return self.description
 
 class PaymentTerm(models.Model):
+    CLOSING_DAY_CHOICES = [
+        (15, _('15日締め')),
+        (20, _('20日締め')),
+        (25, _('25日締め')),
+        (0, _('月末締め')),
+    ]
+    PAYMENT_MONTH_CHOICES = [
+        (0, _('当月')),
+        (1, _('翌月')),
+        (2, _('翌々月')),
+    ]
+    PAYMENT_DAY_CHOICES = [
+        (10, _('10日払い')),
+        (15, _('15日払い')),
+        (20, _('20日払い')),
+        (25, _('25日払い')),
+        (0, _('末日払い')),
+    ]
+
     partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"))
     project = models.ForeignKey(Project, on_delete=models.CASCADE, verbose_name=_("プロジェクト"))
+
+    closing_day = models.IntegerField(
+        _("締め日"), choices=CLOSING_DAY_CHOICES, default=0,
+        help_text="0=月末"
+    )
+    payment_month_offset = models.IntegerField(
+        _("支払月"), choices=PAYMENT_MONTH_CHOICES, default=1,
+        help_text="締め月から何ヶ月後に支払うか"
+    )
+    payment_day = models.IntegerField(
+        _("支払日"), choices=PAYMENT_DAY_CHOICES, default=0,
+        help_text="0=末日"
+    )
+
     description = models.TextField(_("説明"), blank=True)
 
     class Meta:
@@ -64,8 +97,33 @@ class PaymentTerm(models.Model):
         verbose_name_plural = _("支払条件")
         unique_together = ('partner', 'project')
 
+    def save(self, *args, **kwargs):
+        # description を構造化フィールドから自動生成
+        closing = '月末' if self.closing_day == 0 else f'{self.closing_day}日'
+        month_labels = {0: '当月', 1: '翌月', 2: '翌々月'}
+        pay_month = month_labels.get(self.payment_month_offset, f'{self.payment_month_offset}ヶ月後')
+        pay_day = '末日' if self.payment_day == 0 else f'{self.payment_day}日'
+        self.description = f"毎月{closing}締め{pay_month}{pay_day}払い"
+        super().save(*args, **kwargs)
+
+    def calculate_deadline(self, work_month):
+        """作業対象月 (date) から支払期限日を算出する"""
+        import calendar
+        # 支払月 = work_month + payment_month_offset
+        m = work_month.month + self.payment_month_offset
+        y = work_month.year
+        while m > 12:
+            m -= 12
+            y += 1
+        if self.payment_day == 0:
+            # 末日
+            last_day = calendar.monthrange(y, m)[1]
+            return datetime.date(y, m, last_day)
+        else:
+            return datetime.date(y, m, self.payment_day)
+
     def __str__(self):
-        return f"{self.partner.name} × {self.project.name}"
+        return self.description or f"{self.partner.name} × {self.project.name}"
 
 class ContractTerm(models.Model):
     partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"))
@@ -90,6 +148,49 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+# ── 月次発注サイクル ──
+
+class OrderCycle(models.Model):
+    """
+    月次発注サイクル — Partner × Project × work_month の中心モデル。
+
+    パイプライン表示の起点となり、MonthlyTask / Order / Invoice を
+    リレーション経由で統合的に管理する。
+    """
+    partner = models.ForeignKey(
+        'core.Partner', on_delete=models.CASCADE,
+        verbose_name=_("パートナー"), related_name='order_cycles'
+    )
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE,
+        verbose_name=_("プロジェクト"), related_name='order_cycles'
+    )
+    work_month = models.DateField(
+        _("作業対象月"), help_text="YYYY-MM-01形式"
+    )
+
+    # ── Invoice がないケースの支払完了フラグ ──
+    payment_completed = models.BooleanField(
+        _("支払完了"), default=False,
+        help_text="Invoiceが存在しない場合でも手動で支払完了をマークできる"
+    )
+    payment_completed_at = models.DateTimeField(
+        _("支払完了日時"), null=True, blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("月次発注サイクル")
+        verbose_name_plural = _("月次発注サイクル")
+        unique_together = ('partner', 'project', 'work_month')
+        ordering = ['-work_month', 'partner', 'project']
+
+    def __str__(self):
+        return f"{self.partner.name} / {self.project.name} — {self.work_month.strftime('%Y/%m')}"
+
 
 # トランザクションモデル
 
@@ -214,6 +315,11 @@ class Order(models.Model):
     partner = models.ForeignKey('core.Partner', on_delete=models.CASCADE, verbose_name=_("パートナー"), db_column='customer_id')
     project = models.ForeignKey(Project, on_delete=models.PROTECT, verbose_name=_("プロジェクト"))
     status = models.CharField(_("ステータス"), max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    cycle = models.ForeignKey(
+        OrderCycle, on_delete=models.SET_NULL,
+        verbose_name=_("発注サイクル"), related_name='orders',
+        null=True, blank=True,
+    )
     
     order_end_ym = models.DateField(_("注文終了年月"), help_text="YYYY-MM-01形式など") # 月末日管理か年月管理かは運用次第だがDate型で保持
     order_date = models.DateField(_("注文日"), default=datetime.date.today)

@@ -22,6 +22,8 @@ urlpatterns = [
     path('staff/create-from-order/<str:order_id>/', views.InvoiceCreateFromOrderView.as_view(), name='invoice_create_from_order'),
     path('staff/create-from-basic-info/<int:pk>/', views.InvoiceCreateFromBasicInfoView.as_view(), name='invoice_create_from_basic_info'),
     path('staff/edit/<int:invoice_id>/', views.InvoiceEditView.as_view(), name='invoice_edit'),
+    path('staff/delete/<int:invoice_id>/', views.InvoiceDeleteView.as_view(), name='invoice_delete'),
+    path('staff/send-preview/<int:invoice_id>/', views.InvoiceSendPreviewView.as_view(), name='invoice_send_preview'),
     # データ連携（XML / JSON）
     path('xml/<int:invoice_id>/', views.InvoiceXMLDownloadView.as_view(), name='invoice_xml'),
     path('json/<int:invoice_id>/', views.InvoiceJSONDownloadView.as_view(), name='invoice_json'),

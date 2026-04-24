@@ -50,14 +50,14 @@ def _complete_task(partner, project, work_month, task_type, note=''):
 
 def complete_order_create(order):
     """注文書作成タスクを完了にする"""
-    work_month = _get_next_month_start(order.order_end_ym)
+    work_month = _normalize_to_month_start(order.order_end_ym)
     return _complete_task(order.partner, order.project, work_month, 'ORDER_CREATE',
                           note=f'注文書: {order.order_id}')
 
 
 def complete_order_approve(order):
     """注文書承認タスクを完了にする"""
-    work_month = _get_next_month_start(order.order_end_ym)
+    work_month = _normalize_to_month_start(order.order_end_ym)
     return _complete_task(order.partner, order.project, work_month, 'ORDER_APPROVE',
                           note=f'注文書: {order.order_id}')
 

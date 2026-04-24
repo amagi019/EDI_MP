@@ -13,6 +13,7 @@ urlpatterns = [
     path('my/orders/<str:order_id>/', views.OrderDetailView.as_view(), name='order_detail'),
     path('my/orders/<str:order_id>/approve/', views.OrderApproveView.as_view(), name='order_approve'),
     path('admin/publish/<str:order_id>/', views.OrderPublishView.as_view(), name='order_publish'),
+    path('admin/republish/<str:order_id>/', views.OrderRepublishView.as_view(), name='order_republish'),
     path('admin/edit/<str:order_id>/', views.OrderEditView.as_view(), name='order_edit'),
     path('admin/delete/<str:order_id>/', views.OrderDeleteView.as_view(), name='order_delete'),
     path('webhook/signature/', webhooks.signature_webhook, name='signature_webhook'),

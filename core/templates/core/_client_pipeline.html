@@ -1,0 +1,138 @@
+{# クライアント進捗パイプライン — インクルード用 #}
+<div style="margin-top: 1.5rem;">
+  <div class="card" style="padding: 1rem 1.2rem;">
+    <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:0.4rem;flex-shrink:0;">
+        <div style="width:4px;height:20px;background:linear-gradient(135deg,#F59E0B,#D97706);border-radius:2px;"></div>
+        <h3 style="margin:0;font-size:1rem;font-family:'Outfit',sans-serif;color:#F59E0B;">📋 受注進捗</h3>
+      </div>
+      <select id="cl-filter-client" onchange="filterCL()" style="background:var(--glass-bg);border:1px solid var(--glass-border);color:var(--text-main);border-radius:6px;padding:0.2rem 0.4rem;font-size:0.7rem;max-width:140px;">
+        <option value="">全クライアント</option>
+        {% for cname in client_list %}<option value="{{ cname }}">{{ cname }}</option>{% endfor %}
+      </select>
+      <select id="cl-filter-month" onchange="filterCL()" style="background:var(--glass-bg);border:1px solid var(--glass-border);color:var(--text-main);border-radius:6px;padding:0.2rem 0.4rem;font-size:0.7rem;max-width:100px;">
+        <option value="">全期間</option>
+      </select>
+      <div style="display:flex;gap:1px;">
+        <button type="button" onclick="setClF('pending')" class="cl-sb cl-sb-on" data-s="pending" style="background:rgba(129,140,248,0.15);border:none;color:#818CF8;padding:0.15rem 0.4rem;border-radius:4px 0 0 4px;font-size:0.65rem;cursor:pointer;">未完了</button>
+        <button type="button" onclick="setClF('overdue')" class="cl-sb" data-s="overdue" style="background:rgba(239,68,68,0.15);border:none;color:#EF4444;padding:0.15rem 0.4rem;font-size:0.65rem;cursor:pointer;">遅延</button>
+        <button type="button" onclick="setClF('done')" class="cl-sb" data-s="done" style="background:rgba(16,185,129,0.15);border:none;color:#10B981;padding:0.15rem 0.4rem;font-size:0.65rem;cursor:pointer;">完了</button>
+        <button type="button" onclick="setClF('')" class="cl-sb" data-s="" style="background:rgba(148,163,184,0.2);border:none;color:#94A3B8;padding:0.15rem 0.4rem;border-radius:0 4px 4px 0;font-size:0.65rem;cursor:pointer;">全て</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;table-layout:fixed;">
+        <colgroup>
+          <col style="width:120px;"><col style="width:140px;"><col style="width:60px;">
+          <col style="width:50px;"><col style="width:50px;"><col style="width:50px;"><col style="width:50px;">
+          <col style="width:50px;">
+        </colgroup>
+        <thead><tr style="border-bottom:1px solid var(--glass-border);">
+          <th style="text-align:left;padding:0.3rem 0.4rem;color:var(--text-dim);font-size:0.68rem;">クライアント</th>
+          <th style="text-align:left;padding:0.3rem 0.4rem;color:var(--text-dim);font-size:0.68rem;">案件</th>
+          <th style="text-align:center;padding:0.3rem;color:var(--text-dim);font-size:0.68rem;">対象月</th>
+          <th style="text-align:center;padding:0.3rem 0;color:var(--text-dim);font-size:0.6rem;">受注</th>
+          <th style="text-align:center;padding:0.3rem 0;color:var(--text-dim);font-size:0.6rem;">勤怠</th>
+          <th style="text-align:center;padding:0.3rem 0;color:var(--text-dim);font-size:0.6rem;">請求書</th>
+          <th style="text-align:center;padding:0.3rem 0;color:var(--text-dim);font-size:0.6rem;">入金</th>
+          <th style="text-align:center;padding:0.3rem;color:var(--text-dim);font-size:0.68rem;">状態</th>
+        </tr></thead>
+        <tbody id="cl-tbody"></tbody>
+      </table>
+    </div>
+    <div id="cl-empty" style="display:none;text-align:center;color:var(--text-dim);padding:1.5rem;font-size:0.85rem;">該当するデータがありません</div>
+    <div id="cl-detail" style="display:none;margin-top:0.8rem;padding:0.8rem;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid var(--glass-border);"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var D={{ client_pipeline_data|safe }};
+  window._cl={data:D,filtered:D,sf:'pending',sel:null};
+  var ms={};D.forEach(function(r){ms[r.work_month]=1;});
+  var msel=document.getElementById('cl-filter-month');
+  Object.keys(ms).sort().reverse().forEach(function(m){var o=document.createElement('option');o.value=m;o.textContent=m;msel.appendChild(o);});
+  filterCL();
+})();
+function setClF(s){
+  window._cl.sf=s;
+  document.querySelectorAll('.cl-sb').forEach(function(b){
+    var on=b.dataset.s===s;b.style.fontWeight=on?'700':'400';b.style.opacity=on?'1':'0.5';
+  });filterCL();
+}
+function filterCL(){
+  var p=document.getElementById('cl-filter-client').value;
+  var m=document.getElementById('cl-filter-month').value;
+  var s=window._cl.sf;
+  var f=window._cl.data.filter(function(r){
+    if(p&&r.partner_name!==p)return false;
+    if(m&&r.work_month!==m)return false;
+    if(s==='pending'){if(r.row_status==='done')return false;}
+    else if(s&&r.row_status!==s)return false;
+    return true;
+  });
+  window._cl.filtered=f;renderCL(f);
+}
+function selClRow(i){
+  window._cl.sel=i;
+  document.querySelectorAll('#cl-tbody tr').forEach(function(tr,j){tr.style.outline=j===i?'2px solid #F59E0B':'none';});
+  showClDet(i);
+}
+function showClDet(i){
+  var panel=document.getElementById('cl-detail');
+  var row=window._cl.filtered[i];
+  if(!row){panel.style.display='none';return;}
+  panel.style.display='block';
+  var labels=['受注確認','勤怠報告','請求書発行','入金確認'];
+  var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">';
+  h+='<div style="font-size:0.85rem;font-weight:600;">'+row.partner_name+' / '+row.project_name+' — '+row.work_month+'</div>';
+  h+='<button type="button" onclick="document.getElementById(\'cl-detail\').style.display=\'none\'" style="background:rgba(148,163,184,0.2);border:none;color:var(--text-dim);padding:0.25rem 0.4rem;border-radius:5px;font-size:0.65rem;cursor:pointer;">✕閉じる</button>';
+  h+='</div>';
+  h+='<div style="display:flex;flex-wrap:wrap;gap:0.35rem;">';
+  row.steps.forEach(function(s,j){
+    var cols={done:'#10B981',active:'#F59E0B',overdue:'#EF4444',pending:'#4B5563'};
+    var c=cols[s.status]||'#4B5563';
+    var bg=s.status==='done'?'rgba(16,185,129,0.08)':(s.status==='overdue'?'rgba(239,68,68,0.08)':(s.status==='active'?'rgba(245,158,11,0.08)':'rgba(75,85,99,0.06)'));
+    var click=s.url?' onclick="location.href=\''+s.url+'\'" style="cursor:pointer;':' style="';
+    h+='<div'+click+'flex:1;min-width:100px;padding:0.35rem 0.4rem;border-radius:6px;background:'+bg+';border-left:3px solid '+c+';">';
+    h+='<div style="font-size:0.65rem;font-weight:600;color:'+c+';">'+labels[j]+'</div>';
+    if(s.deadline)h+='<div style="font-size:0.55rem;color:var(--text-dim);">期限:'+s.deadline+'</div>';
+    if(s.days)h+='<div style="font-size:0.55rem;color:'+c+';">'+s.days+'</div>';
+    if(s.url)h+='<div style="font-size:0.5rem;color:#818CF8;margin-top:1px;">▶ 作業する</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  panel.innerHTML=h;
+}
+function renderCL(rows){
+  rows=rows||window._cl.data;
+  var tbody=document.getElementById('cl-tbody'),empty=document.getElementById('cl-empty'),det=document.getElementById('cl-detail');
+  det.style.display='none';window._cl.sel=null;
+  if(!rows.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  var h='';
+  rows.forEach(function(row,ri){
+    var bg=row.row_status==='done'?'rgba(16,185,129,0.03)':(row.row_status==='overdue'?'rgba(239,68,68,0.03)':'transparent');
+    var bL=row.row_status==='overdue'?'3px solid #EF4444':(row.row_status==='done'?'3px solid #10B981':'3px solid transparent');
+    h+='<tr onclick="selClRow('+ri+')" style="border-bottom:1px solid rgba(255,255,255,0.04);background:'+bg+';border-left:'+bL+';cursor:pointer;" onmouseover="this.style.background=\'rgba(255,255,255,0.04)\'" onmouseout="this.style.background=\''+bg+'\'">';
+    h+='<td style="padding:0.3rem 0.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;font-size:0.72rem;" title="'+row.partner_name+'">'+row.partner_name+'</td>';
+    h+='<td style="padding:0.3rem 0.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.68rem;color:var(--text-dim);" title="'+row.project_name+'">'+row.project_name+'</td>';
+    h+='<td style="padding:0.3rem;text-align:center;font-size:0.68rem;color:var(--text-dim);">'+row.work_month+'</td>';
+    row.steps.forEach(function(s){
+      h+='<td style="text-align:center;padding:0.2rem 0;">';
+      var cols={done:'#10B981',active:'#F59E0B',overdue:'#EF4444',pending:'#4B5563'};
+      var c=cols[s.status]||'#4B5563';var tt=s.deadline?'期限:'+s.deadline:'';if(s.days)tt+=(tt?' ':'')+s.days;
+      if(s.status==='done')h+='<div style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:'+c+';font-size:0.45rem;color:#fff;" title="'+tt+'">✓</div>';
+      else if(s.status==='overdue')h+='<div style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:'+c+';font-size:0.5rem;color:#fff;box-shadow:0 0 5px rgba(239,68,68,0.5);" title="'+tt+'">!</div>';
+      else if(s.status==='active')h+='<div style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:'+c+';font-size:0.45rem;color:#fff;box-shadow:0 0 4px rgba(245,158,11,0.4);" title="'+tt+'">●</div>';
+      else h+='<div style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1.5px solid '+c+';" title="'+tt+'"></div>';
+      if(s.days&&(s.status==='overdue'||s.status==='active')){var bc=s.status==='overdue'?'rgba(239,68,68,0.2)':'rgba(245,158,11,0.2)';var tc=s.status==='overdue'?'#EF4444':'#F59E0B';h+='<div style="font-size:0.45rem;color:'+tc+';background:'+bc+';border-radius:2px;padding:0 2px;margin-top:1px;white-space:nowrap;line-height:1.3;">'+s.days+'</div>';}
+      h+='</td>';
+    });
+    var bgs={overdue:{b:'rgba(239,68,68,0.15)',c:'#EF4444',t:'遅延'},active:{b:'rgba(245,158,11,0.15)',c:'#F59E0B',t:'進行中'},done:{b:'rgba(16,185,129,0.15)',c:'#10B981',t:'完了'}};
+    var bd=bgs[row.row_status]||bgs.active;
+    h+='<td style="text-align:center;padding:0.2rem;"><span style="padding:0.1rem 0.3rem;border-radius:8px;font-size:0.55rem;font-weight:600;background:'+bd.b+';color:'+bd.c+';">'+bd.t+'</span></td>';
+    h+='</tr>';
+  });
+  tbody.innerHTML=h;
+}
+</script>

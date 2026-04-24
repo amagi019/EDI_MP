@@ -26,9 +26,24 @@ if SECURE_PROXY_SSL_HEADER_TUPLE:
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'audit': {
+            'format': '%(asctime)s [%(name)s] %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+        },
+        'audit_file': {
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': '/app/logs/audit.log',
+            'when': 'D',
+            'interval': 1,
+            'backupCount': 30,
+            'formatter': 'audit',
+            'encoding': 'utf-8',
         },
     },
     'root': {
@@ -39,6 +54,21 @@ LOGGING = {
         'django': {
             'handlers': ['console'],
             'level': 'WARNING',
+            'propagate': False,
+        },
+        'orders': {
+            'handlers': ['console', 'audit_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'tasks': {
+            'handlers': ['console', 'audit_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'invoices': {
+            'handlers': ['console', 'audit_file'],
+            'level': 'INFO',
             'propagate': False,
         },
     },

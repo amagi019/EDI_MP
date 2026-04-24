@@ -215,6 +215,27 @@ class OrderPublishView(StaffRequiredMixin, View):
         return redirect('orders:order_detail', order_id=order_id)
 
 
+class OrderRepublishView(StaffRequiredMixin, View):
+    """管理者用：注文書の訂正再送付"""
+
+    def post(self, request, order_id):
+        from .services.order_service import republish_order
+
+        order = get_object_or_404(Order, order_id=order_id)
+        if order.status == 'DRAFT':
+            messages.warning(request, "下書き状態の注文書は再送付できません。先に発行してください。")
+            return redirect('orders:order_detail', order_id=order_id)
+
+        email_sent = republish_order(order, request)
+
+        if email_sent:
+            messages.success(request, f"注文書 {order.order_id} の訂正版をパートナーへ再送付しました。")
+        else:
+            messages.warning(request, f"注文書 {order.order_id} のPDFを再生成しました。（メール送信は失敗しました）")
+
+        return redirect('orders:order_detail', order_id=order_id)
+
+
 class OrderCreateView(StaffRequiredMixin, CreateView):
     """スタッフ用：発注書新規作成"""
     model = Order

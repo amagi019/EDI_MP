@@ -5,6 +5,7 @@ core/views パッケージ
 """
 from .dashboard_views import dashboard  # noqa: F401
 from .auth_views import (  # noqa: F401
+    MFALoginView,
     AdminSignUpView,
     CustomPasswordChangeView,
     PartnerUserSignUpView,

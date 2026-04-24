@@ -95,7 +95,7 @@
         <form method="post" style="margin: 0;">
             {% csrf_token %}
             <input type="hidden" name="action" value="approve">
-            <button type="submit" class="btn" onclick="return confirm('この請求書を承認し、パートナーへ送付しますか？')" style="background: linear-gradient(135deg, #22c55e, #16a34a);">{% trans "承認してパートナーへ送付" %}</button>
+            <button type="submit" class="btn" onclick="return confirm('この請求書を承認しますか？承認後、メール送付のプレビュー画面に進みます。')" style="background: linear-gradient(135deg, #22c55e, #16a34a);">{% trans "承認して送付プレビューへ" %}</button>
         </form>
         <button type="button" class="btn" onclick="document.getElementById('reject-form').style.display='block'" style="background: linear-gradient(135deg, #ef4444, #dc2626);">{% trans "差戻し" %}</button>
         {% endif %}

@@ -69,7 +69,22 @@ class Invoice(models.Model):
         
         if self.invoice_no:
             self.acceptance_no = f"MP{self.invoice_no}"
-            
+
+        # 支払期限の自動計算（Order の PaymentTerm から算出）
+        if not self.payment_deadline and self.target_month and self.order_id:
+            if self.order.payment_term:
+                self.payment_deadline = self.order.payment_term.calculate_deadline(self.target_month)
+            else:
+                # PaymentTerm 未設定時のフォールバック: 翌月末日
+                import calendar
+                m = self.target_month.month + 1
+                y = self.target_month.year
+                if m > 12:
+                    m -= 12
+                    y += 1
+                last_day = calendar.monthrange(y, m)[1]
+                self.payment_deadline = datetime.date(y, m, last_day)
+
         super().save(*args, **kwargs)
 
 class InvoiceItem(models.Model):
