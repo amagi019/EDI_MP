@@ -404,6 +404,17 @@ class Order(models.Model):
             if self.contract_term and not self.contract_items:
                 self.contract_items = self.contract_term.description
 
+            # OrderCycleの自動紐付け（work_startベースで照合）
+            if not self.cycle_id and self.work_start:
+                work_month = self.work_start.replace(day=1)
+                cycle = OrderCycle.objects.filter(
+                    partner_id=self.partner_id,
+                    project_id=self.project_id,
+                    work_month=work_month,
+                ).first()
+                if cycle:
+                    self.cycle = cycle
+
         super().save(*args, **kwargs)
 
     def __str__(self):
