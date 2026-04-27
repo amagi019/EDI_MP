@@ -68,10 +68,10 @@ ssh ${NAS_USER}@${NAS_HOST} "
 "
 
 # 4. Docker Compose でビルド＆起動
-echo -e "\n${YELLOW}[4/5] Dockerコンテナをビルド・起動中（キャッシュ無効）...${NC}"
+echo -e "\n${YELLOW}[4/5] Dockerコンテナをビルド・起動中...${NC}"
 ssh ${NAS_USER}@${NAS_HOST} "
     cd ${NAS_DIR}
-    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} build --no-cache web
+    ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} build web
     ${DOCKER_COMPOSE} -f ${COMPOSE_FILE} up -d
 "
 
