@@ -37,7 +37,7 @@
           <th style="text-align:left;padding:0.3rem 0.4rem;color:var(--text-dim);font-size:0.68rem;">プロジェクト</th>
           <th style="text-align:center;padding:0.3rem;color:var(--text-dim);font-size:0.68rem;">対象月</th>
           <th style="text-align:center;padding:0.3rem 0;color:#60A5FA;font-size:0.55rem;border-bottom:2px solid #60A5FA;">注文書</th>
-          <th style="text-align:center;padding:0.3rem 0;color:#A78BFA;font-size:0.55rem;border-bottom:2px solid #A78BFA;">承認</th>
+          <th style="text-align:center;padding:0.3rem 0;color:#A78BFA;font-size:0.55rem;border-bottom:2px solid #A78BFA;">承諾</th>
           <th style="text-align:center;padding:0.3rem 0;color:#A78BFA;font-size:0.55rem;border-bottom:2px solid #A78BFA;">報告</th>
           <th style="text-align:center;padding:0.3rem 0;color:#60A5FA;font-size:0.55rem;border-bottom:2px solid #60A5FA;">請求書</th>
           <th style="text-align:center;padding:0.3rem 0;color:#60A5FA;font-size:0.55rem;border-bottom:2px solid #60A5FA;">送付</th>
@@ -92,7 +92,7 @@ function showDet(i){
   var row=window._pl.filtered[i];
   if(!row){panel.style.display='none';return;}
   panel.style.display='block';
-  var labels=['注文書作成','注文書承認','稼働報告受領','請求書作成','請求書送付','支払通知承諾','支払完了'];
+  var labels=['注文書作成','注文書承諾','稼働報告受領','請求書作成','請求書送付','支払通知承諾','支払完了'];
   var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">';
   h+='<div style="font-size:0.85rem;font-weight:600;">'+row.partner_name+' / '+row.project_name+' — '+row.work_month+'</div>';
   h+='<div style="display:flex;gap:0.3rem;">';
