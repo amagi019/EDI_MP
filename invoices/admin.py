@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import Invoice, InvoiceItem, WorkReport, ReceivedEmail
+from core.domain.models import SentEmailLog
 from .services.billing_calculator import BillingCalculator
 
 class InvoiceItemInline(admin.TabularInline):
@@ -117,6 +118,11 @@ class InvoiceAdmin(admin.ModelAdmin):
 """
         try:
             send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
+            if partner:
+                SentEmailLog.objects.create(
+                    partner=partner, subject=subject,
+                    body=message, recipient=notify_email,
+                )
             self.message_user(request, f"自社担当者 ({notify_email}) へ確認依頼メールを送信しました。")
         except Exception as e:
             import logging
@@ -148,6 +154,10 @@ class InvoiceAdmin(admin.ModelAdmin):
 """
         try:
             send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [partner.email], fail_silently=False)
+            SentEmailLog.objects.create(
+                partner=partner, subject=subject,
+                body=message, recipient=partner.email,
+            )
             self.message_user(request, f"パートナー ({partner.email}) へ送付メールを送信しました。")
         except Exception as e:
             import logging

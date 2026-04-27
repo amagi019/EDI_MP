@@ -11,7 +11,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 
-from core.domain.models import Partner
+from core.domain.models import Partner, SentEmailLog
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +110,10 @@ class Command(BaseCommand):
                     fail_silently=False,
                 )
                 sent += 1
+                SentEmailLog.objects.create(
+                    partner=partner, subject=SUBJECT,
+                    body=body, recipient=email,
+                )
                 self.stdout.write(self.style.SUCCESS(f"  ✅ {partner.name} <{email}>"))
                 logger.info(f"[MFA通知] メール送信: {partner.name} ({email})")
             except Exception as e:

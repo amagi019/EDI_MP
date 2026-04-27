@@ -8,6 +8,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from core.utils import get_notify_email, normalize_name, compose_invoice_approve_email
+from core.domain.models import SentEmailLog
 from ..models import Invoice, InvoiceItem
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,10 @@ def confirm_invoice(invoice, partner, request):
     try:
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
         email_sent = True
+        SentEmailLog.objects.create(
+            partner=invoice.order.partner, subject=subject,
+            body=message, recipient=notify_email,
+        )
     except Exception as e:
         logger.warning(f"請求書承諾通知メール送信失敗: {e}")
 
@@ -174,6 +179,10 @@ EDIシステムにログインして内容を確認してください。
     try:
         send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
         email_sent = True
+        SentEmailLog.objects.create(
+            partner=report_partner, subject=subject,
+            body=body, recipient=notify_email,
+        )
     except Exception as e:
         logger.warning(f"稼働報告書確定通知メール送信失敗: {e}")
 

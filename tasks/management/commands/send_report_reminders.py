@@ -27,6 +27,7 @@ from django.conf import settings
 
 from tasks.models import MonthlyTask
 from core.utils import compose_work_report_reminder_email
+from core.domain.models import SentEmailLog
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,10 @@ class Command(BaseCommand):
                 )
                 task.reminder_sent = True
                 task.save(update_fields=['reminder_sent'])
+                SentEmailLog.objects.create(
+                    partner=partner, subject=subject,
+                    body=body, recipient=partner.email,
+                )
                 sent_count += 1
                 self.stdout.write(self.style.SUCCESS(
                     f'    → 送信完了: {partner.email}'

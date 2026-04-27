@@ -58,6 +58,10 @@ class PartnerOnboardingView(PartnerRequiredMixin, UpdateView):
                 subject, message, settings.DEFAULT_FROM_EMAIL,
                 [notify_email], fail_silently=False,
             )
+            SentEmailLog.objects.create(
+                partner=partner, subject=subject,
+                body=message, recipient=notify_email,
+            )
             # 送信成功後にフラグを設定（10秒後にリセットされるのでセッションの肥大化は気にしない）
             self.request.session[session_key] = True
         except Exception as e:

@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 from django.core.mail import send_mail
 from django.conf import settings
 from django.urls import reverse
-from core.domain.models import CompanyInfo, Partner
+from core.domain.models import CompanyInfo, Partner, SentEmailLog
 from orders.models import Order
 
 class Command(BaseCommand):
@@ -80,6 +80,10 @@ EDIに注文書を登録しましたので、
                     fail_silently=False,
                 )
                 sent_count += 1
+                SentEmailLog.objects.create(
+                    partner=partner, subject=subject,
+                    body=body, recipient=partner.email,
+                )
                 self.stdout.write(self.style.SUCCESS(f"Sent to: {partner.email}"))
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"Failed to send to {partner.email}: {e}"))
