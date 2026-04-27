@@ -11,6 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.utils import compose_order_publish_email, compose_order_approve_email, get_notify_email
+from core.domain.models import SentEmailLog
 from .pdf_generator import generate_order_pdf, generate_acceptance_pdf
 from .signature_service import SignatureService
 
@@ -99,6 +100,10 @@ def publish_order(order, request):
         try:
             send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [order.partner.email], fail_silently=False)
             email_sent = True
+            SentEmailLog.objects.create(
+                partner=order.partner, subject=subject,
+                body=message, recipient=order.partner.email,
+            )
         except Exception as e:
             logger.warning(f"Order notification email failed for {order.order_id}: {e}")
 
@@ -157,6 +162,10 @@ def republish_order(order, request):
         try:
             send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [order.partner.email], fail_silently=False)
             email_sent = True
+            SentEmailLog.objects.create(
+                partner=order.partner, subject=subject,
+                body=message, recipient=order.partner.email,
+            )
         except Exception as e:
             logger.warning(f"Republish email failed for {order.order_id}: {e}")
 
@@ -175,6 +184,10 @@ def _send_approve_notification(order, request):
         logger.info(f"[注文承諾通知] 宛先: {notify_email}, 件名: {subject}")
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
         logger.info(f"[注文承諾通知] 送信成功")
+        SentEmailLog.objects.create(
+            partner=order.partner, subject=subject,
+            body=message, recipient=notify_email,
+        )
     except Exception as e:
         logger.warning(f"[注文承諾通知] 送信エラー: {e}")
         raise  # ビュー側でメッセージを切り分けるため
