@@ -35,8 +35,8 @@ RUN chmod +x /app/entrypoint.sh
 # メディアディレクトリの作成
 RUN mkdir -p /app/media
 
-# 静的ファイルの集約
-RUN python manage.py collectstatic --noinput --settings=EDI_MP.settings
+# 静的ファイルの集約（ビルド時は.envが利用できないためダミーのSECRET_KEYを設定）
+RUN SECRET_KEY=build-dummy-key python manage.py collectstatic --noinput --settings=EDI_MP.settings
 
 # エントリポイント
 ENTRYPOINT ["/app/entrypoint.sh"]
