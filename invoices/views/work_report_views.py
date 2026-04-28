@@ -23,7 +23,7 @@ class WorkReportUploadView(LoginRequiredMixin, View):
     """パートナー向け 稼働報告書アップロード（複数ファイル対応）"""
 
     def get(self, request):
-        from orders.models import Order
+        from orders.models import Order, OrderItem
         from invoices.models import WorkReport
 
         partner = get_user_partner(request.user)
@@ -42,15 +42,48 @@ class WorkReportUploadView(LoginRequiredMixin, View):
             orders = Order.objects.none()
 
         if role == Role.STAFF:
-            existing_reports = WorkReport.objects.all()[:20]
+            existing_reports = WorkReport.objects.all().select_related('order__partner', 'order__project').order_by('-uploaded_at')[:20]
         elif partner:
-            existing_reports = WorkReport.objects.filter(order__partner=partner)[:20]
+            existing_reports = WorkReport.objects.filter(order__partner=partner).order_by('-uploaded_at')[:20]
         else:
             existing_reports = WorkReport.objects.none()
+
+        # 管理者向け: 注文ごとの作業者別提出状況
+        report_status_by_order = []
+        if role == Role.STAFF:
+            for order in orders:
+                items = OrderItem.objects.filter(order=order)
+                reports = WorkReport.objects.filter(order=order)
+                report_names = {normalize_name(r.worker_name): r for r in reports if r.worker_name}
+
+                workers = []
+                for item in items:
+                    if not item.person_name:
+                        continue
+                    norm = normalize_name(item.person_name)
+                    report = report_names.get(norm)
+                    workers.append({
+                        'name': item.person_name,
+                        'submitted': report is not None,
+                        'report': report,
+                        'hours': report.total_hours if report else None,
+                        'status': report.get_status_display() if report else '未提出',
+                    })
+
+                if workers:
+                    submitted = sum(1 for w in workers if w['submitted'])
+                    report_status_by_order.append({
+                        'order': order,
+                        'workers': workers,
+                        'submitted_count': submitted,
+                        'total_count': len(workers),
+                        'all_done': submitted == len(workers),
+                    })
 
         return render(request, 'invoices/work_report_upload.html', {
             'orders': orders,
             'existing_reports': existing_reports,
+            'report_status_by_order': report_status_by_order,
         })
 
     def post(self, request):
