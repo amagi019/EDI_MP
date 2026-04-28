@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from orders.models import Order
+from core.services.encrypted_storage import encrypted_storage
 import datetime
 
 class Invoice(models.Model):
@@ -32,7 +33,7 @@ class Invoice(models.Model):
     department = models.CharField(_('部署名'), max_length=128, blank=True, help_text='請求書に表示する部署名')
     
     # 稼働報告書（エビデンス）
-    work_report_file = models.FileField(_('稼働報告書'), upload_to='invoices/work_reports/', blank=True, null=True, help_text='Excel等の稼働報告書ファイル')
+    work_report_file = models.FileField(_('稼働報告書'), upload_to='invoices/work_reports/', storage=encrypted_storage, blank=True, null=True, help_text='Excel等の稼働報告書ファイル')
     
     # サマリ金額（InvoiceItemの合計）
     subtotal_amount = models.IntegerField(_("税抜合計"), default=0)
@@ -140,7 +141,7 @@ class WorkReport(models.Model):
         verbose_name=_("アップロード者")
     )
     uploaded_at = models.DateTimeField(_("アップロード日時"), auto_now_add=True)
-    file = models.FileField(_("報告書ファイル"), upload_to='work_reports/')
+    file = models.FileField(_("報告書ファイル"), upload_to='work_reports/', storage=encrypted_storage)
     original_filename = models.CharField(_("元ファイル名"), max_length=512, blank=True)
     status = models.CharField(
         _("ステータス"), max_length=20,
@@ -228,7 +229,7 @@ class ReceivedEmail(models.Model):
     )
     attachment_file = models.FileField(
         _("添付ファイル"), upload_to='received_emails/',
-        blank=True, null=True
+        storage=encrypted_storage, blank=True, null=True
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

@@ -168,6 +168,11 @@ SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
+# ファイル暗号化設定
+# Fernet 鍵（`python manage.py generate_encryption_key` で生成）
+# 未設定時はファイルを平文で保存する（開発環境向け）
+FILE_ENCRYPTION_KEY = env('FILE_ENCRYPTION_KEY', default='')
+
 # アップロードサイズ制限
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10MB
