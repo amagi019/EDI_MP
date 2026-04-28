@@ -185,7 +185,19 @@ def _resolve_task_action_url(task):
     elif task.task_type == 'ORDER_APPROVE':
         return reverse('orders:order_list')
     elif task.task_type == 'REPORT_UPLOAD':
-        return reverse('invoices:work_report_upload')
+        # パイプラインから遷移時にパートナー＋月でフィルタ
+        url = reverse('invoices:work_report_upload')
+        if hasattr(task, 'partner_id') and hasattr(task, 'work_month'):
+            from orders.models import Order
+            order = Order.objects.filter(
+                partner_id=task.partner_id,
+                project_id=task.project_id,
+                work_start__year=task.work_month.year,
+                work_start__month=task.work_month.month,
+            ).first()
+            if order:
+                url += f'?order_id={order.order_id}'
+        return url
     else:
         return reverse('invoices:invoice_list')
 

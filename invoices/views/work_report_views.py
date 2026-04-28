@@ -29,6 +29,10 @@ class WorkReportUploadView(LoginRequiredMixin, View):
         partner = get_user_partner(request.user)
         role = get_user_role(request.user)
 
+        # クエリパラメータで特定注文にフィルタ
+        filter_order_id = request.GET.get('order_id')
+        filter_order = None
+
         if role == Role.STAFF:
             orders = Order.objects.filter(
                 status__in=['UNCONFIRMED', 'CONFIRMING', 'RECEIVED', 'APPROVED']
@@ -41,8 +45,14 @@ class WorkReportUploadView(LoginRequiredMixin, View):
         else:
             orders = Order.objects.none()
 
+        if filter_order_id:
+            filter_order = Order.objects.filter(order_id=filter_order_id).select_related('partner', 'project').first()
+
         if role == Role.STAFF:
-            existing_reports = WorkReport.objects.all().select_related('order__partner', 'order__project').order_by('-uploaded_at')[:20]
+            report_qs = WorkReport.objects.all().select_related('order__partner', 'order__project')
+            if filter_order:
+                report_qs = report_qs.filter(order=filter_order)
+            existing_reports = report_qs.order_by('-uploaded_at')[:20]
         elif partner:
             existing_reports = WorkReport.objects.filter(order__partner=partner).order_by('-uploaded_at')[:20]
         else:
@@ -51,7 +61,10 @@ class WorkReportUploadView(LoginRequiredMixin, View):
         # 管理者向け: 注文ごとの作業者別提出状況
         report_status_by_order = []
         if role == Role.STAFF:
-            for order in orders:
+            target_orders = [filter_order] if filter_order else orders
+            for order in target_orders:
+                if not order:
+                    continue
                 items = OrderItem.objects.filter(order=order)
                 reports = WorkReport.objects.filter(order=order)
                 report_names = {normalize_name(r.worker_name): r for r in reports if r.worker_name}
