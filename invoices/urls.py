@@ -18,6 +18,7 @@ urlpatterns = [
     path('my/work-report/<int:pk>/', views.WorkReportResultView.as_view(), name='work_report_result'),
     path('my/work-report/approve/', views.WorkReportApproveView.as_view(), name='work_report_approve'),
     path('staff/work-report/<int:pk>/send-to-client/', views.WorkReportSendToClientView.as_view(), name='work_report_send_to_client'),
+    path('staff/work-report/status/', views.WorkReportStatusView.as_view(), name='work_report_status'),
     # 請求書作成・編集
     path('staff/create-from-order/<str:order_id>/', views.InvoiceCreateFromOrderView.as_view(), name='invoice_create_from_order'),
     path('staff/create-from-basic-info/<int:pk>/', views.InvoiceCreateFromBasicInfoView.as_view(), name='invoice_create_from_basic_info'),

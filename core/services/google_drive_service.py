@@ -38,6 +38,11 @@ def _get_drive_service():
         credentials = service_account.Credentials.from_service_account_file(
             credentials_file, scopes=SCOPES
         )
+        # Workspaceドメイン委任: ユーザーに成り代わって操作
+        impersonate_email = getattr(settings, 'GOOGLE_DRIVE_IMPERSONATE_EMAIL', '')
+        if impersonate_email:
+            credentials = credentials.with_subject(impersonate_email)
+            logger.debug(f"[Google Drive] ドメイン委任: {impersonate_email}")
         return build('drive', 'v3', credentials=credentials)
     except Exception as e:
         logger.warning(f"[Google Drive] サービス初期化エラー: {e}")
@@ -148,7 +153,81 @@ def _find_existing_file(service, filename, parent_id):
 
 
 # ──────────────────────────────────────────
-# 公開API
+# 統一ドキュメントアップロードAPI
+# ──────────────────────────────────────────
+# フォルダ構成:
+#   EDI_MP (ルート)
+#   ├── パートナー管理/
+#   │   └── {会社名}/
+#   │       ├── 契約書/
+#   │       ├── 注文書/
+#   │       └── 稼働報告書/
+#   └── クライアント管理/
+#       └── {会社名}/
+#           ├── 注文書/
+#           ├── 稼働報告書/
+#           └── 請求書/
+
+DOC_TYPE_LABELS = {
+    'contract': '契約書',
+    'order': '注文書',
+    'work_report': '稼働報告書',
+    'invoice': '請求書',
+    'payment': '支払通知書',
+}
+
+
+def upload_document(management_type, company_name, doc_type, filename, pdf_bytes):
+    """
+    統一ドキュメントアップロードAPI。
+    データモデルに対応したフォルダ構成で保存する。
+
+    Args:
+        management_type: 'partner'（パートナー管理）or 'client'（クライアント管理）
+        company_name: 会社名（パートナー名 or クライアント名）
+        doc_type: 'contract', 'order', 'work_report', 'invoice', 'payment'
+        filename: ファイル名
+        pdf_bytes: PDFバイトデータ
+
+    Returns:
+        tuple: (file_id, web_link) or (None, None)
+    """
+    root_folder_id = getattr(settings, 'GOOGLE_DRIVE_ROOT_FOLDER_ID', '')
+    if not root_folder_id:
+        logger.info('[Google Drive] ROOT_FOLDER_IDが未設定のためスキップ')
+        return None, None
+
+    service = _get_drive_service()
+    if not service:
+        return None, None
+
+    try:
+        # 管理区分フォルダ
+        mgmt_label = 'パートナー管理' if management_type == 'partner' else 'クライアント管理'
+        mgmt_folder_id = _find_or_create_folder(service, mgmt_label, root_folder_id)
+
+        # 会社名フォルダ
+        company_folder_id = _find_or_create_folder(service, company_name, mgmt_folder_id)
+
+        # 書類種別フォルダ
+        doc_label = DOC_TYPE_LABELS.get(doc_type, doc_type)
+        doc_folder_id = _find_or_create_folder(service, doc_label, company_folder_id)
+
+        # 既存ファイルがあれば上書き
+        existing_id = _find_existing_file(service, filename, doc_folder_id)
+        if existing_id:
+            file_id, web_link = _update_file(service, existing_id, pdf_bytes)
+        else:
+            file_id, web_link = _upload_file(service, pdf_bytes, filename, doc_folder_id)
+
+        return file_id, web_link or f"https://drive.google.com/file/d/{file_id}/view"
+    except Exception as e:
+        logger.warning(f'[Google Drive] アップロードエラー ({mgmt_label}/{company_name}/{doc_type}): {e}')
+        return None, None
+
+
+# ──────────────────────────────────────────
+# 公開API（レガシー互換）
 # ──────────────────────────────────────────
 
 def upload_contract_pdf(partner, pdf_content, signed_at):
@@ -291,7 +370,7 @@ def upload_work_report_excel(work_report):
     if not service:
         raise ValueError("Google Drive サービスの初期化に失敗しました。")
 
-    # クライアント名を取得（※WorkReport → Order → Project → Client）
+    # クライアント名を取得（※MonthlyTimesheet → Order → Project → Client）
     try:
         client_name = work_report.order.project.client.name
     except Exception:

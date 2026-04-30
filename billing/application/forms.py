@@ -15,6 +15,7 @@ class BillingCustomerForm(forms.ModelForm):
         fields = [
             'name', 'title', 'contact_person', 'email', 'cc_email',
             'phone', 'postal_code', 'address', 'address2',
+            'report_email',
         ]
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -29,6 +30,10 @@ class BillingCustomerForm(forms.ModelForm):
             'postal_code': forms.TextInput(attrs={'class': 'form-control'}),
             'address': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '都道府県 市区町村'}),
             'address2': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ビル名・階数など'}),
+            'report_email': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'maeno@example.com, mine@example.com',
+            }),
         }
 
 

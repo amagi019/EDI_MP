@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@page {
+    size: A4;
+    margin: 15mm 15mm 20mm 15mm;
+}
+body {
+    font-family: 'Noto Sans CJK JP', 'Noto Sans JP', sans-serif;
+    font-size: 10pt;
+    color: #1a1a1a;
+    line-height: 1.5;
+}
+h1 {
+    text-align: center;
+    font-size: 16pt;
+    margin: 0 0 20px 0;
+    border-bottom: 2px solid #333;
+    padding-bottom: 8px;
+}
+.header-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+.header-info .left, .header-info .right {
+    width: 48%;
+}
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+}
+.info-table th {
+    text-align: left;
+    padding: 4px 8px;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    font-weight: normal;
+    font-size: 9pt;
+    color: #666;
+    width: 30%;
+}
+.info-table td {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    font-size: 10pt;
+}
+.summary-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.summary-item {
+    flex: 1;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px;
+    text-align: center;
+}
+.summary-item .label {
+    font-size: 8pt;
+    color: #888;
+}
+.summary-item .value {
+    font-size: 14pt;
+    font-weight: bold;
+}
+.daily-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+}
+.daily-table thead th {
+    background: #2c3e50;
+    color: #fff;
+    padding: 5px 4px;
+    text-align: center;
+    font-weight: normal;
+    font-size: 8pt;
+}
+.daily-table tbody td {
+    padding: 3px 4px;
+    border-bottom: 1px solid #e0e0e0;
+    text-align: center;
+}
+.daily-table tbody tr:nth-child(even) {
+    background: #f8f9fa;
+}
+.daily-table .weekend {
+    background: #fff3e0;
+}
+.daily-table .sat { color: #1565c0; }
+.daily-table .sun { color: #c62828; }
+.daily-table .hours-cell {
+    text-align: right;
+    padding-right: 8px;
+    font-weight: bold;
+}
+.daily-table .zero { color: #bbb; font-weight: normal; }
+.footer {
+    margin-top: 20px;
+    font-size: 8pt;
+    color: #999;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+    <h1>稼働報告書</h1>
+
+    <table class="info-table">
+        <tr>
+            <th>作業者名</th>
+            <td>{{ worker_name }}</td>
+            <th>対象月</th>
+            <td>{{ target_month }}</td>
+        </tr>
+        {% if customer_name %}
+        <tr>
+            <th>クライアント</th>
+            <td>{{ customer_name }}</td>
+            <th>業務名称</th>
+            <td>{{ project_name }}</td>
+        </tr>
+        {% endif %}
+    </table>
+
+    <div class="summary-box">
+        <div class="summary-item">
+            <div class="label">合計稼働時間</div>
+            <div class="value">{{ total_hours }}h</div>
+        </div>
+        <div class="summary-item">
+            <div class="label">稼働日数</div>
+            <div class="value">{{ work_days }}日</div>
+        </div>
+        {% if overtime_hours %}
+        <div class="summary-item">
+            <div class="label">残業時間</div>
+            <div class="value">{{ overtime_hours }}h</div>
+        </div>
+        {% endif %}
+        {% if night_hours %}
+        <div class="summary-item">
+            <div class="label">深夜時間</div>
+            <div class="value">{{ night_hours }}h</div>
+        </div>
+        {% endif %}
+        {% if holiday_hours %}
+        <div class="summary-item">
+            <div class="label">休日出勤</div>
+            <div class="value">{{ holiday_hours }}h</div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if daily_data %}
+    <table class="daily-table">
+        <thead>
+            <tr>
+                <th style="width: 25%;">日付</th>
+                <th style="width: 12%;">曜日</th>
+                <th style="width: 18%;">開始</th>
+                <th style="width: 18%;">終了</th>
+                <th style="width: 18%;">稼働時間</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for day in daily_data %}
+            <tr class="{% if day.day_name == '土' or day.day_name == '日' %}weekend{% endif %}">
+                <td>{{ day.date }}</td>
+                <td class="{% if day.day_name == '土' %}sat{% elif day.day_name == '日' %}sun{% endif %}">{{ day.day_name }}</td>
+                <td>{{ day.start|default:"-" }}</td>
+                <td>{{ day.end|default:"-" }}</td>
+                <td class="hours-cell {% if day.hours == 0 %}zero{% endif %}">{{ day.hours }}h</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        マックプランニング株式会社 &mdash; 稼働報告書（自動生成）
+    </div>
+</body>
+</html>

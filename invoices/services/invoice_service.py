@@ -76,7 +76,7 @@ def approve_work_reports(reports, user, request):
 
 def _link_to_invoice_item(report):
     """
-    確定済みWorkReportの作業時間をInvoiceItemに自動セットする。
+    確定済みMonthlyTimesheetの作業時間をInvoiceItemに自動セットする。
     対象のInvoice/InvoiceItemがなければ作成する。
     """
     from .billing_calculator import BillingCalculator
@@ -117,7 +117,7 @@ def _link_to_invoice_item(report):
 
         if not order_item:
             logger.warning(
-                f'氏名マッチなし: WorkReport "{report.worker_name}" に対応する'
+                f'氏名マッチなし: MonthlyTimesheet "{report.worker_name}" に対応する'
                 f'OrderItemが見つかりません（注文: {order.order_id}）。'
                 f'精算条件なしでInvoiceItemを作成します。'
             )

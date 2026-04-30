@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% load i18n %}
-{% block title %}{% trans "取引先一覧" %}{% endblock %}
+{% block title %}{% trans "クライアント一覧" %}{% endblock %}
 {% block content %}
 <div class="fade-in">
     <div class="flex justify-between" style="align-items: center; margin-bottom: 2rem;">
-        <h1>🏢 {% trans "取引先一覧" %}</h1>
+        <h1>🏢 {% trans "クライアント一覧" %}</h1>
         <a href="{% url 'billing:customer_create' %}" class="btn">＋ {% trans "新規登録" %}</a>
     </div>
     <div class="card">
         <table style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="border-bottom: 1px solid var(--border);">
-                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "取引先名" %}</th>
+                    <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "クライアント名" %}</th>
                     <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "担当者" %}</th>
                     <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "メール" %}</th>
                     <th style="text-align: left; padding: 0.75rem; color: var(--text-dim);">{% trans "電話" %}</th>
@@ -33,7 +33,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-dim);">{% trans "取引先が登録されていません" %}</td>
+                    <td colspan="5" style="padding: 2rem; text-align: center; color: var(--text-dim);">{% trans "クライアントが登録されていません" %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

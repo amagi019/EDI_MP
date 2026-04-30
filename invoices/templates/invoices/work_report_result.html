@@ -29,7 +29,7 @@
                 </h3>
                 <div>
                     {% if report.status == 'ALERT' %}
-                    <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(245, 158, 11, 0.2); color: #FBBF24;">⚠ 要確認（土日祝稼働あり）</span>
+                    <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(245, 158, 11, 0.2); color: #FBBF24;">⚠ 要確認</span>
                     {% elif report.status == 'APPROVED' %}
                     <span style="padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.85rem; background: rgba(34, 197, 94, 0.2); color: #86efac;">✓ 確定済</span>
                     {% elif report.status == 'ERROR' %}
@@ -92,20 +92,26 @@
             {% if report.alerts_json %}
             <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem;">
                 <h4 style="margin: 0 0 0.75rem 0; color: #FBBF24; font-size: 0.95rem;">
-                    <i class="fas fa-exclamation-triangle"></i> 土日祝の稼働が検出されました
+                    <i class="fas fa-exclamation-triangle"></i> チェック結果
                 </h4>
                 {% for alert in report.alerts_json %}
-                <div style="display: flex; gap: 1rem; padding: 0.4rem 0; font-size: 0.9rem; color: var(--text-main);">
+                <div style="display: flex; gap: 1rem; padding: 0.4rem 0; font-size: 0.9rem; color: var(--text-main); align-items: center;">
                     <span style="min-width: 100px;">{{ alert.date }}</span>
                     <span style="min-width: 30px;">({{ alert.day_name }})</span>
                     <span style="min-width: 50px; font-weight: 600;">{{ alert.hours }}h</span>
-                    <span style="color: #FBBF24;">{{ alert.holiday_name }}</span>
+                    {% if alert.type == 'weekend' or alert.type == 'holiday' %}
+                    <span style="color: #FBBF24;"><i class="fas fa-calendar-times"></i> {{ alert.holiday_name }}</span>
+                    {% elif alert.type == 'time_unit' %}
+                    <span style="color: #fb923c;"><i class="fas fa-clock"></i> {{ alert.detail }}</span>
+                    {% elif alert.type == 'late_night' %}
+                    <span style="color: #f87171;"><i class="fas fa-moon"></i> {{ alert.detail }}</span>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
             {% endif %}
 
-            {% if report.daily_data_json %}
+            {% if report.daily_data %}
             <details style="margin-bottom: 1rem;">
                 <summary style="cursor: pointer; color: var(--text-dim); font-size: 0.9rem; padding: 0.5rem 0;">
                     <i class="fas fa-table"></i> 日別稼働データを表示
@@ -122,7 +128,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for day in report.daily_data_json %}
+                            {% for day in report.daily_data %}
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); {% if day.day_name == '土' or day.day_name == '日' %}background: rgba(100, 116, 139, 0.08);{% endif %}">
                                 <td style="padding: 0.5rem;">{{ day.date }}</td>
                                 <td style="text-align: center; padding: 0.5rem; {% if day.day_name == '土' %}color: #60a5fa;{% elif day.day_name == '日' %}color: #f87171;{% endif %}">{{ day.day_name }}</td>
@@ -142,7 +148,7 @@
         {% if report.status == 'APPROVED' %}
         <div style="background: rgba(8, 145, 178, 0.1); border: 1px solid rgba(8, 145, 178, 0.3); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;">
             <h4 style="margin: 0 0 0.75rem 0; color: #06b6d4; font-size: 1rem;">
-                <i class="fas fa-paper-plane"></i> 取引先（クライアント）への稼働報告共有
+                <i class="fas fa-paper-plane"></i> クライアントへの稼働報告共有
             </h4>
             {% if report.sent_to_client_at %}
             <div style="font-size: 0.9rem; margin-bottom: 0.5rem; color: #a5f3fc;">
@@ -155,7 +161,7 @@
             </div>
             {% else %}
             <p style="font-size: 0.85rem; color: var(--text-dim); margin: 0 0 1rem 0;">
-                まだ取引先へ共有されていません。まずは以下のボタンから送信内容（プレビュー）の確認を行ってください。
+                まだクライアントへ共有されていません。まずは以下のボタンから送信内容（プレビュー）の確認を行ってください。
             </p>
             <a href="{% url 'invoices:work_report_send_to_client' report.pk %}" class="btn btn-sm" style="background: #0891b2; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block;">
                 <i class="fas fa-eye"></i> 稼働報告メールプレビュー

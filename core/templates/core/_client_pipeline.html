@@ -21,18 +21,20 @@
       </div>
     </div>
     <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;table-layout:fixed;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.8rem;table-layout:fixed;min-width:700px;">
         <colgroup>
-          <col style="width:120px;"><col style="width:140px;"><col style="width:60px;">
-          <col style="width:50px;"><col style="width:50px;"><col style="width:50px;"><col style="width:50px;">
+          <col style="width:90px;"><col style="width:120px;"><col style="width:90px;"><col style="width:60px;">
+          <col style="width:45px;"><col style="width:45px;"><col style="width:45px;"><col style="width:45px;"><col style="width:45px;">
           <col style="width:50px;">
         </colgroup>
         <thead><tr style="border-bottom:1px solid var(--glass-border);">
           <th style="text-align:left;padding:0.3rem 0.4rem;color:var(--text-dim);font-size:0.68rem;">クライアント</th>
           <th style="text-align:left;padding:0.3rem 0.4rem;color:var(--text-dim);font-size:0.68rem;">案件</th>
+          <th style="text-align:left;padding:0.3rem 0.4rem;color:var(--text-dim);font-size:0.68rem;">作業者</th>
           <th style="text-align:center;padding:0.3rem;color:var(--text-dim);font-size:0.68rem;">対象月</th>
           <th style="text-align:center;padding:0.3rem 0;color:var(--text-dim);font-size:0.6rem;">受注</th>
           <th style="text-align:center;padding:0.3rem 0;color:var(--text-dim);font-size:0.6rem;">勤怠</th>
+          <th style="text-align:center;padding:0.3rem 0;color:var(--text-dim);font-size:0.6rem;">送付</th>
           <th style="text-align:center;padding:0.3rem 0;color:var(--text-dim);font-size:0.6rem;">請求書</th>
           <th style="text-align:center;padding:0.3rem 0;color:var(--text-dim);font-size:0.6rem;">入金</th>
           <th style="text-align:center;padding:0.3rem;color:var(--text-dim);font-size:0.68rem;">状態</th>
@@ -82,7 +84,7 @@ function showClDet(i){
   var row=window._cl.filtered[i];
   if(!row){panel.style.display='none';return;}
   panel.style.display='block';
-  var labels=['受注確認','勤怠報告','請求書発行','入金確認'];
+  var labels=['受注確認','勤怠報告','報告送付','請求書発行','入金確認'];
   var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">';
   h+='<div style="font-size:0.85rem;font-weight:600;">'+row.partner_name+' / '+row.project_name+' — '+row.work_month+'</div>';
   h+='<button type="button" onclick="document.getElementById(\'cl-detail\').style.display=\'none\'" style="background:rgba(148,163,184,0.2);border:none;color:var(--text-dim);padding:0.25rem 0.4rem;border-radius:5px;font-size:0.65rem;cursor:pointer;">✕閉じる</button>';
@@ -115,7 +117,9 @@ function renderCL(rows){
     var bL=row.row_status==='overdue'?'3px solid #EF4444':(row.row_status==='done'?'3px solid #10B981':'3px solid transparent');
     h+='<tr onclick="selClRow('+ri+')" style="border-bottom:1px solid rgba(255,255,255,0.04);background:'+bg+';border-left:'+bL+';cursor:pointer;" onmouseover="this.style.background=\'rgba(255,255,255,0.04)\'" onmouseout="this.style.background=\''+bg+'\'">';
     h+='<td style="padding:0.3rem 0.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;font-size:0.72rem;" title="'+row.partner_name+'">'+row.partner_name+'</td>';
-    h+='<td style="padding:0.3rem 0.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.68rem;color:var(--text-dim);" title="'+row.project_name+'">'+row.project_name+'</td>';
+    h+='<td style="padding:0.3rem 0.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.68rem;color:var(--text-dim);" title="'+row.project_name+'">'+row.project_name+'</td>';
+    var wn=(row.worker_names&&row.worker_names.length)?row.worker_names.join(', '):'—';
+    h+='<td style="padding:0.3rem 0.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.68rem;color:#A78BFA;" title="'+wn+'">'+wn+'</td>';
     h+='<td style="padding:0.3rem;text-align:center;font-size:0.68rem;color:var(--text-dim);">'+row.work_month+'</td>';
     row.steps.forEach(function(s){
       h+='<td style="text-align:center;padding:0.2rem 0;">';

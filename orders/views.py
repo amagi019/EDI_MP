@@ -372,7 +372,7 @@ class PartnerMonthlyProgressView(StaffRequiredMixin, View):
 
     def get(self, request):
         from core.domain.models import Partner
-        from invoices.models import WorkReport, Invoice
+        from billing.domain.models import MonthlyTimesheet, Invoice
         import datetime
 
         # 対象月を決定（デフォルトは当月）
@@ -409,7 +409,7 @@ class PartnerMonthlyProgressView(StaffRequiredMixin, View):
 
         # 当月の稼働報告を一括取得
         work_reports_by_order = {}
-        for wr in WorkReport.objects.filter(
+        for wr in MonthlyTimesheet.objects.filter(
             target_month__year=target_date.year, 
             target_month__month=target_date.month
         ):

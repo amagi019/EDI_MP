@@ -19,7 +19,7 @@
         {% csrf_token %}
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
             <div>
-                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "取引先" %}</label>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "クライアント" %}</label>
                 <input type="text" value="{{ order.customer.name }}" disabled style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-dim);">
             </div>
             <div>

@@ -229,7 +229,7 @@ class Payroll(models.Model):
         _("対象年月"),
         help_text=_("YYYY-MM-01形式"))
     timesheet = models.ForeignKey(
-        'billing.StaffTimesheet', on_delete=models.SET_NULL,
+        'billing.MonthlyTimesheet', on_delete=models.SET_NULL,
         verbose_name=_("勤怠報告"), null=True, blank=True)
     status = models.CharField(
         _("ステータス"), max_length=10,

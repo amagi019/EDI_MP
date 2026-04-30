@@ -21,4 +21,5 @@ from .invoice_views import (  # noqa: F401
 from .work_report_views import (  # noqa: F401
     WorkReportUploadView, WorkReportResultView,
     WorkReportApproveView, WorkReportSendToClientView,
+    WorkReportStatusView,
 )

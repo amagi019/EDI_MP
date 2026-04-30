@@ -6,7 +6,7 @@
 import datetime
 from decimal import Decimal
 from billing.domain.models import (
-    BillingInvoice, BillingItem, ReceivedOrder, StaffTimesheet,
+    BillingInvoice, BillingItem, ReceivedOrder, MonthlyTimesheet,
 )
 from billing.services.timesheet_service import calculate_ses_billing
 from core.domain.models import CompanyInfo
@@ -26,7 +26,7 @@ def create_invoice_from_received_order(received_order, issue_date=None):
     company = CompanyInfo.objects.first()
 
     # 送付済み or 承認済み勤怠の取得
-    timesheets = StaffTimesheet.objects.filter(
+    timesheets = MonthlyTimesheet.objects.filter(
         order=received_order,
         status__in=['SENT', 'APPROVED'],
     )

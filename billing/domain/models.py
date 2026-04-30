@@ -25,6 +25,11 @@ class BillingCustomer(models.Model):
     postal_code = models.CharField(_("郵便番号"), max_length=10, blank=True)
     address = models.CharField(_("住所1"), max_length=255, blank=True)
     address2 = models.CharField(_("住所2"), max_length=255, blank=True)
+    # 報告書送付先
+    report_email = models.TextField(
+        _("報告書送付先メール"), blank=True,
+        help_text=_("稼働報告書の送付先。複数指定する場合はカンマ区切りで入力")
+    )
 
     class Meta:
         verbose_name = _("請求先")
@@ -364,6 +369,14 @@ class ReceivedOrder(models.Model):
         help_text=_("カンマ区切りで複数指定可")
     )
 
+    # パートナー側の発注との紐付け
+    partner_order = models.ForeignKey(
+        'orders.Order', on_delete=models.SET_NULL,
+        verbose_name=_("パートナー発注"), null=True, blank=True,
+        related_name='received_orders',
+        help_text=_("対応するパートナーへの発注")
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -422,115 +435,7 @@ class ReceivedOrderItem(models.Model):
         return f"{self.order.order_number} - {name}"
 
 
-class StaffTimesheet(models.Model):
-    """勤怠報告 — パートナー側のWorkReportに対応"""
-    STATUS_CHOICES = [
-        ('DRAFT', _('下書き')),
-        ('SUBMITTED', _('提出済')),
-        ('SENT', _('送付済')),
-        ('APPROVED', _('承認済')),
-    ]
-    WORKER_TYPE_CHOICES = [
-        ('INTERNAL', _('自社社員')),
-        ('PARTNER', _('パートナー')),
-    ]
-
-    order = models.ForeignKey(
-        ReceivedOrder, on_delete=models.CASCADE,
-        verbose_name=_("受注"), related_name='timesheets'
-    )
-    order_item = models.ForeignKey(
-        ReceivedOrderItem, on_delete=models.SET_NULL,
-        verbose_name=_("受注明細"), null=True, blank=True,
-        related_name='timesheets'
-    )
-    worker_name = models.CharField(_("作業者名"), max_length=64)
-    worker_type = models.CharField(
-        _("要員種別"), max_length=10,
-        choices=WORKER_TYPE_CHOICES, default='INTERNAL'
-    )
-    # PayrollSystem社員番号との紐付け（自社社員の場合に設定）
-    employee_id = models.CharField(
-        _("社員番号"), max_length=20, blank=True,
-        help_text=_("PayrollSystemの社員番号。自社社員の場合に設定")
-    )
-    target_month = models.DateField(_("対象月"))
-    total_hours = models.DecimalField(
-        _("合計稼働時間"), max_digits=6, decimal_places=2, default=0.00
-    )
-    work_days = models.IntegerField(_("稼働日数"), default=0)
-    daily_data = models.JSONField(
-        _("日別データ"), null=True, blank=True,
-        help_text=_('[{"date": "2026-03-01", "hours": 8.0, "start": "9:00", "end": "18:00"}, ...]')
-    )
-    # Excelファイル原本（取引先へのメール送信時に添付）
-    excel_file = models.FileField(
-        _("Excelファイル"), upload_to='timesheets/excel/',
-        blank=True, null=True,
-        help_text=_("アップロードされた稼働報告Excelファイルの原本")
-    )
-    original_filename = models.CharField(
-        _("元ファイル名"), max_length=512, blank=True
-    )
-    status = models.CharField(
-        _("ステータス"), max_length=10,
-        choices=STATUS_CHOICES, default='DRAFT'
-    )
-    # パートナー稼働報告との紐付け
-    partner_report = models.ForeignKey(
-        'invoices.WorkReport', on_delete=models.SET_NULL,
-        verbose_name=_("パートナー稼働報告"), null=True, blank=True,
-        related_name='staff_timesheets'
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = _("稼働報告")
-        verbose_name_plural = _("稼働報告")
-        ordering = ['-target_month']
-
-    def __str__(self):
-        return f"{self.worker_name} - {self.target_month.strftime('%Y/%m')}"
-
-    def save(self, *args, **kwargs):
-        """保存時にemployee_idを自動設定する。
-
-        worker_typeが'INTERNAL'（自社社員）でemployee_idが未設定の場合、
-        SyncedEmployeeテーブルからworker_nameで検索し自動補完する。
-        """
-        if self.worker_type == 'INTERNAL' and not self.employee_id:
-            self._auto_fill_employee_id()
-        super().save(*args, **kwargs)
-
-    def _auto_fill_employee_id(self):
-        """SyncedEmployeeからworker_nameで社員番号を自動検索・設定する"""
-        import logging
-        from billing.domain.synced_employee import SyncedEmployee
-
-        logger = logging.getLogger(__name__)
-
-        # 空白を正規化して比較
-        def normalize(name):
-            return name.replace(' ', '').replace('\u3000', '').strip()
-
-        normalized = normalize(self.worker_name)
-        matches = [
-            emp for emp in SyncedEmployee.objects.filter(is_active=True)
-            if normalize(emp.name) == normalized
-        ]
-
-        if len(matches) == 1:
-            self.employee_id = matches[0].employee_id
-            logger.info(
-                f'employee_id自動設定: {self.worker_name} → {self.employee_id}'
-            )
-        elif len(matches) > 1:
-            logger.warning(
-                f'同姓同名の社員が{len(matches)}名います: {self.worker_name}。'
-                f'employee_idを手動で設定してください。'
-            )
+# StaffTimesheet は MonthlyTimesheet に統合済み（2026-04-30）
 
 
 class PaymentRecord(models.Model):
@@ -567,3 +472,166 @@ class PaymentRecord(models.Model):
 
     def __str__(self):
         return f"{self.payment_date} - ¥{self.amount:,} ({self.get_method_display()})"
+
+
+class MonthlyTimesheet(models.Model):
+    """月次稼働報告 — 自社社員・パートナー共通の統合モデル
+
+    旧 StaffTimesheet（自社社員勤怠）と旧 WorkReport（パートナー稼働報告）を統合。
+    report_type で区別する。
+    """
+    REPORT_TYPE_CHOICES = [
+        ('INTERNAL', _('自社社員')),
+        ('PARTNER', _('パートナー')),
+    ]
+    STATUS_CHOICES = [
+        ('DRAFT', _('下書き')),
+        ('UPLOADED', _('受領済')),
+        ('PARSED', _('解析済')),
+        ('ALERT', _('要確認')),
+        ('SUBMITTED', _('提出済')),
+        ('APPROVED', _('承認済')),
+        ('SENT', _('送付済')),
+        ('ERROR', _('エラー')),
+    ]
+    WORKER_TYPE_CHOICES = [
+        ('INTERNAL', _('自社社員')),
+        ('PARTNER', _('パートナー')),
+    ]
+
+    # === 識別 ===
+    report_type = models.CharField(
+        _('報告種別'), max_length=10,
+        choices=REPORT_TYPE_CHOICES, default='INTERNAL'
+    )
+    worker_name = models.CharField(_('作業者名'), max_length=128)
+    worker_type = models.CharField(
+        _('要員種別'), max_length=10,
+        choices=WORKER_TYPE_CHOICES, default='INTERNAL'
+    )
+    employee_id = models.CharField(
+        _('社員番号'), max_length=20, blank=True,
+        help_text=_('PayrollSystemの社員番号。自社社員の場合に設定')
+    )
+    target_month = models.DateField(
+        _('対象月'), help_text='常にYYYY-MM-01形式'
+    )
+    status = models.CharField(
+        _('ステータス'), max_length=10,
+        choices=STATUS_CHOICES, default='DRAFT'
+    )
+
+    # === リレーション ===
+    order = models.ForeignKey(
+        'orders.Order', on_delete=models.SET_NULL,
+        verbose_name=_('パートナー発注'), null=True, blank=True,
+        related_name='monthly_timesheets'
+    )
+    received_order = models.ForeignKey(
+        ReceivedOrder, on_delete=models.SET_NULL,
+        verbose_name=_('クライアント受注'), null=True, blank=True,
+        related_name='monthly_timesheets'
+    )
+    received_order_item = models.ForeignKey(
+        ReceivedOrderItem, on_delete=models.SET_NULL,
+        verbose_name=_('受注明細'), null=True, blank=True,
+        related_name='monthly_timesheets'
+    )
+
+    # === 稼働データ ===
+    total_hours = models.DecimalField(
+        _('合計稼働時間'), max_digits=6, decimal_places=2, default=0.00
+    )
+    work_days = models.IntegerField(_('稼働日数'), default=0)
+    overtime_hours = models.DecimalField(
+        _('残業時間'), max_digits=6, decimal_places=2, default=0.00
+    )
+    night_hours = models.DecimalField(
+        _('深夜残業時間'), max_digits=6, decimal_places=2, default=0.00
+    )
+    holiday_hours = models.DecimalField(
+        _('休日出勤時間'), max_digits=6, decimal_places=2, default=0.00
+    )
+    daily_data = models.JSONField(
+        _('日別データ'), null=True, blank=True
+    )
+
+    # === ファイル ===
+    excel_file = models.FileField(
+        _('Excelファイル'), upload_to='timesheets/excel/',
+        blank=True, null=True
+    )
+    pdf_file = models.FileField(
+        _('PDFファイル'), upload_to='timesheets/pdf/',
+        blank=True, null=True
+    )
+    original_filename = models.CharField(
+        _('元ファイル名'), max_length=512, blank=True
+    )
+    drive_file_id = models.CharField(
+        _('DriveファイルID'), max_length=200, blank=True
+    )
+
+    # === パートナー報告固有 ===
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        verbose_name=_('アップロード者'), null=True, blank=True,
+        related_name='uploaded_timesheets'
+    )
+    uploaded_at = models.DateTimeField(
+        _('アップロード日時'), null=True, blank=True
+    )
+    alerts_json = models.JSONField(
+        _('警告データ'), null=True, blank=True
+    )
+    error_message = models.TextField(_('エラーメッセージ'), blank=True)
+    sent_to_client_at = models.DateTimeField(
+        _('クライアント送付日時'), null=True, blank=True
+    )
+    client_shared_url = models.URLField(
+        _('共有URL'), max_length=500, blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('月次稼働報告')
+        verbose_name_plural = _('月次稼働報告')
+        ordering = ['-target_month', 'worker_name']
+
+    def __str__(self):
+        type_label = '社員' if self.report_type == 'INTERNAL' else 'パートナー'
+        month = self.target_month.strftime('%Y/%m') if self.target_month else '不明'
+        return f"{self.worker_name} [{type_label}] - {month}"
+
+    def get_status_display_custom(self):
+        return dict(self.STATUS_CHOICES).get(self.status, self.status)
+
+    @property
+    def has_alerts(self):
+        return bool(self.alerts_json)
+
+    def save(self, *args, **kwargs):
+        # target_month を月初に正規化
+        if self.target_month:
+            self.target_month = self.target_month.replace(day=1)
+        # 自社社員の場合、employee_id を自動設定
+        if self.worker_type == 'INTERNAL' and not self.employee_id:
+            self._auto_fill_employee_id()
+        super().save(*args, **kwargs)
+
+    def _auto_fill_employee_id(self):
+        import logging
+        from billing.domain.synced_employee import SyncedEmployee
+        logger = logging.getLogger(__name__)
+        def normalize(name):
+            return name.replace(' ', '').replace('\u3000', '').strip()
+        normalized = normalize(self.worker_name)
+        matches = [
+            emp for emp in SyncedEmployee.objects.filter(is_active=True)
+            if normalize(emp.name) == normalized
+        ]
+        if len(matches) == 1:
+            self.employee_id = matches[0].employee_id
+            logger.info(f'employee_id自動設定: {self.worker_name} → {self.employee_id}')

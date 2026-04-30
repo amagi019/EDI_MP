@@ -31,11 +31,30 @@ logger = logging.getLogger(__name__)
 def _create_invoice_items_from_order(invoice, order):
     """OrderItemからInvoiceItemを一括生成する（共通ヘルパー）。"""
     from orders.models import OrderItem
+    from billing.domain.models import MonthlyTimesheet
+    from core.utils import normalize_name
+
+    # MonthlyTimesheetから稼働時間マップを作成
+    hours_map = {}
+    if invoice.target_month:
+        tm = invoice.target_month
+        for ts in MonthlyTimesheet.objects.filter(
+            target_month__year=tm.year,
+            target_month__month=tm.month,
+            status__in=('SUBMITTED', 'APPROVED', 'SENT'),
+        ):
+            if ts.worker_name and ts.total_hours:
+                hours_map[normalize_name(ts.worker_name)] = ts.total_hours
+
     for oi in OrderItem.objects.filter(order=order):
+        # 名前から稼働時間を自動設定
+        work_time = 0
+        if oi.person_name:
+            work_time = hours_map.get(normalize_name(oi.person_name), 0)
         InvoiceItem.objects.create(
             invoice=invoice,
             person_name=oi.person_name,
-            work_time=0,
+            work_time=work_time,
             base_fee=oi.base_fee,
             time_lower_limit=oi.time_lower_limit,
             time_upper_limit=oi.time_upper_limit,
@@ -202,7 +221,8 @@ class InvoiceCreateFromBasicInfoView(StaffRequiredMixin, View):
 
 class InvoiceCreateFromOrderView(StaffRequiredMixin, View):
     """注文書から請求書を手動作成"""
-    def post(self, request, order_id):
+
+    def _create(self, request, order_id):
         from invoices.services.billing_calculator import BillingCalculator
 
         order = get_object_or_404(Order, order_id=order_id)
@@ -219,6 +239,12 @@ class InvoiceCreateFromOrderView(StaffRequiredMixin, View):
         BillingCalculator.calculate_invoice(invoice)
         messages.success(request, f'請求書 {invoice.invoice_no} を作成しました。稼働時間を入力してください。')
         return redirect('invoices:invoice_edit', invoice_id=invoice.pk)
+
+    def get(self, request, order_id):
+        return self._create(request, order_id)
+
+    def post(self, request, order_id):
+        return self._create(request, order_id)
 
 
 class InvoiceDeleteView(StaffRequiredMixin, View):
@@ -238,7 +264,7 @@ class InvoiceEditView(StaffRequiredMixin, View):
     """DRAFT請求書の編集（稼働時間入力・金額再計算）"""
 
     def get(self, request, invoice_id):
-        from invoices.models import WorkReport
+        from billing.domain.models import MonthlyTimesheet
 
         invoice = get_object_or_404(Invoice, pk=invoice_id)
         items = invoice.items.all()
@@ -246,9 +272,10 @@ class InvoiceEditView(StaffRequiredMixin, View):
         work_reports = []
         all_approved = False
         if invoice.order and invoice.target_month:
-            work_reports = list(WorkReport.objects.filter(
+            work_reports = list(MonthlyTimesheet.objects.filter(
                 order=invoice.order,
-                target_month=invoice.target_month,
+                target_month__year=invoice.target_month.year,
+                target_month__month=invoice.target_month.month,
             ).order_by('worker_name'))
             all_approved = len(work_reports) > 0 and all(
                 r.status == 'APPROVED' for r in work_reports
@@ -390,8 +417,8 @@ class InvoiceSendPreviewView(StaffRequiredMixin, View):
             return redirect('invoices:invoice_send_preview', invoice_id=invoice.pk)
 
         original_status = invoice.status
-        if invoice.status == 'DRAFT':
-            invoice.status = 'ISSUED'
+        if invoice.status in ('DRAFT', 'PENDING_REVIEW', 'ISSUED'):
+            invoice.status = 'SENT'
             invoice.save()
 
         try:

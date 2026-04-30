@@ -79,7 +79,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         dry_run = options['dry_run']
-        base_url = "https://edi.macplanning.com"
+        base_url = getattr(settings, 'SITE_URL', None)
+        if not base_url:
+            origins = getattr(settings, 'CSRF_TRUSTED_ORIGINS', [])
+            base_url = origins[0].rstrip('/') if origins else 'http://localhost:8000'
         login_url = f"{base_url}/accounts/login/"
         security_url = f"{base_url}/accounts/security/"
 

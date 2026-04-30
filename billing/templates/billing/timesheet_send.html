@@ -20,7 +20,7 @@
     <!-- 稼働報告情報 -->
     <div style="padding: 1rem; background: rgba(0,0,0,0.15); border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid var(--glass-border);">
         <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; font-size: 0.9rem;">
-            <span style="color: var(--text-dim);">{% trans "取引先" %}</span>
+            <span style="color: var(--text-dim);">{% trans "クライアント" %}</span>
             <span>{{ timesheet.order.customer.name }}</span>
             <span style="color: var(--text-dim);">{% trans "注文番号" %}</span>
             <span style="font-family: monospace;">{{ timesheet.order.order_number|default:"—" }}</span>

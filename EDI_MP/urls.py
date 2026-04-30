@@ -44,5 +44,9 @@ urlpatterns = [
     path('manifest.json', core_views.manifest_view, name='manifest'),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# メディアファイル配信（Cloudflare Tunnel直結のためDjangoで配信）
+from django.urls import re_path
+from django.views.static import serve
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]

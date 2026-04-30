@@ -1,35 +1,207 @@
 """
 勤怠報告サービス層
 
-StaffTimesheetのビジネスロジック：
+MonthlyTimesheetのビジネスロジック：
  - 受注ベースの勤怠報告作成
- - パートナーWorkReportとの連携
+ - daily_dataからの残業・深夜・休日時間の自動算出
 """
 import datetime
+import logging
 from decimal import Decimal
 from billing.domain.models import (
-    StaffTimesheet, ReceivedOrder, ReceivedOrderItem,
+    MonthlyTimesheet, ReceivedOrder, ReceivedOrderItem,
 )
 
+logger = logging.getLogger(__name__)
 
-def create_timesheet(order, order_item, worker_name, worker_type,
-                     target_month, total_hours, work_days,
-                     daily_data=None, partner_report=None,
+# =====================================================================
+# 残業・深夜・休日時間の自動算出ルール
+# =====================================================================
+STANDARD_DAILY_HOURS = 8.0    # 所定労働時間（1日あたり）
+NIGHT_START_HOUR = 22         # 深夜開始（22:00）
+NIGHT_END_HOUR = 5            # 深夜終了（05:00）
+
+
+def _calculate_overtime_breakdown(daily_data):
+    """
+    daily_dataから残業・深夜・休日の時間内訳を自動算出する。
+
+    ルール:
+        残業時間: 1日の稼働が8時間を超えた分
+        深夜時間: 22:00〜翌5:00 の稼働時間
+        休日時間: 土曜・日曜・祝日の稼働時間
+
+    Args:
+        daily_data: 日別データのリスト
+            [{"date": "2026-03-01", "hours": 8.0,
+              "start": "9:00", "end": "18:00"}, ...]
+
+    Returns:
+        dict: {
+            'overtime_hours': Decimal,
+            'night_hours': Decimal,
+            'holiday_hours': Decimal,
+        }
+    """
+    if not daily_data:
+        return {
+            'overtime_hours': Decimal('0'),
+            'night_hours': Decimal('0'),
+            'holiday_hours': Decimal('0'),
+        }
+
+    total_overtime = 0.0
+    total_night = 0.0
+    total_holiday = 0.0
+
+    for entry in daily_data:
+        hours = float(entry.get('hours', 0))
+        if hours <= 0:
+            continue
+
+        date_str = entry.get('date', '')
+        start_str = entry.get('start', '')
+        end_str = entry.get('end', '')
+
+        # 日付の解析
+        try:
+            work_date = datetime.date.fromisoformat(date_str)
+        except (ValueError, TypeError):
+            continue
+
+        # 休日判定（土日）
+        is_holiday = work_date.weekday() >= 5  # 5=土, 6=日
+        if not is_holiday:
+            is_holiday = _is_national_holiday(work_date)
+
+        if is_holiday:
+            total_holiday += hours
+
+        # 残業時間（1日8時間超の分。休日出勤は別カウントのため除外）
+        if not is_holiday and hours > STANDARD_DAILY_HOURS:
+            total_overtime += hours - STANDARD_DAILY_HOURS
+
+        # 深夜時間（22:00〜翌5:00の稼働分を算出）
+        if start_str and end_str:
+            night = _calc_night_hours(start_str, end_str)
+            total_night += night
+
+    return {
+        'overtime_hours': Decimal(str(round(total_overtime, 2))),
+        'night_hours': Decimal(str(round(total_night, 2))),
+        'holiday_hours': Decimal(str(round(total_holiday, 2))),
+    }
+
+
+def _calc_night_hours(start_str, end_str):
+    """
+    開始・終了時刻から深夜時間帯（22:00〜翌5:00）の稼働時間を算出。
+
+    Args:
+        start_str: 開始時刻（"9:00" 形式）
+        end_str: 終了時刻（"18:00" 形式）
+
+    Returns:
+        float: 深夜時間帯の稼働時間
+    """
+    try:
+        parts = start_str.split(':')
+        start_h, start_m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+        parts = end_str.split(':')
+        end_h, end_m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+    except (ValueError, IndexError):
+        return 0.0
+
+    start_minutes = start_h * 60 + start_m
+    end_minutes = end_h * 60 + end_m
+
+    # 日をまたぐ場合（例: 22:00〜翌2:00）
+    if end_minutes <= start_minutes:
+        end_minutes += 24 * 60
+
+    night_minutes = 0.0
+
+    # 深夜帯1: 0:00〜5:00（0〜300分）
+    night1_start = 0
+    night1_end = NIGHT_END_HOUR * 60
+    overlap1 = _overlap(start_minutes, end_minutes, night1_start, night1_end)
+    night_minutes += overlap1
+
+    # 深夜帯2: 22:00〜24:00（1320〜1440分）
+    night2_start = NIGHT_START_HOUR * 60
+    night2_end = 24 * 60
+    overlap2 = _overlap(start_minutes, end_minutes, night2_start, night2_end)
+    night_minutes += overlap2
+
+    # 日跨ぎの深夜帯: 翌0:00〜翌5:00（1440〜1740分）
+    if end_minutes > 24 * 60:
+        night3_start = 24 * 60
+        night3_end = 24 * 60 + NIGHT_END_HOUR * 60
+        overlap3 = _overlap(start_minutes, end_minutes, night3_start, night3_end)
+        night_minutes += overlap3
+
+    return night_minutes / 60.0
+
+
+def _overlap(work_start, work_end, range_start, range_end):
+    """2つの時間範囲の重複部分（分）を算出"""
+    overlap_start = max(work_start, range_start)
+    overlap_end = min(work_end, range_end)
+    return max(0, overlap_end - overlap_start)
+
+
+def _is_national_holiday(date):
+    """
+    日本の祝日かどうかを判定する。
+
+    jpholiday パッケージが利用可能な場合はそれを使用し、
+    なければ False を返す（土日判定のみにフォールバック）。
+    """
+    try:
+        import jpholiday
+        return jpholiday.is_holiday(date)
+    except ImportError:
+        return False
+
+
+def create_timesheet(received_order=None, received_order_item=None,
+                     order=None, worker_name='', worker_type='INTERNAL',
+                     report_type='INTERNAL',
+                     target_month=None, total_hours=0, work_days=0,
+                     daily_data=None,
                      excel_file_path=None, original_filename=''):
-    """勤怠報告を作成（Excelファイル原本の保存含む）"""
-    ts = StaffTimesheet(
+    """勤怠報告を作成（Excelファイル原本の保存含む）
+
+    daily_data がある場合、残業・深夜・休日時間を自動算出する。
+    """
+    # daily_data から残業内訳を自動算出
+    breakdown = _calculate_overtime_breakdown(daily_data)
+
+    ts = MonthlyTimesheet(
+        report_type=report_type,
         order=order,
-        order_item=order_item,
+        received_order=received_order,
+        received_order_item=received_order_item,
         worker_name=worker_name,
         worker_type=worker_type,
         target_month=target_month,
         total_hours=Decimal(str(total_hours)),
         work_days=work_days,
+        overtime_hours=breakdown['overtime_hours'],
+        night_hours=breakdown['night_hours'],
+        holiday_hours=breakdown['holiday_hours'],
         daily_data=daily_data,
-        status='DRAFT',
-        partner_report=partner_report,
+        status='SUBMITTED',
         original_filename=original_filename,
     )
+
+    if daily_data and any(v > 0 for v in breakdown.values()):
+        logger.info(
+            f'[Timesheet] {worker_name}: 残業内訳を自動算出 '
+            f'残業{breakdown["overtime_hours"]}h, '
+            f'深夜{breakdown["night_hours"]}h, '
+            f'休日{breakdown["holiday_hours"]}h'
+        )
 
     # 一時保存されたExcelファイルをTimesheetに紐付け
     if excel_file_path:
@@ -105,7 +277,7 @@ def send_work_report_email(timesheet, subject=None, body=None, sender_email=None
     Excelファイル原本がある場合はそれを添付する。
 
     Args:
-        timesheet: StaffTimesheet
+        timesheet: MonthlyTimesheet
         subject: カスタム件名
         body: カスタム本文
         sender_email: 送信元（省略時はDEFAULT_FROM_EMAIL）

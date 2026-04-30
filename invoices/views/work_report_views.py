@@ -24,7 +24,7 @@ class WorkReportUploadView(LoginRequiredMixin, View):
 
     def get(self, request):
         from orders.models import Order, OrderItem
-        from invoices.models import WorkReport
+        from billing.domain.models import MonthlyTimesheet
 
         partner = get_user_partner(request.user)
         role = get_user_role(request.user)
@@ -49,14 +49,14 @@ class WorkReportUploadView(LoginRequiredMixin, View):
             filter_order = Order.objects.filter(order_id=filter_order_id).select_related('partner', 'project').first()
 
         if role == Role.STAFF:
-            report_qs = WorkReport.objects.all().select_related('order__partner', 'order__project')
+            report_qs = MonthlyTimesheet.objects.all().select_related('order__partner', 'order__project')
             if filter_order:
                 report_qs = report_qs.filter(order=filter_order)
             existing_reports = report_qs.order_by('-uploaded_at')[:20]
         elif partner:
-            existing_reports = WorkReport.objects.filter(order__partner=partner).order_by('-uploaded_at')[:20]
+            existing_reports = MonthlyTimesheet.objects.filter(order__partner=partner).order_by('-uploaded_at')[:20]
         else:
-            existing_reports = WorkReport.objects.none()
+            existing_reports = MonthlyTimesheet.objects.none()
 
         # 管理者向け: 注文ごとの作業者別提出状況
         report_status_by_order = []
@@ -66,7 +66,7 @@ class WorkReportUploadView(LoginRequiredMixin, View):
                 if not order:
                     continue
                 items = OrderItem.objects.filter(order=order)
-                reports = WorkReport.objects.filter(order=order)
+                reports = MonthlyTimesheet.objects.filter(order=order)
                 report_names = {normalize_name(r.worker_name): r for r in reports if r.worker_name}
 
                 workers = []
@@ -101,7 +101,7 @@ class WorkReportUploadView(LoginRequiredMixin, View):
 
     def post(self, request):
         from orders.models import Order, OrderItem
-        from invoices.models import WorkReport
+        from billing.domain.models import MonthlyTimesheet
         from invoices.services.excel_parser import auto_detect_and_parse
         from decimal import Decimal
 
@@ -122,17 +122,19 @@ class WorkReportUploadView(LoginRequiredMixin, View):
         report_ids = []
 
         for f in files:
-            report = WorkReport(
+            report = MonthlyTimesheet(
+                report_type='PARTNER',
+                worker_type='PARTNER',
                 order=order,
                 uploaded_by=request.user,
-                file=f,
+                excel_file=f,
                 original_filename=f.name,
             )
             report.save()
 
             try:
-                report.file.seek(0)
-                result = auto_detect_and_parse(report.file, original_filename=f.name)
+                report.excel_file.seek(0)
+                result = auto_detect_and_parse(report.excel_file, original_filename=f.name)
 
                 if result['error']:
                     report.status = 'ERROR'
@@ -160,28 +162,36 @@ class WorkReportUploadView(LoginRequiredMixin, View):
                     # 同一注文・同一作業者・同月の既存レポートがあれば上書き
                     existing = None
                     if worker_name and result['target_month']:
-                        existing = WorkReport.objects.filter(
+                        existing = MonthlyTimesheet.objects.filter(
                             order=order,
                             worker_name=worker_name,
                             target_month=result['target_month'],
                         ).exclude(pk=report.pk).first()
 
                     if existing:
-                        if existing.file:
-                            existing.file.delete(save=False)
-                        existing.file = report.file
+                        if existing.excel_file:
+                            existing.excel_file.delete(save=False)
+                        existing.excel_file = report.excel_file
                         existing.original_filename = f.name
                         existing.uploaded_by = request.user
                         existing.worker_name = worker_name
                         existing.target_month = result['target_month']
                         existing.total_hours = result['total_hours']
                         existing.work_days = result['work_days']
-                        existing.daily_data_json = result['daily_data']
+                        existing.daily_data = result['daily_data']
                         existing.alerts_json = result['alerts'] if result['alerts'] else None
                         warnings = [w for w in [result.get('name_mismatch_warning', ''), order_mismatch_warning] if w]
                         existing.error_message = ' / '.join(warnings)
-                        existing.status = 'ALERT' if (result['alerts'] or order_mismatch_warning) else 'PARSED'
+                        existing.status = 'ALERT' if (result['alerts'] or order_mismatch_warning) else 'APPROVED'
                         existing.save()
+                        # PDF自動生成
+                        if existing.status == 'APPROVED':
+                            try:
+                                from billing.services.timesheet_pdf_service import generate_workreport_pdf
+                                generate_workreport_pdf(existing)
+                            except Exception as pdf_e:
+                                import logging
+                                logging.getLogger(__name__).warning(f'MonthlyTimesheet PDF生成エラー ({worker_name}): {pdf_e}')
                         report.delete()
                         report_ids.append(existing.pk)
                         messages.info(request, f"「{worker_name}」の報告書を更新しました（上書き）。")
@@ -191,16 +201,24 @@ class WorkReportUploadView(LoginRequiredMixin, View):
                     report.target_month = result['target_month']
                     report.total_hours = result['total_hours']
                     report.work_days = result['work_days']
-                    report.daily_data_json = result['daily_data']
+                    report.daily_data = result['daily_data']
                     report.alerts_json = result['alerts'] if result['alerts'] else None
 
                     warnings = [w for w in [result.get('name_mismatch_warning', ''), order_mismatch_warning] if w]
                     if warnings:
                         report.error_message = ' / '.join(warnings)
 
-                    report.status = 'ALERT' if (result['alerts'] or order_mismatch_warning) else 'PARSED'
+                    report.status = 'ALERT' if (result['alerts'] or order_mismatch_warning) else 'APPROVED'
 
                 report.save()
+                # PDF自動生成
+                if report.status == 'APPROVED':
+                    try:
+                        from billing.services.timesheet_pdf_service import generate_workreport_pdf
+                        generate_workreport_pdf(report)
+                    except Exception as pdf_e:
+                        import logging
+                        logging.getLogger(__name__).warning(f'MonthlyTimesheet PDF生成エラー ({report.worker_name}): {pdf_e}')
                 report_ids.append(report.pk)
 
             except Exception as e:
@@ -217,15 +235,15 @@ class WorkReportResultView(LoginRequiredMixin, View):
     """稼働報告書のチェック結果表示"""
 
     def get(self, request, pk=None):
-        from invoices.models import WorkReport
+        from billing.domain.models import MonthlyTimesheet
 
         if pk:
-            reports = [get_object_or_404(WorkReport, pk=pk)]
+            reports = [get_object_or_404(MonthlyTimesheet, pk=pk)]
         else:
             ids_str = request.GET.get('ids', '')
             if ids_str:
                 ids = [int(i) for i in ids_str.split(',') if i.isdigit()]
-                reports = list(WorkReport.objects.filter(pk__in=ids).order_by('pk'))
+                reports = list(MonthlyTimesheet.objects.filter(pk__in=ids).order_by('pk'))
             else:
                 reports = []
 
@@ -248,14 +266,14 @@ class WorkReportResultView(LoginRequiredMixin, View):
         })
 
     def post(self, request, pk=None):
-        from invoices.models import WorkReport
+        from billing.domain.models import MonthlyTimesheet
         from decimal import Decimal
         import datetime as dt
 
         report_ids = request.POST.getlist('report_ids')
         action = request.POST.get('action', 'save')
 
-        reports = WorkReport.objects.filter(
+        reports = MonthlyTimesheet.objects.filter(
             pk__in=report_ids,
             status__in=['PARSED', 'ALERT']
         ).select_related('order__partner')
@@ -315,10 +333,10 @@ class WorkReportApproveView(LoginRequiredMixin, View):
     """パートナーによる稼働報告書の承認"""
 
     def post(self, request):
-        from invoices.models import WorkReport
+        from billing.domain.models import MonthlyTimesheet
 
         report_ids = request.POST.getlist('report_ids')
-        reports = WorkReport.objects.filter(
+        reports = MonthlyTimesheet.objects.filter(
             pk__in=report_ids,
             status__in=['PARSED', 'ALERT']
         ).select_related('order__partner')
@@ -378,9 +396,9 @@ class WorkReportSendToClientView(StaffRequiredMixin, View):
         return subject, body
 
     def get(self, request, pk):
-        from invoices.models import WorkReport
+        from billing.domain.models import MonthlyTimesheet
 
-        work_report = get_object_or_404(WorkReport, pk=pk)
+        work_report = get_object_or_404(MonthlyTimesheet, pk=pk)
 
         client = None
         target_email = None
@@ -412,13 +430,13 @@ class WorkReportSendToClientView(StaffRequiredMixin, View):
         })
 
     def post(self, request, pk):
-        from invoices.models import WorkReport
+        from billing.domain.models import MonthlyTimesheet
         from core.services.google_drive_service import upload_work_report_excel
         from django.utils import timezone
         from django.conf import settings
         import traceback
 
-        work_report = get_object_or_404(WorkReport, pk=pk)
+        work_report = get_object_or_404(MonthlyTimesheet, pk=pk)
 
         client_shared_url = work_report.client_shared_url
         if not client_shared_url or "アップロードエラー" in client_shared_url:
@@ -461,3 +479,84 @@ class WorkReportSendToClientView(StaffRequiredMixin, View):
 
         messages.success(request, f"稼働報告書を取引先へ送付（共有）しました。")
         return redirect('invoices:work_report_result', pk=work_report.pk)
+
+
+class WorkReportStatusView(StaffRequiredMixin, View):
+    """パートナーからの作業報告受領状況（月別）"""
+
+    def get(self, request):
+        import datetime as dt
+        from orders.models import Order, OrderItem
+        from billing.domain.models import MonthlyTimesheet
+
+        today = dt.date.today()
+        # 月パラメータ（デフォルト: 当月）
+        month_str = request.GET.get('month', today.strftime('%Y-%m'))
+        try:
+            year, month = map(int, month_str.split('-'))
+            target_date = dt.date(year, month, 1)
+        except (ValueError, TypeError):
+            target_date = today.replace(day=1)
+            month_str = target_date.strftime('%Y-%m')
+
+        # 対象月の発注（work_startの年月で絞り込み）
+        orders = Order.objects.filter(
+            work_start__year=target_date.year,
+            work_start__month=target_date.month,
+        ).select_related('partner', 'project').order_by('partner__name', 'project__name')
+
+        status_rows = []
+        total_expected = 0
+        total_received = 0
+
+        for order in orders:
+            items = OrderItem.objects.filter(order=order)
+            reports = MonthlyTimesheet.objects.filter(order=order)
+            report_map = {}
+            for r in reports:
+                if r.worker_name:
+                    from core.utils import normalize_name
+                    report_map[normalize_name(r.worker_name)] = r
+
+            for item in items:
+                if not item.person_name:
+                    continue
+                from core.utils import normalize_name
+                norm = normalize_name(item.person_name)
+                report = report_map.get(norm)
+                total_expected += 1
+                if report:
+                    total_received += 1
+
+                status_rows.append({
+                    'partner_name': order.partner.name,
+                    'project_name': order.project.name,
+                    'worker_name': item.person_name,
+                    'order_id': order.order_id,
+                    'received': report is not None,
+                    'report': report,
+                    'hours': report.total_hours if report else None,
+                    'status_label': report.get_status_display() if report else '未受領',
+                    'uploaded_at': report.uploaded_at if report else None,
+                })
+
+        # 前月・翌月
+        if target_date.month == 1:
+            prev_month = dt.date(target_date.year - 1, 12, 1)
+        else:
+            prev_month = dt.date(target_date.year, target_date.month - 1, 1)
+        if target_date.month == 12:
+            next_month = dt.date(target_date.year + 1, 1, 1)
+        else:
+            next_month = dt.date(target_date.year, target_date.month + 1, 1)
+
+        return render(request, 'invoices/work_report_status.html', {
+            'month_str': month_str,
+            'target_date': target_date,
+            'status_rows': status_rows,
+            'total_expected': total_expected,
+            'total_received': total_received,
+            'total_unreceived': total_expected - total_received,
+            'prev_month': prev_month.strftime('%Y-%m'),
+            'next_month': next_month.strftime('%Y-%m'),
+        })

@@ -26,8 +26,11 @@ from .received_order_views import (  # noqa: F401
     ReceivedOrderDetailView, ReceivedOrderCreateView, ReceivedOrderEditView,
     GenerateInvoiceFromOrderView,
     RollforwardOrderView, RollforwardAllView,
-    TimesheetListView, TimesheetCreateView,
+    TimesheetListView, TimesheetDetailView, TimesheetCreateView,
     TimesheetApproveView, TimesheetSendView,
     TimesheetExcelUploadView, TimesheetExcelConfirmView,
     TimesheetAPIView, EmployeeSyncView,
+    ReportSubmissionStatusView,
+    CustomerReportEmailUpdateView,
+    ReportSendPreviewView,
 )

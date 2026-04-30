@@ -25,7 +25,7 @@ def calculate_payroll(employee, year_month, timesheet=None,
     Args:
         employee: Employee インスタンス
         year_month: datetime.date（YYYY-MM-01）
-        timesheet: StaffTimesheet（任意、紐付け用）
+        timesheet: MonthlyTimesheet（任意、紐付け用）
         overtime_hours: 残業時間
         overtime_60_hours: 60時間超残業
         night_hours: 深夜残業時間
@@ -410,10 +410,10 @@ def _get_timesheet_data(emp, year_month, api_timesheets, warnings):
             return total_hours, 20, None
 
     # ② フォールバック: 直接DB参照
-    from billing.domain.models import StaffTimesheet
+    from billing.domain.models import MonthlyTimesheet
 
     # employee_idで検索（優先）
-    ts = StaffTimesheet.objects.filter(
+    ts = MonthlyTimesheet.objects.filter(
         employee_id=emp.employee_id,
         target_month=year_month,
         status__in=['SENT', 'APPROVED'],
@@ -421,7 +421,7 @@ def _get_timesheet_data(emp, year_month, api_timesheets, warnings):
 
     # employee_id未設定ならworker_nameでフォールバック
     if not ts:
-        ts = StaffTimesheet.objects.filter(
+        ts = MonthlyTimesheet.objects.filter(
             worker_name=emp.name,
             target_month=year_month,
             status__in=['SENT', 'APPROVED'],

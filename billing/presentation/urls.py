@@ -51,12 +51,16 @@ urlpatterns = [
     path('received-orders/<int:pk>/generate-invoice/', views.GenerateInvoiceFromOrderView.as_view(), name='generate_invoice_from_order'),
     path('received-orders/<int:pk>/rollforward/', views.RollforwardOrderView.as_view(), name='rollforward_order'),
     path('received-orders/rollforward-all/', views.RollforwardAllView.as_view(), name='rollforward_all'),
+    path('report-status/', views.ReportSubmissionStatusView.as_view(), name='report_submission_status'),
+    path('report-status/preview/', views.ReportSendPreviewView.as_view(), name='report_send_preview'),
+    path('api/customer/<int:pk>/report-email/', views.CustomerReportEmailUpdateView.as_view(), name='customer_report_email_update'),
 
     # 勤怠報告
     path('timesheets/', views.TimesheetListView.as_view(), name='timesheet_list'),
     path('timesheets/new/', views.TimesheetCreateView.as_view(), name='timesheet_create'),
     path('timesheets/excel-upload/', views.TimesheetExcelUploadView.as_view(), name='timesheet_excel_upload'),
     path('timesheets/excel-confirm/', views.TimesheetExcelConfirmView.as_view(), name='timesheet_excel_confirm'),
+    path('timesheets/<int:pk>/', views.TimesheetDetailView.as_view(), name='timesheet_detail'),
     path('timesheets/<int:pk>/action/', views.TimesheetApproveView.as_view(), name='timesheet_approve'),
     path('timesheets/<int:pk>/send/', views.TimesheetSendView.as_view(), name='timesheet_send'),
     # === API（PayrollSystem連携）===

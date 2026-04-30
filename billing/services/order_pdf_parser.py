@@ -99,10 +99,21 @@ def _parse_ebusiness(text, result):
         result['order_date'] = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
 
     # 業務名称
-    m = re.search(r'(?:業務名称|件名)\s*\n?\s*(.+?)(?:\n|作業期間)', text, re.DOTALL)
+    # pdfminerはテーブルを「業務名称\n作業期間\n<業務名>\n<日付>」の順で抽出する
+    # まず「作業期間」ラベルの後、日付パターンの前にある行を取得
+    m = re.search(r'業務名称\s*\n+\s*作業期間\s*\n+\s*(.+?)\s*\n', text)
     if m:
         name = m.group(1).strip()
-        result['project_name'] = re.sub(r'\s+', ' ', name)[:255]
+        # 日付パターンでないことを確認
+        if not re.match(r'\d{4}年', name):
+            result['project_name'] = re.sub(r'\s+', ' ', name)[:255]
+    # フォールバック: 従来のパターン
+    if not result['project_name']:
+        m = re.search(r'(?:業務名称|件名)\s*\n?\s*(.+?)(?:\n|作業期間)', text, re.DOTALL)
+        if m:
+            name = m.group(1).strip()
+            if name and name != '作業期間':
+                result['project_name'] = re.sub(r'\s+', ' ', name)[:255]
 
     # 作業期間: 2026年3月1日 〜 2026年3月31日
     m = re.search(
@@ -133,6 +144,14 @@ def _parse_ebusiness(text, result):
     m = re.search(r'(?:不[⾜足]|控除)単価[：:]?\s*[￥¥]?([\d,]+)', text)
     if m:
         result['shortage_rate'] = int(m.group(1).replace(',', ''))
+
+    # 作業責任者（= 作業者名）
+    m = re.search(r'作業責任者\s*\n+\s*(.+?)(?:\s*\n)', text)
+    if m:
+        name = m.group(1).strip()
+        # 「連絡窓口」や日付パターンでないことを確認
+        if name and not re.match(r'(連絡|委託|業務|￥|\d{4}年)', name):
+            result['person_name'] = name
 
     # 支払条件
     m = re.search(r'(?:⽀払|支払)条件\s*\n?\s*(.+?)(?:\n|①)', text, re.DOTALL)

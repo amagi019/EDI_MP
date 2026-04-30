@@ -12,7 +12,7 @@ from orders.models import Order, OrderCycle
 from tasks.models import MonthlyTask
 from invoices.models import Invoice
 from billing.domain.models import (
-    BillingInvoice, ReceivedOrder, StaffTimesheet,
+    BillingInvoice, ReceivedOrder, MonthlyTimesheet,
 )
 
 
@@ -97,9 +97,9 @@ def dashboard(request):
         client_received_orders = ReceivedOrder.objects.filter(
             status__in=['REGISTERED', 'ACTIVE']
         ).select_related('customer')[:5]
-        client_pending_timesheets = StaffTimesheet.objects.filter(
+        client_pending_timesheets = MonthlyTimesheet.objects.filter(
             status__in=['DRAFT', 'SUBMITTED']
-        ).select_related('order__customer')[:5]
+        ).select_related('received_order__customer')[:5]
         client_invoices_summary = {
             'draft': BillingInvoice.objects.filter(status='DRAFT').count(),
             'issued': BillingInvoice.objects.filter(status='ISSUED').count(),
@@ -168,6 +168,16 @@ def _resolve_task_action_url(task):
                 return reverse('invoices:invoice_send_preview', kwargs={'invoice_id': invoice.pk})
             else:
                 return reverse('invoices:staff_invoice_review', kwargs={'invoice_id': invoice.pk})
+        # 請求書未作成 → 対応する発注から直接作成画面へ
+        from orders.models import Order
+        order = Order.objects.filter(
+            partner=task.partner,
+            project=task.project,
+            work_start__year=task.work_month.year,
+            work_start__month=task.work_month.month,
+        ).first()
+        if order:
+            return reverse('invoices:invoice_create_from_order', kwargs={'order_id': order.order_id})
         return reverse('invoices:invoice_list')
 
     elif task.task_type == 'INVOICE_APPROVE':
@@ -280,6 +290,18 @@ def _build_pipeline_data():
                     step['task_id'] = t.pk
                     step['responsible'] = t.responsible
                     step['deadline'] = t.deadline.strftime('%m/%d')
+
+                    # ORDER_APPROVE: タスクがPENDINGでも注文書がAPPROVEDなら自動修復
+                    if task_type == 'ORDER_APPROVE' and t.status != 'DONE':
+                        approved_order = next(
+                            (o for o in cycle.orders.all() if o.status == 'APPROVED'), None
+                        )
+                        if approved_order:
+                            t.status = 'DONE'
+                            t.completed_at = approved_order.finalized_at or timezone.now()
+                            t.note = '自動修復: 承諾済み注文書との同期'
+                            t.save(update_fields=['status', 'completed_at', 'note'])
+
                     if t.status == 'DONE':
                         step['status'] = 'done'
                         if t.completed_at:
@@ -385,13 +407,13 @@ def _build_pipeline_data():
     return pipeline, sorted(partner_names)
 
 
-CLIENT_STEP_LABELS = ['受注', '勤怠', '請求書', '入金']
+CLIENT_STEP_LABELS = ['受注', '勤怠', '報告送付', '請求書', '入金']
 
 
 def _build_client_pipeline_data():
     """
     クライアント側パイプラインを構築する。
-    ReceivedOrder(ACTIVE)ごとに4ステップの状態を返す。
+    ReceivedOrder(ACTIVE)ごとに5ステップの状態を返す。
     """
     today = datetime.date.today()
 
@@ -417,52 +439,118 @@ def _build_client_pipeline_data():
         steps = []
         worst_urgency = 999
 
-        # ステップ1: 受注
+        # 作業者名を受注明細から取得
+        worker_names = list(
+            ro.items.exclude(person_name='').values_list('person_name', flat=True)
+        )
+
+        # ステップ1: 受注（注文書登録済み＝完了）
         step1 = {'label': '受注', 'status': 'done', 'deadline': None, 'days': None, 'url': None}
-        if ro.status == 'REGISTERED':
-            step1['status'] = 'active'
-            step1['url'] = reverse('billing:received_order_list')
         steps.append(step1)
 
-        # ステップ2: 勤怠報告
-        ts = StaffTimesheet.objects.filter(order=ro).first()
+        # ステップ2: 勤怠報告（全作業者分をチェック）
         step2 = {'label': '勤怠', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
-        if ts:
-            if ts.status in ('SENT', 'APPROVED'):
+        timesheets_for_order = []
+        if worker_names:
+            from billing.domain.models import MonthlyTimesheet
+            from core.utils import normalize_name
+            # 各作業者の勤怠チェック（MonthlyTimesheet統一検索）
+            all_ready = True
+            any_submitted = False
+            for wname in worker_names:
+                wname_norm = normalize_name(wname)
+                ts = None
+                # received_orderで直接検索
+                ts = MonthlyTimesheet.objects.filter(
+                    received_order=ro, worker_name=wname
+                ).first()
+                # なければ名前+年月で検索
+                if not ts:
+                    for candidate in MonthlyTimesheet.objects.filter(
+                        target_month__year=ro.target_month.year,
+                        target_month__month=ro.target_month.month,
+                    ):
+                        if normalize_name(candidate.worker_name) == wname_norm:
+                            ts = candidate
+                            break
+                if ts and ts.status in ('SUBMITTED', 'APPROVED', 'SENT'):
+                    any_submitted = True
+                    timesheets_for_order.append(ts)
+                else:
+                    all_ready = False
+            if all_ready and any_submitted:
                 step2['status'] = 'done'
-            else:
+            elif any_submitted:
+                step2['status'] = 'active'
+                step2['url'] = reverse('billing:report_submission_status')
+        else:
+            # 作業者が未設定
+            from billing.domain.models import MonthlyTimesheet
+            ts = MonthlyTimesheet.objects.filter(received_order=ro).first()
+            if ts and ts.status in ('SUBMITTED', 'APPROVED', 'SENT'):
+                step2['status'] = 'done'
+                timesheets_for_order.append(ts)
+            elif ts:
                 step2['status'] = 'active'
                 step2['url'] = reverse('billing:timesheet_list')
         steps.append(step2)
 
-        # ステップ3: 請求書
-        inv = BillingInvoice.objects.filter(received_order=ro).first()
-        step3 = {'label': '請求書', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
-        if inv:
-            if inv.status in ('SENT', 'PAID'):
+        # ステップ3: 報告送付（クライアントへ稼働報告が送付されたか）
+        step3 = {'label': '報告送付', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
+        if timesheets_for_order:
+            all_sent = all(
+                ts.status == 'SENT' or ts.sent_to_client_at
+                for ts in timesheets_for_order
+            )
+            any_sent = any(
+                ts.status == 'SENT' or ts.sent_to_client_at
+                for ts in timesheets_for_order
+            )
+            if all_sent:
                 step3['status'] = 'done'
-            else:
+            elif any_sent:
                 step3['status'] = 'active'
-                step3['url'] = reverse('billing:invoice_list')
+                step3['url'] = reverse('billing:report_submission_status')
+            elif step2['status'] == 'done':
+                step3['status'] = 'active'
+                step3['days'] = '送付待ち'
+                step3['url'] = reverse('billing:report_submission_status')
         steps.append(step3)
 
-        # ステップ4: 入金
-        step4 = {'label': '入金', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
-        if inv and inv.status == 'PAID':
-            step4['status'] = 'done'
-        elif inv and inv.status == 'SENT':
+        # ステップ4: 請求書
+        inv = BillingInvoice.objects.filter(received_order=ro).first()
+        step4 = {'label': '請求書', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
+        if inv:
+            if inv.status in ('SENT', 'PAID'):
+                step4['status'] = 'done'
+            else:
+                step4['status'] = 'active'
+                step4['url'] = reverse('billing:invoice_detail', kwargs={'pk': inv.pk})
+        elif step3['status'] == 'done':
+            # 報告送付完了だが請求書未作成 → 請求書作成へ
             step4['status'] = 'active'
+            step4['url'] = reverse('billing:invoice_create') + f'?order_id={ro.pk}'
+        steps.append(step4)
+
+        # ステップ5: 入金
+        step5 = {'label': '入金', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
+        if inv and inv.status == 'PAID':
+            step5['status'] = 'done'
+            if inv.payment_date:
+                step5['days'] = inv.payment_date.strftime('%m/%d') + '完了'
+        elif inv and inv.status == 'SENT':
+            step5['status'] = 'active'
             if inv.due_date:
                 diff = (inv.due_date - today).days
-                step4['deadline'] = inv.due_date.strftime('%m/%d')
+                step5['deadline'] = inv.due_date.strftime('%m/%d')
                 if diff < 0:
-                    step4['status'] = 'overdue'
-                    step4['days'] = f'{abs(diff)}日超過'
+                    step5['status'] = 'overdue'
+                    step5['days'] = f'{abs(diff)}日超過'
                     worst_urgency = min(worst_urgency, diff)
                 else:
-                    step4['days'] = f'あと{diff}日'
+                    step5['days'] = f'あと{diff}日'
                     worst_urgency = min(worst_urgency, diff)
-        steps.append(step4)
+        steps.append(step5)
 
         # 行ステータス
         has_overdue = any(s['status'] == 'overdue' for s in steps)
@@ -472,6 +560,7 @@ def _build_client_pipeline_data():
         pipeline.append({
             'partner_name': cname,
             'project_name': ro.project_name or '---',
+            'worker_names': worker_names,
             'work_month': ro.target_month.strftime('%Y/%m'),
             'steps': steps,
             'row_status': row_status,

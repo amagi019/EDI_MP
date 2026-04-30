@@ -118,73 +118,7 @@ class InvoiceItem(models.Model):
         return f"{self.invoice.invoice_no} - {self.person_name}"
 
 
-class WorkReport(models.Model):
-    """稼働報告書（パートナーの作業責任者がアップロード）"""
-    STATUS_CHOICES = [
-        ('UPLOADED', _('受領済')),
-        ('PARSED', _('解析済')),
-        ('ALERT', _('要確認')),
-        ('APPROVED', _('確定済')),
-        ('ERROR', _('解析エラー')),
-    ]
-
-    order = models.ForeignKey(
-        Order, on_delete=models.CASCADE,
-        verbose_name=_("注文"), related_name='work_reports'
-    )
-    target_month = models.DateField(_("対象年月"), null=True, blank=True,
-        help_text="B列の日付データから自動検出")
-    worker_name = models.CharField(_("作業者氏名"), max_length=128, blank=True,
-        help_text="オートシェイプまたはファイル名から自動取得")
-    uploaded_by = models.ForeignKey(
-        'auth.User', on_delete=models.SET_NULL, null=True,
-        verbose_name=_("アップロード者")
-    )
-    uploaded_at = models.DateTimeField(_("アップロード日時"), auto_now_add=True)
-    file = models.FileField(_("報告書ファイル"), upload_to='work_reports/', storage=encrypted_storage)
-    original_filename = models.CharField(_("元ファイル名"), max_length=512, blank=True)
-    status = models.CharField(
-        _("ステータス"), max_length=20,
-        choices=STATUS_CHOICES, default='UPLOADED'
-    )
-    client_shared_url = models.URLField(_("共有URL"), max_length=500, blank=True)
-    sent_to_client_at = models.DateTimeField(_("送付日時"), null=True, blank=True)
-
-    # パース結果
-    total_hours = models.DecimalField(
-        _("合計時間"), max_digits=6, decimal_places=2, null=True, blank=True
-    )
-    work_days = models.IntegerField(_("稼働日数"), null=True, blank=True)
-    daily_data_json = models.JSONField(
-        _("日別データ"), null=True, blank=True,
-        help_text='[{"date": "2026-02-02", "hours": 8.0, "start": "9:00", "end": "18:00"}, ...]'
-    )
-
-    # チェック結果
-    alerts_json = models.JSONField(
-        _("警告データ"), null=True, blank=True,
-        help_text='[{"date": "2026-02-08", "type": "weekend", "hours": 8.0, "day_name": "土"}, ...]'
-    )
-    error_message = models.TextField(_("エラーメッセージ"), blank=True)
-
-    # Google Drive
-    drive_file_id = models.CharField(
-        _("DriveファイルID"), max_length=200, blank=True
-    )
-
-    class Meta:
-        verbose_name = _("稼働報告書")
-        verbose_name_plural = _("稼働報告書")
-        ordering = ['-uploaded_at']
-
-    def __str__(self):
-        name = self.worker_name or self.original_filename
-        month = self.target_month.strftime('%Y年%m月') if self.target_month else '不明'
-        return f"{name} - {month}"
-
-    @property
-    def has_alerts(self):
-        return bool(self.alerts_json)
+# WorkReport は MonthlyTimesheet に統合済み（2026-04-30）
 
 
 class ReceivedEmail(models.Model):
@@ -216,9 +150,9 @@ class ReceivedEmail(models.Model):
         _("ステータス"), max_length=20,
         choices=STATUS_CHOICES, default='NEW'
     )
-    work_report = models.ForeignKey(
-        WorkReport, on_delete=models.SET_NULL,
-        null=True, blank=True, verbose_name=_("稼働報告書"),
+    monthly_timesheet = models.ForeignKey(
+        'billing.MonthlyTimesheet', on_delete=models.SET_NULL,
+        null=True, blank=True, verbose_name=_("稼働報告"),
         related_name='source_emails'
     )
     error_message = models.TextField(_("エラーメッセージ"), blank=True)

@@ -24,12 +24,10 @@ def get_notify_email(partner):
 
 
 def _get_login_url():
-    """ログインURLを取得する。CSRF_TRUSTED_ORIGINS の最初のURLをベースにする。"""
+    """ログインURLを取得する。settings.SITE_URL をベースにする。"""
     from django.conf import settings
-    origins = getattr(settings, 'CSRF_TRUSTED_ORIGINS', [])
-    if origins:
-        return f"{origins[0].rstrip('/')}/accounts/login/"
-    return 'http://localhost:8000/accounts/login/'
+    base = getattr(settings, 'SITE_URL', 'http://localhost:8000').rstrip('/')
+    return f"{base}/accounts/login/"
 
 
 def generate_random_password(length=10):

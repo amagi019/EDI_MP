@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% load i18n %}
-{% block title %}{% if object %}{% trans "取引先編集" %}{% else %}{% trans "取引先登録" %}{% endif %}{% endblock %}
+{% block title %}{% if object %}{% trans "クライアント編集" %}{% else %}{% trans "クライアント登録" %}{% endif %}{% endblock %}
 {% block content %}
 <div class="fade-in">
-    <h1 style="margin-bottom: 2rem;">🏢 {% if object %}{% trans "取引先編集" %}{% else %}{% trans "取引先登録" %}{% endif %}</h1>
+    <h1 style="margin-bottom: 2rem;">🏢 {% if object %}{% trans "クライアント編集" %}{% else %}{% trans "クライアント登録" %}{% endif %}</h1>
     <form method="post">
         {% csrf_token %}
         <div class="card">

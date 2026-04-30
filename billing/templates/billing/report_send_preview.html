@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}送信プレビュー | {% trans "EDIシステム" %}{% endblock %}
+
+{% block content %}
+<div class="card fade-in" style="max-width: 720px; margin: 0 auto;">
+    <h2 style="font-family: 'Outfit', sans-serif; margin: 0 0 1rem; font-size: 1.1rem;">
+        <i class="fas fa-eye" style="color: #8B5CF6;"></i> 送信プレビュー — {{ target_month_str }}
+    </h2>
+
+    <!-- メールヘッダー -->
+    <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 0.7rem 1rem; margin-bottom: 0.8rem; font-size: 0.78rem;">
+        <div style="margin-bottom: 0.3rem;">
+            <span style="color: var(--text-dim); display: inline-block; width: 40px;">TO:</span>
+            <span style="color: #10B981; font-weight: 600;">{{ to_email }}</span>
+        </div>
+        {% if cc_email %}
+        <div style="margin-bottom: 0.3rem;">
+            <span style="color: var(--text-dim); display: inline-block; width: 40px;">CC:</span>
+            <span style="color: #818CF8;">{{ cc_email }}</span>
+        </div>
+        {% endif %}
+        <div>
+            <span style="color: var(--text-dim); display: inline-block; width: 40px;">件名:</span>
+            <span style="font-weight: 500;">{{ subject }}</span>
+        </div>
+    </div>
+
+    <!-- メール本文 -->
+    <div style="margin-bottom: 0.8rem;">
+        <h3 style="font-size: 0.8rem; margin: 0 0 0.3rem; color: var(--text-dim);">
+            <i class="fas fa-envelope-open-text"></i> 本文
+        </h3>
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 0.7rem 1rem; font-size: 0.75rem; white-space: pre-wrap; line-height: 1.6; color: var(--text-main);">{{ body }}</div>
+    </div>
+
+    <!-- 添付ファイル -->
+    <div style="margin-bottom: 0.8rem;">
+        <h3 style="font-size: 0.8rem; margin: 0 0 0.3rem; color: var(--text-dim);">
+            <i class="fas fa-paperclip"></i> 添付ファイル（{{ attachments|length }}名分）
+        </h3>
+
+        {% if attachments %}
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.73rem;">
+            <thead>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="padding: 0.25rem 0.4rem; text-align: left; color: var(--text-dim);">作業者</th>
+                    <th style="padding: 0.25rem 0.4rem; text-align: left; color: var(--text-dim);">ソース</th>
+                    <th style="padding: 0.25rem 0.4rem; text-align: left; color: var(--text-dim);">Excel</th>
+                    <th style="padding: 0.25rem 0.4rem; text-align: left; color: var(--text-dim);">PDF</th>
+                    <th style="padding: 0.25rem 0.4rem; text-align: right; color: var(--text-dim);">稼働</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for att in attachments %}
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                    <td style="padding: 0.3rem 0.4rem; font-weight: 500;">{{ att.worker_name }}</td>
+                    <td style="padding: 0.3rem 0.4rem; font-size: 0.65rem; color: var(--text-dim);">{{ att.source }}</td>
+                    <td style="padding: 0.3rem 0.4rem; font-size: 0.68rem;">
+                        {% if att.has_excel %}
+                        <span style="color: #10B981;"><i class="fas fa-check-circle"></i> {{ att.excel }}</span>
+                        {% else %}
+                        <span style="color: #EF4444;"><i class="fas fa-times-circle"></i> ファイルなし</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.3rem 0.4rem; font-size: 0.68rem;">
+                        {% if att.has_pdf %}
+                        <span style="color: #10B981;"><i class="fas fa-check-circle"></i> {{ att.pdf }}</span>
+                        {% else %}
+                        <span style="color: #F59E0B;"><i class="fas fa-minus-circle"></i> なし</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.3rem 0.4rem; text-align: right; color: var(--text-dim);">{{ att.hours }}h / {{ att.days }}日</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 0.8rem; color: #EF4444; background: rgba(239,68,68,0.1); border-radius: 6px; font-size: 0.8rem;">
+            <i class="fas fa-exclamation-triangle"></i> 添付可能なファイルがありません
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- アクション -->
+    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid var(--border);">
+        <a href="{% url 'billing:report_submission_status' %}?month={{ month_str }}" class="btn btn-secondary" style="padding: 0.4rem 1rem; text-decoration: none; font-size: 0.8rem;">
+            <i class="fas fa-arrow-left"></i> 戻る
+        </a>
+        {% if attachments %}
+        <form method="post">
+            {% csrf_token %}
+            {% for oid in order_ids %}
+            <input type="hidden" name="order_ids" value="{{ oid }}">
+            {% endfor %}
+            <input type="hidden" name="month" value="{{ month_str }}">
+            <button type="submit" class="btn" style="padding: 0.4rem 1.2rem; font-size: 0.8rem; background: #10B981;">
+                <i class="fas fa-paper-plane"></i> この内容で送信する
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

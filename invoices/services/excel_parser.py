@@ -86,9 +86,9 @@ def auto_detect_and_parse(file_obj, original_filename=''):
         # 7. 作業者名の取得
         worker_name, name_mismatch = _extract_worker_name(file_bytes, ws, original_filename)
 
-        # 8. 土日祝チェック
+        # 8. 土日祝・稼働時間チェック
         holiday_dates = _parse_holiday_sheet(wb)
-        alerts = check_weekend_holiday_work(daily_data, holiday_dates)
+        alerts = check_work_alerts(daily_data, holiday_dates)
 
         return {
             'worker_name': worker_name,
@@ -98,6 +98,7 @@ def auto_detect_and_parse(file_obj, original_filename=''):
             'daily_data': daily_data,
             'alerts': alerts,
             'name_mismatch_warning': name_mismatch,
+            'sheet_name': ws.title,
             'error': None,
         }
 
@@ -524,12 +525,18 @@ def _get_drawings_for_sheet(z, sheet_name):
 
 
 # ──────────────────────────────────────────
-# Step 8: 土日祝チェック
+# Step 8: 稼働チェック（土日祝・15分単位・深夜残業）
 # ──────────────────────────────────────────
 
-def check_weekend_holiday_work(daily_data, holiday_dates=None):
+def check_work_alerts(daily_data, holiday_dates=None):
     """
-    土曜・日曜・祝日に稼働がないかチェックする。
+    稼働データの包括チェックを行う。
+
+    チェック項目:
+      1. 土日・祝日の稼働
+      2. 稼働時間の15分単位チェック
+      3. 開始・終了時刻の15分単位チェック
+      4. 深夜残業チェック（22時以降の終了）
 
     Args:
         daily_data: 日別データリスト
@@ -548,8 +555,10 @@ def check_weekend_holiday_work(daily_data, holiday_dates=None):
             continue
 
         d = date.fromisoformat(entry['date'])
+        start_str = entry.get('start', '')
+        end_str = entry.get('end', '')
 
-        # 土日チェック
+        # ── 1. 土日チェック ──
         if d.weekday() >= 5:
             day_type = '土曜' if d.weekday() == 5 else '日曜'
             alerts.append({
@@ -559,14 +568,12 @@ def check_weekend_holiday_work(daily_data, holiday_dates=None):
                 'day_name': entry.get('day_name', day_type),
                 'holiday_name': day_type,
             })
-            continue
 
-        # 祝日チェック（Excel祝日シート優先、jpholidayフォールバック）
+        # ── 2. 祝日チェック ──
         holiday_name = holiday_dates.get(d)
         if holiday_name is None:
             if jpholiday.is_holiday(d):
                 holiday_name = jpholiday.is_holiday_name(d)
-
         if holiday_name:
             alerts.append({
                 'date': entry['date'],
@@ -576,7 +583,58 @@ def check_weekend_holiday_work(daily_data, holiday_dates=None):
                 'holiday_name': holiday_name,
             })
 
+        # ── 3. 稼働時間の15分単位チェック ──
+        # 15分 = 0.25時間 の倍数でない場合に警告
+        remainder = round(hours % 0.25, 4)
+        if remainder != 0:
+            alerts.append({
+                'date': entry['date'],
+                'type': 'time_unit',
+                'hours': hours,
+                'day_name': entry.get('day_name', ''),
+                'detail': f'稼働時間 {hours}h が15分単位ではありません',
+            })
+
+        # ── 4. 開始・終了時刻の15分単位チェック ──
+        for label, time_str in [('開始', start_str), ('終了', end_str)]:
+            if not time_str:
+                continue
+            try:
+                parts = time_str.split(':')
+                minute = int(parts[1]) if len(parts) > 1 else 0
+                if minute % 15 != 0:
+                    alerts.append({
+                        'date': entry['date'],
+                        'type': 'time_unit',
+                        'hours': hours,
+                        'day_name': entry.get('day_name', ''),
+                        'detail': f'{label}時刻 {time_str} が15分単位ではありません',
+                    })
+            except (ValueError, IndexError):
+                pass
+
+        # ── 5. 深夜残業チェック（22時以降の終了）──
+        if end_str:
+            try:
+                end_hour = int(end_str.split(':')[0])
+                if end_hour >= 22:
+                    alerts.append({
+                        'date': entry['date'],
+                        'type': 'late_night',
+                        'hours': hours,
+                        'day_name': entry.get('day_name', ''),
+                        'detail': f'終了 {end_str} → 深夜残業の可能性',
+                    })
+            except (ValueError, IndexError):
+                pass
+
     return alerts
+
+
+# 後方互換
+def check_weekend_holiday_work(daily_data, holiday_dates=None):
+    """後方互換: check_work_alertsのエイリアス"""
+    return check_work_alerts(daily_data, holiday_dates)
 
 
 def _parse_holiday_sheet(wb):

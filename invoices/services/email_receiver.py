@@ -2,14 +2,14 @@
 メール受信・自動取込サービス
 
 IMAP経由でGmailに接続し、パートナーからの稼働報告メール（Excel添付）を
-自動的に取り込みWorkReportとして登録する。
+自動的に取り込みMonthlyTimesheetとして登録する。
 
 処理フロー:
   1. IMAP接続 → 未読メール検索
   2. 件名フィルタ（稼働報告/作業報告/請求書）
   3. 送信元 → Partner.email / Partner.report_email で照合
   4. Excel添付ファイル抽出 → excel_parser で解析
-  5. WorkReport 自動登録
+  5. MonthlyTimesheet 自動登録
   6. 処理済みメールにGmailラベル付与
   7. 管理者通知メール送信
 """
@@ -41,7 +41,7 @@ GMAIL_LABEL = 'EDI/取込済'
 
 def fetch_and_process_emails():
     """
-    メインエントリポイント: メール受信 → 解析 → WorkReport登録
+    メインエントリポイント: メール受信 → 解析 → MonthlyTimesheet登録
 
     Returns:
         dict: {'processed': int, 'imported': int, 'errors': list}
@@ -183,7 +183,7 @@ def _process_single_email(mail, email_id):
             received = _save_received_email(
                 message_id, from_email_addr, from_name, subject,
                 received_at, _get_body_text(msg), partner, 'IMPORTED',
-                work_report=work_report,
+                monthly_timesheet=work_report,
                 attachment_filename=filename,
                 attachment_bytes=file_bytes,
             )
@@ -356,10 +356,10 @@ def _extract_excel_attachments(msg):
 
 def _import_excel_as_work_report(partner, filename, file_bytes):
     """
-    Excelファイルを解析してWorkReportとして登録する。
+    Excelファイルを解析してMonthlyTimesheetとして登録する。
     """
     from invoices.services.excel_parser import auto_detect_and_parse
-    from invoices.models import WorkReport
+    from billing.domain.models import MonthlyTimesheet
     from orders.models import Order
 
     # Excel解析
@@ -385,26 +385,28 @@ def _import_excel_as_work_report(partner, filename, file_bytes):
     if not order:
         raise ValueError(f'{partner.name}に紐づく有効な注文書が見つかりません')
 
-    # WorkReport 作成
+    # MonthlyTimesheet 作成
     from django.core.files.base import ContentFile
 
-    work_report = WorkReport(
+    work_report = MonthlyTimesheet(
+        report_type='PARTNER',
+        worker_type='PARTNER',
         order=order,
         target_month=result['target_month'],
         worker_name=result['worker_name'] or filename,
         uploaded_by=None,  # システム自動取込
         original_filename=filename,
-        status='PARSED',
+        status='APPROVED',
         total_hours=result['total_hours'],
         work_days=result['work_days'],
-        daily_data_json=result['daily_data'],
+        daily_data=result['daily_data'],
         alerts_json=result['alerts'] if result['alerts'] else None,
     )
-    work_report.file.save(filename, ContentFile(file_bytes), save=False)
+    work_report.excel_file.save(filename, ContentFile(file_bytes), save=False)
     work_report.save()
 
     logger.info(
-        f'[メール受信] WorkReport登録: {partner.name} / '
+        f'[メール受信] MonthlyTimesheet登録: {partner.name} / '
         f'{result["worker_name"]} / {result["target_month"]}'
     )
 
@@ -417,7 +419,7 @@ def _import_excel_as_work_report(partner, filename, file_bytes):
 
 def _save_received_email(message_id, from_email, from_name, subject,
                          received_at, body_text, partner, status,
-                         work_report=None, error_message='',
+                         monthly_timesheet=None, error_message='',
                          attachment_filename='', attachment_bytes=None):
     """ReceivedEmail レコードを保存"""
     from invoices.models import ReceivedEmail
@@ -431,7 +433,7 @@ def _save_received_email(message_id, from_email, from_name, subject,
         body_text=body_text,
         partner=partner,
         status=status,
-        work_report=work_report,
+        monthly_timesheet=work_report,
         error_message=error_message,
         attachment_filename=attachment_filename,
     )

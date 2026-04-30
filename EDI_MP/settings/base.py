@@ -35,6 +35,10 @@ CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=[
     'http://127.0.0.1:8000',
 ])
 
+# サイトURL（メール内のリンク生成等で使用）
+# .env で SITE_URL=https://edi.macplanning.com のように設定
+SITE_URL = env('SITE_URL', default=CSRF_TRUSTED_ORIGINS[0] if CSRF_TRUSTED_ORIGINS else 'http://localhost:8000')
+
 
 # Application definition
 
@@ -141,6 +145,8 @@ GOOGLE_DRIVE_WORK_REPORT_FOLDER_ID = env('GOOGLE_DRIVE_WORK_REPORT_FOLDER_ID', d
 GOOGLE_DRIVE_BILLING_INVOICE_FOLDER_ID = env('GOOGLE_DRIVE_BILLING_INVOICE_FOLDER_ID', default='')
 # 後方互換: 旧ROOT_FOLDER_ID（個別未設定時のフォールバック）
 GOOGLE_DRIVE_ROOT_FOLDER_ID = env('GOOGLE_DRIVE_ROOT_FOLDER_ID', default='')
+# ドメイン委任: ユーザーに成り代わって操作（Workspace環境用）
+GOOGLE_DRIVE_IMPERSONATE_EMAIL = env('GOOGLE_DRIVE_IMPERSONATE_EMAIL', default='')
 
 # パスワードハッシュ化設定
 PASSWORD_HASHERS = [

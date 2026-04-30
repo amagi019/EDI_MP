@@ -4,7 +4,7 @@
 <div class="card fade-in" style="max-width: 800px; margin: 0 auto;">
     <h2 style="margin-bottom: 1.5rem;"><i class="fas fa-eye"></i> 稼働報告共有メール プレビュー</h2>
     <p style="color: var(--text-dim); margin-bottom: 2rem;">
-        以下の内容で取引先へメールが送信されます。ご確認の上、「送信する」ボタンを押してください。<br>
+        以下の内容でクライアントへメールが送信されます。ご確認の上、「送信する」ボタンを押してください。<br>
         <span style="color: #0ea5e9;">※プレビュー生成時にGoogle Driveへファイルが自動保存され、以下に実際のリンクURLが表示されています。クリックして正しくファイルが見れるか確認できます。</span>
     </p>
 
@@ -15,7 +15,7 @@
                 {% if target_email %}
                     {{ target_email }} <span style="font-weight: 400; color: var(--text-dim); font-size: 0.9rem;">({{ client.name }})</span>
                 {% else %}
-                    <span style="color: #ef4444;">※取引先（{{ client.name }}）に「稼働報告送付先メールアドレス」が登録されていません。Driveアップロードのみ実行されます。</span>
+                    <span style="color: #ef4444;">※クライアント（{{ client.name }}）に「稼働報告送付先メールアドレス」が登録されていません。Driveアップロードのみ実行されます。</span>
                 {% endif %}
             </div>
         </div>

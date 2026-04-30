@@ -2,7 +2,7 @@
 稼働報告メール自動取込コマンド
 
 メールサーバー（IMAP）に接続し、パートナーからの稼働報告メールを
-自動的に取り込んでWorkReportとして登録する。
+自動的に取り込んでMonthlyTimesheetとして登録する。
 
 使い方:
   python manage.py fetch_emails

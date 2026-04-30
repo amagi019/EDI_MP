@@ -11,9 +11,9 @@
         {% csrf_token %}
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
             <div>
-                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "受注" %} *</label>
-                <select name="order_id" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
-                    <option value="">{% trans "選択してください" %}</option>
+                <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "受注" %}</label>
+                <select name="order_id" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
+                    <option value="">{% trans "受注なし（給与計算用）" %}</option>
                     {% for o in orders %}
                     <option value="{{ o.pk }}">{{ o.customer.name }} - {{ o.project_name|default:o.order_number }} ({{ o.target_month|date:"Y/m" }})</option>
                     {% endfor %}

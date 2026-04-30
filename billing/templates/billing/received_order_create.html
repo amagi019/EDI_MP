@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}{% trans "受注登録" %} | {% trans "EDIシステム" %}{% endblock %}
+{% block title %}{% trans "注文書取込" %} | {% trans "EDIシステム" %}{% endblock %}
 
 {% block content %}
 <div class="card fade-in">
-    <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 2rem;">{% trans "受注登録" %}</h2>
+    <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 2rem;">
+        <i class="fas fa-file-import" style="color: #34D399;"></i> {% trans "注文書取込" %}
+    </h2>
 
     {% if messages %}
     {% for message in messages %}
@@ -15,17 +17,34 @@
     {% endfor %}
     {% endif %}
 
-    <!-- PDFアップロードセクション -->
+    <!-- ステップ1: EDI-OASIS からダウンロード -->
+    <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: 700; font-size: 0.85rem;">1</span>
+            <h3 style="margin: 0; font-size: 1rem; color: var(--text-main);">{% trans "注文書PDFをダウンロード" %}</h3>
+        </div>
+        <p style="margin: 0 0 0.75rem; color: var(--text-dim); font-size: 0.85rem; padding-left: 2.75rem;">{% trans "イービジネス様からメールが届いたら、EDI-OASISにログインして注文書PDFをダウンロードしてください。" %}</p>
+        <div style="padding-left: 2.75rem;">
+            <a href="https://edi.e-business.co.jp/" target="_blank" rel="noopener noreferrer" class="btn" style="background: linear-gradient(135deg, #F59E0B, #D97706); text-decoration: none; font-size: 0.9rem; padding: 0.5rem 1.25rem;">
+                <i class="fas fa-external-link-alt"></i> {% trans "EDI-OASIS を開く" %}
+            </a>
+        </div>
+    </div>
+
+    <!-- ステップ2: PDFアップロード -->
     <div style="margin-bottom: 2rem; padding: 1.5rem; background: rgba(99, 102, 241, 0.08); border: 2px dashed rgba(99, 102, 241, 0.3); border-radius: 12px;">
-        <h3 style="margin: 0 0 1rem; font-size: 1rem; color: var(--text-main);">
-            <i class="fas fa-file-upload" style="color: #818CF8;"></i> {% trans "注文書PDFから自動登録" %}
-        </h3>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(99, 102, 241, 0.2); color: #818CF8; font-weight: 700; font-size: 0.85rem;">2</span>
+            <h3 style="margin: 0; font-size: 1rem; color: var(--text-main);">
+                <i class="fas fa-file-upload" style="color: #818CF8;"></i> {% trans "ダウンロードしたPDFをアップロード" %}
+            </h3>
+        </div>
         <form method="post" enctype="multipart/form-data" id="pdf-upload-form">
             {% csrf_token %}
             <input type="hidden" name="action" value="pdf_upload">
             <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 200px;">
-                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "取引先" %} *</label>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "クライアント" %} *</label>
                     <select name="customer_id" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.95rem;">
                         <option value="">{% trans "選択してください" %}</option>
                         {% for c in customers %}
@@ -34,8 +53,8 @@
                     </select>
                 </div>
                 <div style="flex: 1; min-width: 200px;">
-                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "注文書PDF" %} *</label>
-                    <input type="file" name="order_pdf" accept=".pdf" required style="width: 100%; padding: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.95rem;">
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "注文書PDF" %} *（複数選択可）</label>
+                    <input type="file" name="order_pdf" accept=".pdf" required multiple style="width: 100%; padding: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main); font-size: 0.95rem;">
                 </div>
                 <div>
                     <button type="submit" class="btn" style="background: linear-gradient(135deg, #6366F1, #8B5CF6); white-space: nowrap;">
@@ -59,7 +78,7 @@
             <input type="hidden" name="action" value="manual">
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
                 <div>
-                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "取引先" %} *</label>
+                    <label style="display: block; color: var(--text-dim); font-size: 0.85rem; margin-bottom: 0.3rem;">{% trans "クライアント" %} *</label>
                     <select name="manual_customer_id" required style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-main);">
                         <option value="">{% trans "選択" %}</option>
                         {% for c in customers %}
