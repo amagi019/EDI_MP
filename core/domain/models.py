@@ -71,13 +71,13 @@ class Partner(models.Model):
     # インボイス制度対応
     registration_no = models.CharField(_("登録番号"), max_length=20, blank=True, help_text=_("T13桁の番号"))
 
-    # 自社担当者（契約承認時の通知先）
+    # 自社担当者（通知メール送信先）
     staff_contact = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
         verbose_name=_("自社担当者"),
         related_name='managed_partners',
-        help_text=_("契約承認時の通知メール送信先となるスタッフ"),
-        limit_choices_to={'is_staff': True},
+        help_text=_("支払通知・契約承認等の通知メール送信先となるスタッフ（「従業員」グループから選択）"),
+        limit_choices_to={'groups__name': '従業員'},
     )
 
     # 添付書類
@@ -160,12 +160,51 @@ class CompanyInfo(models.Model):
         help_text=_("消費税率をパーセントで入力してください（例: 10.00）")
     )
 
+    # メール送信設定（未設定時は .env の値をフォールバック）
+    email_host = models.CharField(
+        _("SMTPホスト"), max_length=255, blank=True,
+        help_text=_("例: smtp.gmail.com")
+    )
+    email_port = models.IntegerField(
+        _("SMTPポート"), null=True, blank=True,
+        help_text=_("例: 587")
+    )
+    email_use_tls = models.BooleanField(
+        _("TLS使用"), default=True,
+    )
+    email_host_user = models.CharField(
+        _("SMTPユーザー"), max_length=255, blank=True,
+        help_text=_("SMTP認証に使用するメールアドレス")
+    )
+    email_host_password = models.CharField(
+        _("SMTPパスワード"), max_length=255, blank=True,
+        help_text=_("SMTPのアプリパスワード")
+    )
+    default_from_email = models.EmailField(
+        _("送信元メールアドレス"), blank=True,
+        help_text=_("メールの From に表示されるアドレス")
+    )
+
     class Meta:
         verbose_name = _("自社情報")
         verbose_name_plural = _("自社情報")
 
     def __str__(self):
         return self.name
+
+    @classmethod
+    def get_email_config(cls):
+        """メール設定を取得する。DB設定があればそちらを優先、なければ .env フォールバック。"""
+        from django.conf import settings
+        obj = cls.objects.first()
+        return {
+            'EMAIL_HOST': (obj.email_host if obj and obj.email_host else settings.EMAIL_HOST),
+            'EMAIL_PORT': (obj.email_port if obj and obj.email_port else settings.EMAIL_PORT),
+            'EMAIL_USE_TLS': (obj.email_use_tls if obj else settings.EMAIL_USE_TLS),
+            'EMAIL_HOST_USER': (obj.email_host_user if obj and obj.email_host_user else settings.EMAIL_HOST_USER),
+            'EMAIL_HOST_PASSWORD': (obj.email_host_password if obj and obj.email_host_password else settings.EMAIL_HOST_PASSWORD),
+            'DEFAULT_FROM_EMAIL': (obj.default_from_email if obj and obj.default_from_email else settings.DEFAULT_FROM_EMAIL),
+        }
 
 
 class BankMaster(models.Model):

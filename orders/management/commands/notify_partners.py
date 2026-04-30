@@ -1,9 +1,9 @@
 import datetime
 from django.core.management.base import BaseCommand
-from django.core.mail import send_mail
 from django.conf import settings
 from django.urls import reverse
 from core.domain.models import CompanyInfo, Partner, SentEmailLog
+from core.utils import send_system_mail
 from orders.models import Order
 
 class Command(BaseCommand):
@@ -72,12 +72,10 @@ EDIに注文書を登録しましたので、
 以上、よろしくお願いします。
 """
             try:
-                send_mail(
+                send_system_mail(
                     subject,
                     body,
-                    settings.DEFAULT_FROM_EMAIL,
                     [partner.email],
-                    fail_silently=False,
                 )
                 sent_count += 1
                 SentEmailLog.objects.create(

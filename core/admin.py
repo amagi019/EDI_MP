@@ -187,6 +187,10 @@ class CompanyInfoAdmin(admin.ModelAdmin):
         (_('税率設定'), {
             'fields': ('tax_rate',)
         }),
+        (_('メール送信設定'), {
+            'fields': ('email_host', 'email_port', 'email_use_tls', 'email_host_user', 'email_host_password', 'default_from_email'),
+            'description': '未入力の場合は .env ファイルの設定値が使用されます。',
+        }),
     )
 
     class Media:

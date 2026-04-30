@@ -20,8 +20,6 @@ import datetime
 import logging
 
 from django.core.management.base import BaseCommand
-from django.core.mail import send_mail
-from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from orders.models import Order, OrderCycle
@@ -153,12 +151,11 @@ class Command(BaseCommand):
         body += '\n\n確認・対応をお願いします。\n'
 
         try:
-            send_mail(
+            from core.utils import send_system_mail
+            send_system_mail(
                 subject,
                 body,
-                settings.DEFAULT_FROM_EMAIL,
                 admin_emails,
-                fail_silently=False,
             )
             self.stdout.write(self.style.SUCCESS(
                 f'メール送信完了: {", ".join(admin_emails)}'

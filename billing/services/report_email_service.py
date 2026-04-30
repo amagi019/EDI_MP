@@ -105,7 +105,19 @@ def send_report_email(received_order):
     to_list = parse_email_list(to_email) if ',' in to_email else [to_email]
     cc_emails = ro.report_cc_emails or ro.customer.cc_email or ''
     cc_list = parse_email_list(cc_emails)
-    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@example.com')
+
+    from core.utils import get_email_config
+    from django.core.mail import get_connection
+    config = get_email_config()
+    from_email = config['DEFAULT_FROM_EMAIL']
+
+    connection = get_connection(
+        host=config['EMAIL_HOST'],
+        port=config['EMAIL_PORT'],
+        username=config['EMAIL_HOST_USER'],
+        password=config['EMAIL_HOST_PASSWORD'],
+        use_tls=config['EMAIL_USE_TLS'],
+    )
 
     email = EmailMessage(
         subject=subject,
@@ -113,6 +125,7 @@ def send_report_email(received_order):
         from_email=from_email,
         to=to_list,
         cc=cc_list,
+        connection=connection,
     )
 
     # 添付ファイル

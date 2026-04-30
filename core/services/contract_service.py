@@ -5,14 +5,12 @@ import hashlib
 import logging
 
 from django.core.files.base import ContentFile
-from django.core.mail import send_mail
-from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
 from core.domain.models import MasterContractProgress, SentEmailLog
 from core.services.contract_pdf_generator import generate_contract_pdf
-from core.utils import get_notify_email
+from core.utils import get_notify_email, send_system_mail
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +68,7 @@ def _send_approve_notification(partner, user, signed_at, request):
         )
 
         logger.info(f"[通知メール] 宛先: {notify_email}, 件名: {subject}")
-        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
+        send_system_mail(subject, body, [notify_email])
         logger.info(f"[通知メール] 送信成功")
         SentEmailLog.objects.create(
             partner=partner, subject=subject, body=body, recipient=notify_email,

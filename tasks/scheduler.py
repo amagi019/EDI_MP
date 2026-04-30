@@ -174,9 +174,7 @@ def get_all_calendar_events(year, month):
 def send_reminder_for_task(task_id):
     """指定タスクのリマインドメールを送信する"""
     from tasks.models import MonthlyTask
-    from core.utils import compose_work_report_reminder_email
-    from django.core.mail import send_mail
-    from django.conf import settings
+    from core.utils import compose_work_report_reminder_email, send_system_mail
 
     try:
         task = MonthlyTask.objects.select_related('partner', 'project').get(pk=task_id)
@@ -204,11 +202,9 @@ def send_reminder_for_task(task_id):
     )
 
     try:
-        send_mail(
+        send_system_mail(
             subject, body,
-            settings.DEFAULT_FROM_EMAIL,
             [partner.email],
-            fail_silently=False,
         )
         task.reminder_sent = True
         task.save(update_fields=['reminder_sent'])

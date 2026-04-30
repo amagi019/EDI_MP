@@ -4,7 +4,7 @@
 import secrets
 import string
 
-from django.core.mail import send_mail
+from django.core.mail import send_mail, get_connection, EmailMessage
 from django.template import Template, Context
 
 from .domain.models import CompanyInfo, SentEmailLog, EmailTemplate
@@ -15,12 +15,61 @@ def normalize_name(name):
     return (name or '').replace(' ', '').replace('\u3000', '').strip()
 
 
+def get_email_config():
+    """メール送信設定をDBから取得する。未設定時は .env フォールバック。"""
+    return CompanyInfo.get_email_config()
+
+
 def get_notify_email(partner):
     """パートナーの自社担当者メールアドレスを取得する。未設定時はDEFAULT_FROM_EMAIL。"""
-    from django.conf import settings
     if partner and partner.staff_contact and partner.staff_contact.email:
         return partner.staff_contact.email
-    return settings.DEFAULT_FROM_EMAIL
+    config = get_email_config()
+    return config['DEFAULT_FROM_EMAIL']
+
+
+def send_system_mail(subject, body, recipient_list, from_email=None, bcc=None, attachments=None, fail_silently=False):
+    """DB設定を使用してメールを送信する共通関数。
+
+    管理画面で設定されたSMTP設定を使用する。
+    未設定の場合は .env の値にフォールバックする。
+    """
+    config = get_email_config()
+    if from_email is None:
+        from_email = config['DEFAULT_FROM_EMAIL']
+
+    connection = get_connection(
+        host=config['EMAIL_HOST'],
+        port=config['EMAIL_PORT'],
+        username=config['EMAIL_HOST_USER'],
+        password=config['EMAIL_HOST_PASSWORD'],
+        use_tls=config['EMAIL_USE_TLS'],
+        fail_silently=fail_silently,
+    )
+
+    if attachments or bcc:
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=from_email,
+            to=recipient_list,
+            bcc=bcc or [],
+            connection=connection,
+        )
+        if attachments:
+            for attachment in attachments:
+                if isinstance(attachment, tuple):
+                    email.attach(*attachment)
+                else:
+                    email.attach_file(attachment)
+        email.send(fail_silently=fail_silently)
+    else:
+        send_mail(
+            subject, body, from_email,
+            recipient_list,
+            fail_silently=fail_silently,
+            connection=connection,
+        )
 
 
 def _get_login_url():
@@ -112,14 +161,7 @@ def send_invitation_email(partner, email, password):
     )
 
     try:
-        from django.conf import settings as django_settings
-        send_mail(
-            subject,
-            body,
-            django_settings.DEFAULT_FROM_EMAIL,
-            [email],
-            fail_silently=False,
-        )
+        send_system_mail(subject, body, [email])
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)

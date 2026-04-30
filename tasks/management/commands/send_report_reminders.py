@@ -22,11 +22,9 @@ import logging
 
 import jpholiday
 from django.core.management.base import BaseCommand
-from django.core.mail import send_mail
-from django.conf import settings
 
 from tasks.models import MonthlyTask
-from core.utils import compose_work_report_reminder_email
+from core.utils import compose_work_report_reminder_email, send_system_mail
 from core.domain.models import SentEmailLog
 
 logger = logging.getLogger(__name__)
@@ -140,12 +138,10 @@ class Command(BaseCommand):
 
             # メール送信
             try:
-                send_mail(
+                send_system_mail(
                     subject,
                     body,
-                    settings.DEFAULT_FROM_EMAIL,
                     [partner.email],
-                    fail_silently=False,
                 )
                 task.reminder_sent = True
                 task.save(update_fields=['reminder_sent'])

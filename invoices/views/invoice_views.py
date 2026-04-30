@@ -358,7 +358,9 @@ class StaffInvoiceReviewView(StaffRequiredMixin, View):
 ■差戻し理由：{reject_reason or '記載なし'}
 """
             try:
-                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [settings.DEFAULT_FROM_EMAIL], fail_silently=False)
+                from core.utils import send_system_mail, get_email_config
+                config = get_email_config()
+                send_system_mail(subject, message, [config['DEFAULT_FROM_EMAIL']])
             except Exception:
                 pass
 
@@ -422,21 +424,20 @@ class InvoiceSendPreviewView(StaffRequiredMixin, View):
             invoice.save()
 
         try:
+            from core.utils import send_system_mail, get_email_config
+
+            config = get_email_config()
             cc_list = [addr.strip() for addr in (partner.cc or '').split(',') if addr.strip()]
             bcc_list = [addr.strip() for addr in (partner.bcc or '').split(',') if addr.strip()]
-            if settings.DEFAULT_FROM_EMAIL not in bcc_list:
-                bcc_list.append(settings.DEFAULT_FROM_EMAIL)
+            from_email = config['DEFAULT_FROM_EMAIL']
+            if from_email not in bcc_list:
+                bcc_list.append(from_email)
 
-            from django.core.mail import EmailMessage
-            email = EmailMessage(
-                subject=subject,
-                body=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[partner.email],
-                cc=cc_list if cc_list else None,
+            send_system_mail(
+                subject, body, [partner.email],
+                from_email=from_email,
                 bcc=bcc_list if bcc_list else None,
             )
-            email.send(fail_silently=False)
 
             SentEmailLog.objects.create(
                 partner=partner,

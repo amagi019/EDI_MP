@@ -130,9 +130,8 @@ class ContractSendView(StaffRequiredMixin, View):
 
     def post(self, request, partner_id):
         from django.utils import timezone
-        from django.core.mail import send_mail
-        from django.conf import settings as django_settings
         from core.domain.models import SentEmailLog
+        from core.utils import compose_contract_send_email, send_system_mail
 
         partner = get_object_or_404(Partner, partner_id=partner_id)
         progress = get_object_or_404(MasterContractProgress, partner=partner)
@@ -150,14 +149,10 @@ class ContractSendView(StaffRequiredMixin, View):
             reverse('core:contract_approve', kwargs={'partner_id': partner_id})
         )
 
-        from core.utils import compose_contract_send_email
         subject, body = compose_contract_send_email(partner, contract_url)
 
         try:
-            send_mail(
-                subject, body, django_settings.DEFAULT_FROM_EMAIL,
-                [partner.email], fail_silently=False,
-            )
+            send_system_mail(subject, body, [partner.email])
             SentEmailLog.objects.create(partner=partner, subject=subject, body=body, recipient=partner.email)
             progress.sent_at = timezone.now()
             progress.status = 'PENDING_APPROVAL'

@@ -5,12 +5,10 @@ import hashlib
 import logging
 
 from django.core.files.base import ContentFile
-from django.core.mail import send_mail
-from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
-from core.utils import compose_order_publish_email, compose_order_approve_email, get_notify_email
+from core.utils import compose_order_publish_email, compose_order_approve_email, get_notify_email, send_system_mail
 from core.domain.models import SentEmailLog
 from .pdf_generator import generate_order_pdf, generate_acceptance_pdf
 from .signature_service import SignatureService
@@ -98,7 +96,7 @@ def publish_order(order, request):
         )
         subject, message = compose_order_publish_email(order, order_detail_url, login_url)
         try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [order.partner.email], fail_silently=False)
+            send_system_mail(subject, message, [order.partner.email])
             email_sent = True
             SentEmailLog.objects.create(
                 partner=order.partner, subject=subject,
@@ -160,7 +158,7 @@ def republish_order(order, request):
             f"何卒よろしくお願いいたします。\n"
         )
         try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [order.partner.email], fail_silently=False)
+            send_system_mail(subject, message, [order.partner.email])
             email_sent = True
             SentEmailLog.objects.create(
                 partner=order.partner, subject=subject,
@@ -182,7 +180,7 @@ def _send_approve_notification(order, request):
 
     try:
         logger.info(f"[注文承諾通知] 宛先: {notify_email}, 件名: {subject}")
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
+        send_system_mail(subject, message, [notify_email])
         logger.info(f"[注文承諾通知] 送信成功")
         SentEmailLog.objects.create(
             partner=order.partner, subject=subject,

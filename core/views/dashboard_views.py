@@ -436,35 +436,37 @@ def _build_client_pipeline_data():
     for ro in orders:
         cname = _shorten_name(ro.customer.name)
         client_names.add(cname)
-        steps = []
-        worst_urgency = 999
 
         # 作業者名を受注明細から取得
         worker_names = list(
             ro.items.exclude(person_name='').values_list('person_name', flat=True)
         )
 
-        # ステップ1: 受注（注文書登録済み＝完了）
-        step1 = {'label': '受注', 'status': 'done', 'deadline': None, 'days': None, 'url': None}
-        steps.append(step1)
+        # 共通データ（請求書・入金は受注単位）
+        inv = BillingInvoice.objects.filter(received_order=ro).first()
 
-        # ステップ2: 勤怠報告（全作業者分をチェック）
-        step2 = {'label': '勤怠', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
-        timesheets_for_order = []
-        if worker_names:
-            from billing.domain.models import MonthlyTimesheet
-            from core.utils import normalize_name
-            # 各作業者の勤怠チェック（MonthlyTimesheet統一検索）
-            all_ready = True
-            any_submitted = False
-            for wname in worker_names:
+        # 作業者がいない場合は受注単位で1行
+        if not worker_names:
+            worker_names = ['—']
+
+        from billing.domain.models import MonthlyTimesheet
+        from core.utils import normalize_name
+
+        for wname in worker_names:
+            steps = []
+            worst_urgency = 999
+
+            # ステップ1: 受注（注文書登録済み＝完了）
+            steps.append({'label': '受注', 'status': 'done', 'deadline': None, 'days': None, 'url': None})
+
+            # ステップ2: 勤怠報告（この作業者分のみチェック）
+            step2 = {'label': '勤怠', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
+            ts = None
+            if wname != '—':
                 wname_norm = normalize_name(wname)
-                ts = None
-                # received_orderで直接検索
                 ts = MonthlyTimesheet.objects.filter(
                     received_order=ro, worker_name=wname
                 ).first()
-                # なければ名前+年月で検索
                 if not ts:
                     for candidate in MonthlyTimesheet.objects.filter(
                         target_month__year=ro.target_month.year,
@@ -474,99 +476,68 @@ def _build_client_pipeline_data():
                             ts = candidate
                             break
                 if ts and ts.status in ('SUBMITTED', 'APPROVED', 'SENT'):
-                    any_submitted = True
-                    timesheets_for_order.append(ts)
-                else:
-                    all_ready = False
-            if all_ready and any_submitted:
-                step2['status'] = 'done'
-            elif any_submitted:
-                step2['status'] = 'active'
-                step2['url'] = reverse('billing:report_submission_status')
-        else:
-            # 作業者が未設定
-            from billing.domain.models import MonthlyTimesheet
-            ts = MonthlyTimesheet.objects.filter(received_order=ro).first()
+                    step2['status'] = 'done'
+                elif ts:
+                    step2['status'] = 'active'
+                    step2['url'] = reverse('billing:report_submission_status')
+            steps.append(step2)
+
+            # ステップ3: 報告送付（この作業者分）
+            step3 = {'label': '報告送付', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
             if ts and ts.status in ('SUBMITTED', 'APPROVED', 'SENT'):
-                step2['status'] = 'done'
-                timesheets_for_order.append(ts)
-            elif ts:
-                step2['status'] = 'active'
-                step2['url'] = reverse('billing:timesheet_list')
-        steps.append(step2)
+                if ts.status == 'SENT' or ts.sent_to_client_at:
+                    step3['status'] = 'done'
+                elif step2['status'] == 'done':
+                    step3['status'] = 'active'
+                    step3['days'] = '送付待ち'
+                    step3['url'] = reverse('billing:report_submission_status')
+            steps.append(step3)
 
-        # ステップ3: 報告送付（クライアントへ稼働報告が送付されたか）
-        step3 = {'label': '報告送付', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
-        if timesheets_for_order:
-            all_sent = all(
-                ts.status == 'SENT' or ts.sent_to_client_at
-                for ts in timesheets_for_order
-            )
-            any_sent = any(
-                ts.status == 'SENT' or ts.sent_to_client_at
-                for ts in timesheets_for_order
-            )
-            if all_sent:
-                step3['status'] = 'done'
-            elif any_sent:
-                step3['status'] = 'active'
-                step3['url'] = reverse('billing:report_submission_status')
-            elif step2['status'] == 'done':
-                step3['status'] = 'active'
-                step3['days'] = '送付待ち'
-                step3['url'] = reverse('billing:report_submission_status')
-        steps.append(step3)
-
-        # ステップ4: 請求書
-        inv = BillingInvoice.objects.filter(received_order=ro).first()
-        step4 = {'label': '請求書', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
-        if inv:
-            if inv.status in ('SENT', 'PAID'):
-                step4['status'] = 'done'
-            else:
-                step4['status'] = 'active'
-                step4['url'] = reverse('billing:invoice_detail', kwargs={'pk': inv.pk})
-        elif step3['status'] == 'done':
-            # 報告送付完了だが請求書未作成 → 請求書作成へ
-            step4['status'] = 'active'
-            step4['url'] = reverse('billing:invoice_create') + f'?order_id={ro.pk}'
-        steps.append(step4)
-
-        # ステップ5: 入金
-        step5 = {'label': '入金', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
-        if inv and inv.status == 'PAID':
-            step5['status'] = 'done'
-            if inv.payment_date:
-                step5['days'] = inv.payment_date.strftime('%m/%d') + '完了'
-        elif inv and inv.status == 'SENT':
-            step5['status'] = 'active'
-            if inv.due_date:
-                diff = (inv.due_date - today).days
-                step5['deadline'] = inv.due_date.strftime('%m/%d')
-                if diff < 0:
-                    step5['status'] = 'overdue'
-                    step5['days'] = f'{abs(diff)}日超過'
-                    worst_urgency = min(worst_urgency, diff)
+            # ステップ4: 請求書（受注単位）
+            step4 = {'label': '請求書', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
+            if inv:
+                if inv.status in ('SENT', 'PAID'):
+                    step4['status'] = 'done'
                 else:
-                    step5['days'] = f'あと{diff}日'
-                    worst_urgency = min(worst_urgency, diff)
-        steps.append(step5)
+                    step4['status'] = 'active'
+                    step4['url'] = reverse('billing:invoice_detail', kwargs={'pk': inv.pk})
+            steps.append(step4)
 
-        # 行ステータス
-        has_overdue = any(s['status'] == 'overdue' for s in steps)
-        all_done = all(s['status'] == 'done' for s in steps)
-        row_status = 'overdue' if has_overdue else ('done' if all_done else 'active')
+            # ステップ5: 入金（受注単位）
+            step5 = {'label': '入金', 'status': 'pending', 'deadline': None, 'days': None, 'url': None}
+            if inv and inv.status == 'PAID':
+                step5['status'] = 'done'
+                if inv.payment_date:
+                    step5['days'] = inv.payment_date.strftime('%m/%d') + '完了'
+            elif inv and inv.status == 'SENT':
+                step5['status'] = 'active'
+                if inv.due_date:
+                    diff = (inv.due_date - today).days
+                    step5['deadline'] = inv.due_date.strftime('%m/%d')
+                    if diff < 0:
+                        step5['status'] = 'overdue'
+                        step5['days'] = f'{abs(diff)}日超過'
+                        worst_urgency = min(worst_urgency, diff)
+                    else:
+                        step5['days'] = f'あと{diff}日'
+                        worst_urgency = min(worst_urgency, diff)
+            steps.append(step5)
 
-        pipeline.append({
-            'partner_name': cname,
-            'project_name': ro.project_name or '---',
-            'worker_names': worker_names,
-            'work_month': ro.target_month.strftime('%Y/%m'),
-            'steps': steps,
-            'row_status': row_status,
-            'urgency': worst_urgency,
-            'task_ids': [],
-        })
+            # 行ステータス
+            has_overdue = any(s['status'] == 'overdue' for s in steps)
+            all_done = all(s['status'] == 'done' for s in steps)
+            row_status = 'overdue' if has_overdue else ('done' if all_done else 'active')
+
+            pipeline.append({
+                'partner_name': cname,
+                'project_name': ro.project_name or '---',
+                'worker_names': [wname],
+                'work_month': ro.target_month.strftime('%Y/%m'),
+                'steps': steps,
+                'row_status': row_status,
+                'urgency': worst_urgency,
+                'task_ids': [],
+            })
 
     pipeline.sort(key=lambda r: (r['partner_name'], r['work_month']))
     return pipeline, sorted(client_names)

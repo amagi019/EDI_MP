@@ -457,17 +457,14 @@ class WorkReportSendToClientView(StaffRequiredMixin, View):
             if not target_email:
                 messages.warning(request, "Google Driveには保存されましたが、取引先に「稼働報告送付先メールアドレス」が登録されていないためメール送信をスキップしました。")
             else:
-                from django.core.mail import EmailMessage
+                from core.utils import send_system_mail, get_email_config
+                config = get_email_config()
                 subject, body = self._build_email_content(work_report, client, client_shared_url)
 
-                email = EmailMessage(
-                    subject=subject,
-                    body=body,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[target_email],
-                    bcc=[settings.DEFAULT_FROM_EMAIL],
+                send_system_mail(
+                    subject, body, [target_email],
+                    bcc=[config['DEFAULT_FROM_EMAIL']],
                 )
-                email.send(fail_silently=False)
 
         except Exception as e:
             logger.error(f"[Mail Send Error] クライアント通知メール失敗: {e}\n{traceback.format_exc()}")

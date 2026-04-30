@@ -6,11 +6,10 @@ Admin の save_model から呼ばれるメール通知ロジックを集約。
 import logging
 from textwrap import dedent
 
-from django.conf import settings
-from django.core.mail import send_mail
 from django.urls import reverse
 
 from core.domain.models import SentEmailLog
+from core.utils import get_email_config, send_system_mail
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,8 @@ def send_review_request(invoice, request):
     if partner.staff_contact and partner.staff_contact.email:
         recipient = partner.staff_contact.email
     else:
-        recipient = settings.DEFAULT_FROM_EMAIL
+        config = get_email_config()
+        recipient = config['DEFAULT_FROM_EMAIL']
 
     review_url = request.build_absolute_uri(
         reverse('invoices:staff_invoice_review', kwargs={'invoice_id': invoice.pk})
@@ -113,10 +113,7 @@ def send_invoice_notification(invoice, request):
 def _send_and_log(subject, body, recipient, partner, invoice):
     """メール送信と SentEmailLog 記録を行う。"""
     try:
-        send_mail(
-            subject, body, settings.DEFAULT_FROM_EMAIL,
-            [recipient], fail_silently=False,
-        )
+        send_system_mail(subject, body, [recipient])
         SentEmailLog.objects.create(
             partner=partner,
             subject=subject,

@@ -8,10 +8,10 @@ Usage:
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.core.management.base import BaseCommand
 
 from core.domain.models import Partner, SentEmailLog
+from core.utils import send_system_mail
 
 logger = logging.getLogger(__name__)
 
@@ -105,12 +105,10 @@ class Command(BaseCommand):
                 continue
 
             try:
-                send_mail(
+                send_system_mail(
                     SUBJECT,
                     body,
-                    settings.DEFAULT_FROM_EMAIL,
                     [email],
-                    fail_silently=False,
                 )
                 sent += 1
                 SentEmailLog.objects.create(

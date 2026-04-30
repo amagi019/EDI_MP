@@ -41,23 +41,14 @@ class PartnerOnboardingView(PartnerRequiredMixin, UpdateView):
 
         # スタッフ担当者へ通知メール送信
         try:
-            from django.core.mail import send_mail
-            from django.conf import settings
-            from core.utils import compose_partner_info_registered_email
+            from core.utils import compose_partner_info_registered_email, get_notify_email, send_system_mail
 
             progress_url = self.request.build_absolute_uri(
                 reverse('core:contract_progress_list')
             )
             subject, message = compose_partner_info_registered_email(partner, progress_url)
-
-            if partner.staff_contact and partner.staff_contact.email:
-                notify_email = partner.staff_contact.email
-            else:
-                notify_email = settings.DEFAULT_FROM_EMAIL
-            send_mail(
-                subject, message, settings.DEFAULT_FROM_EMAIL,
-                [notify_email], fail_silently=False,
-            )
+            notify_email = get_notify_email(partner)
+            send_system_mail(subject, message, [notify_email])
             SentEmailLog.objects.create(
                 partner=partner, subject=subject,
                 body=message, recipient=notify_email,

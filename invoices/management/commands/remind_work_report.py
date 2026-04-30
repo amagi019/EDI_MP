@@ -20,14 +20,12 @@ import datetime
 from calendar import monthrange
 
 from django.core.management.base import BaseCommand
-from django.core.mail import send_mail
-from django.conf import settings
 
 import jpholiday
 
 from orders.models import OrderBasicInfo
 from core.domain.models import SentEmailLog
-from core.utils import compose_work_report_reminder_email
+from core.utils import compose_work_report_reminder_email, send_system_mail
 
 
 class Command(BaseCommand):
@@ -119,11 +117,9 @@ class Command(BaseCommand):
 
             # 送信
             try:
-                send_mail(
+                send_system_mail(
                     subject, body,
-                    settings.DEFAULT_FROM_EMAIL,
                     [partner.email],
-                    fail_silently=False,
                 )
 
                 # 送信ログ記録

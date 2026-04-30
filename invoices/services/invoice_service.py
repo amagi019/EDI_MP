@@ -3,11 +3,9 @@
 """
 import logging
 
-from django.core.mail import send_mail
-from django.conf import settings
 from django.urls import reverse
 
-from core.utils import get_notify_email, normalize_name, compose_invoice_approve_email
+from core.utils import get_notify_email, normalize_name, compose_invoice_approve_email, send_system_mail
 from core.domain.models import SentEmailLog
 from ..models import Invoice, InvoiceItem
 
@@ -32,7 +30,7 @@ def confirm_invoice(invoice, partner, request):
 
     email_sent = False
     try:
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
+        send_system_mail(subject, message, [notify_email])
         email_sent = True
         SentEmailLog.objects.create(
             partner=invoice.order.partner, subject=subject,
@@ -177,7 +175,7 @@ EDIシステムにログインして内容を確認してください。
 """
     email_sent = False
     try:
-        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [notify_email], fail_silently=False)
+        send_system_mail(subject, body, [notify_email])
         email_sent = True
         SentEmailLog.objects.create(
             partner=report_partner, subject=subject,
